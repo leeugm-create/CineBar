@@ -37,7 +37,7 @@
     <key>CineBarShareURL</key>
     <string>https://cinebar-share-test.leeugm.workers.dev</string>
     <key>CineBarDataProxyURL</key>
-    <string></string>
+    <string>https://cinebar-data.leeugm.workers.dev</string>
     <key>CineBarUpdateManifestURL</key>
     <string></string>
     <key>CineBarSupportURL</key>

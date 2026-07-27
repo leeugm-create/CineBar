@@ -7,6 +7,62 @@ struct CineBarRegressionBehaviorTests {
     @MainActor
     static func main() {
         precondition(
+            DataProxyConfiguration.normalizedBaseURL(
+                "https://cinebar-data.leeugm.workers.dev/"
+            ) == "https://cinebar-data.leeugm.workers.dev"
+        )
+        precondition(
+            DataProxyConfiguration.normalizedBaseURL("ftp://invalid") == nil
+        )
+
+        let proxiedOMDbURL = OMDbEndpoint.url(
+            proxyBaseURL: "https://cinebar-data.leeugm.workers.dev",
+            apiKey: "",
+            imdbID: "tt0133093"
+        )
+        precondition(
+            proxiedOMDbURL?.absoluteString ==
+                "https://cinebar-data.leeugm.workers.dev/omdb?i=tt0133093"
+        )
+        precondition(
+            !(proxiedOMDbURL?.absoluteString.contains("apikey") ?? true)
+        )
+        precondition(
+            OMDbEndpoint.url(
+                proxyBaseURL: nil,
+                apiKey: "",
+                imdbID: "tt0133093"
+            ) == nil
+        )
+        let legacyOMDbURL = OMDbEndpoint.url(
+            proxyBaseURL: nil,
+            apiKey: "developer-key",
+            imdbID: "tt0133093"
+        )
+        precondition(
+            legacyOMDbURL?.host == "www.omdbapi.com"
+        )
+        precondition(
+            legacyOMDbURL?.query?.contains("apikey=developer-key") == true
+        )
+        precondition(
+            OMDbEndpoint.url(
+                proxyBaseURL: "https://cinebar-data.leeugm.workers.dev",
+                apiKey: "",
+                imdbID: "603"
+            ) == nil
+        )
+
+        let builtInSettings = DataSettingsPresentation(
+            proxyBaseURL: "https://cinebar-data.leeugm.workers.dev"
+        )
+        precondition(builtInSettings.usesBuiltInService)
+        precondition(!builtInSettings.showsCredentialFields)
+        let developerSettings = DataSettingsPresentation(proxyBaseURL: "")
+        precondition(!developerSettings.usesBuiltInService)
+        precondition(developerSettings.showsCredentialFields)
+
+        precondition(
             RatingPresentation.shouldShowEditor(
                 myScore: nil,
                 isLoading: false

@@ -1450,22 +1450,102 @@ enum CommunityRatingError: LocalizedError {
     }
 }
 
+enum DataProxyConfiguration {
+    static func normalizedBaseURL(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        var cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard cleaned.hasPrefix("https://") ||
+                cleaned.hasPrefix("http://localhost") else {
+            return nil
+        }
+        while cleaned.hasSuffix("/") {
+            cleaned.removeLast()
+        }
+        guard let components = URLComponents(string: cleaned),
+              components.host != nil
+        else { return nil }
+        return cleaned
+    }
+}
+
+enum OMDbEndpoint {
+    static func url(
+        proxyBaseURL: String?,
+        apiKey: String,
+        imdbID: String
+    ) -> URL? {
+        guard imdbID.range(
+            of: #"^tt\d{7,10}$"#,
+            options: .regularExpression
+        ) != nil else { return nil }
+
+        if let proxy = DataProxyConfiguration.normalizedBaseURL(
+            proxyBaseURL
+        ), var components = URLComponents(string: "\(proxy)/omdb") {
+            components.queryItems = [
+                URLQueryItem(name: "i", value: imdbID)
+            ]
+            return components.url
+        }
+
+        let cleanedKey = apiKey.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+        guard !cleanedKey.isEmpty,
+              var components = URLComponents(
+                string: "https://www.omdbapi.com/"
+              )
+        else { return nil }
+        components.queryItems = [
+            URLQueryItem(name: "apikey", value: cleanedKey),
+            URLQueryItem(name: "i", value: imdbID),
+            URLQueryItem(name: "r", value: "json")
+        ]
+        return components.url
+    }
+}
+
+struct DataSettingsPresentation {
+    let proxyBaseURL: String?
+
+    var usesBuiltInService: Bool {
+        DataProxyConfiguration.normalizedBaseURL(proxyBaseURL) != nil
+    }
+
+    var showsCredentialFields: Bool {
+        !usesBuiltInService
+    }
+
+    func serviceTitle(language: AppLanguage) -> String {
+        switch language {
+        case .zhCN: return "内置影片与评分服务已启用"
+        case .zhHK, .zhTW: return "內建影片與評分服務已啟用"
+        case .enUS: return "Built-in movie and rating service enabled"
+        case .jaJP: return "内蔵の作品・評価サービスが有効です"
+        case .koKR: return "내장 영화 및 평점 서비스가 활성화되었습니다"
+        }
+    }
+
+    func serviceDetail(language: AppLanguage) -> String {
+        switch language {
+        case .zhCN: return "无需申请密钥或部署服务，TMDB 与 OMDb 已由 CineBar 安全连接。"
+        case .zhHK, .zhTW: return "無需申請金鑰或部署服務，TMDB 與 OMDb 已由 CineBar 安全連線。"
+        case .enUS: return "No API keys or deployment required. CineBar securely connects TMDB and OMDb."
+        case .jaJP: return "APIキーや導入作業は不要です。CineBarがTMDBとOMDbへ安全に接続します。"
+        case .koKR: return "API 키나 배포가 필요하지 않습니다. CineBar가 TMDB와 OMDb에 안전하게 연결합니다."
+        }
+    }
+}
+
 struct TMDBClient {
     let token: String
     let language: String
 
     private var proxyBaseURL: String? {
-        guard let raw = Bundle.main.object(
+        let raw = Bundle.main.object(
             forInfoDictionaryKey: "CineBarDataProxyURL"
-        ) as? String else { return nil }
-        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard cleaned.hasPrefix("https://") ||
-                cleaned.hasPrefix("http://localhost") else {
-            return nil
-        }
-        return cleaned.hasSuffix("/")
-            ? String(cleaned.dropLast())
-            : cleaned
+        ) as? String
+        return DataProxyConfiguration.normalizedBaseURL(raw)
     }
 
     func trending(page: Int = 1) async throws -> MoviePageResult {
@@ -2243,15 +2323,14 @@ struct TVMazeClient {
 
 struct OMDbClient {
     let apiKey: String
+    let proxyBaseURL: String?
 
     func ratings(imdbID: String) async throws -> [MovieRating] {
-        var components = URLComponents(string: "https://www.omdbapi.com/")
-        components?.queryItems = [
-            URLQueryItem(name: "apikey", value: apiKey),
-            URLQueryItem(name: "i", value: imdbID),
-            URLQueryItem(name: "r", value: "json")
-        ]
-        guard let url = components?.url else { throw CineBarError.invalidResponse }
+        guard let url = OMDbEndpoint.url(
+            proxyBaseURL: proxyBaseURL,
+            apiKey: apiKey,
+            imdbID: imdbID
+        ) else { throw CineBarError.invalidResponse }
 
         var request = URLRequest(url: url)
         request.timeoutInterval = 15
@@ -2627,15 +2706,12 @@ final class MovieStore: ObservableObject {
     }
 
     var hasDataProxy: Bool {
-        let cleaned = dataProxyURL.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-        return cleaned.hasPrefix("https://") ||
-            cleaned.hasPrefix("http://localhost")
+        DataProxyConfiguration.normalizedBaseURL(dataProxyURL) != nil
     }
 
     var hasOMDbKey: Bool {
-        !omdbKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        hasDataProxy ||
+            !omdbKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var hasShareService: Bool {
@@ -4385,7 +4461,10 @@ final class MovieStore: ObservableObject {
                     language: appLanguage.apiCode
                 ).externalIDs(movieID: movieID)
                 if let imdbID = ids.imdbID, !imdbID.isEmpty {
-                    externalRatings = try await OMDbClient(apiKey: omdbKey).ratings(imdbID: imdbID)
+                    externalRatings = try await OMDbClient(
+                        apiKey: omdbKey,
+                        proxyBaseURL: dataProxyURL
+                    ).ratings(imdbID: imdbID)
                 }
             } catch {
                 externalRatings = []
@@ -7537,29 +7616,50 @@ struct SettingsRootView: View {
     }
 
     private var dataSettings: some View {
-        settingsCard {
-            if store.hasDataProxy {
-                Label("正式版影片数据服务已配置，用户无需申请 Token。", systemImage: "checkmark.seal.fill")
+        let presentation = DataSettingsPresentation(
+            proxyBaseURL: store.dataProxyURL
+        )
+        return settingsCard {
+            if presentation.usesBuiltInService {
+                Label(
+                    presentation.serviceTitle(language: store.appLanguage),
+                    systemImage: "checkmark.seal.fill"
+                )
+                    .font(.headline)
                     .foregroundStyle(.green)
+                Text(
+                    presentation.serviceDetail(language: store.appLanguage)
+                )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                LabeledContent("影片与电视剧资料") {
+                    Text("TMDB").foregroundStyle(.secondary)
+                }
+                LabeledContent("IMDb、烂番茄与 Metacritic 评分") {
+                    Text("OMDb").foregroundStyle(.secondary)
+                }
+                LabeledContent("电视剧播出时间") {
+                    Text("TVMaze").foregroundStyle(.secondary)
+                }
             } else {
                 SecureField("TMDB Read Access Token", text: $store.token)
                     .textFieldStyle(.roundedBorder)
+                SecureField("OMDb API Key（可选）", text: $store.omdbKey)
+                    .textFieldStyle(.roundedBorder)
             }
-            SecureField("OMDb API Key（可选）", text: $store.omdbKey)
-                .textFieldStyle(.roundedBorder)
             Picker("观看地区", selection: $store.region) {
                 ForEach(regions, id: \.0) { code, name in
                     Text("\(name)（\(code)）").tag(code)
                 }
             }
-            HStack {
-                if !store.hasDataProxy {
+            if presentation.showsCredentialFields {
+                HStack {
                     Link("申请影片数据 Token", destination: URL(string: "https://www.themoviedb.org/settings/api")!)
+                    Link("申请外部评分 Key", destination: URL(string: "https://www.omdbapi.com/apikey.aspx")!)
+                    Link("TVMaze 数据说明", destination: URL(string: "https://www.tvmaze.com/api")!)
                 }
-                Link("申请外部评分 Key", destination: URL(string: "https://www.omdbapi.com/apikey.aspx")!)
-                Link("TVMaze 数据说明", destination: URL(string: "https://www.tvmaze.com/api")!)
+                .font(.caption)
             }
-            .font(.caption)
             Text("电视剧下一集播出时间由 TVMaze 补充，无需用户申请账号或 API Key。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
