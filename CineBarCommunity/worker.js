@@ -6,7 +6,7 @@ const json = (data, status = 200) =>
       "access-control-allow-origin": "*",
       "access-control-allow-headers":
         "content-type, x-cinebar-key, x-cinebar-device",
-      "access-control-allow-methods": "GET, POST, DELETE, OPTIONS",
+      "access-control-allow-methods": "GET, POST, OPTIONS",
     },
   });
 
@@ -204,37 +204,46 @@ async function ratingSummary(request, mediaType, mediaID, env) {
   });
 }
 
-async function upsertRating(request, mediaType, mediaID, env) {
+const alreadyRatedResponse = () =>
+  json(
+    {
+      error: "这部影片已经评分，不能重复评分",
+      code: "already_rated",
+    },
+    409,
+  );
+
+async function createRating(request, mediaType, mediaID, env) {
   const body = await request.json();
   const score = normalizeScore(body.score);
   if (score == null) {
     return json({ error: "评分须为 0–10，且以 0.5 为间隔" }, 400);
   }
   const deviceHash = await deviceHashForRequest(request, env);
-
-  const now = new Date().toISOString();
-  await env.DB.prepare(
-    `INSERT INTO ratings
-       (media_type, media_id, device_hash, score, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(media_type, media_id, device_hash) DO UPDATE SET
-       score = excluded.score,
-       updated_at = excluded.updated_at`,
-  )
-    .bind(mediaType, mediaID, deviceHash, score, now, now)
-    .run();
-
-  return ratingSummary(request, mediaType, mediaID, env);
-}
-
-async function deleteRating(request, mediaType, mediaID, env) {
-  const deviceHash = await deviceHashForRequest(request, env);
-  await env.DB.prepare(
-    `DELETE FROM ratings
+  const existing = await env.DB.prepare(
+    `SELECT score FROM ratings
      WHERE media_type = ? AND media_id = ? AND device_hash = ?`,
   )
     .bind(mediaType, mediaID, deviceHash)
-    .run();
+    .first();
+  if (existing?.score != null) return alreadyRatedResponse();
+
+  const now = new Date().toISOString();
+  try {
+    await env.DB.prepare(
+      `INSERT INTO ratings
+         (media_type, media_id, device_hash, score, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    )
+      .bind(mediaType, mediaID, deviceHash, score, now, now)
+      .run();
+  } catch (error) {
+    if (`${error?.message ?? error}`.toUpperCase().includes("UNIQUE")) {
+      return alreadyRatedResponse();
+    }
+    throw error;
+  }
+
   return ratingSummary(request, mediaType, mediaID, env);
 }
 
@@ -262,7 +271,7 @@ export default {
           );
         }
         if (request.method === "POST") {
-          return upsertRating(
+          return createRating(
             request,
             rating.mediaType,
             rating.mediaID,
@@ -270,11 +279,9 @@ export default {
           );
         }
         if (request.method === "DELETE") {
-          return deleteRating(
-            request,
-            rating.mediaType,
-            rating.mediaID,
-            env,
+          return json(
+            { error: "评分提交后不可修改或删除" },
+            405,
           );
         }
       } catch (error) {
