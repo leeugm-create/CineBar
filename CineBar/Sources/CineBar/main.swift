@@ -4679,14 +4679,36 @@ struct ContentRatingBadge: View {
     let rating: ContentRatingSummary?
 
     var body: some View {
-        Label(
-            rating?.displayText ?? "未分级 · CineBar 未分级",
-            systemImage: "person.badge.shield.checkmark.fill"
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "person.badge.shield.checkmark.fill")
+                .font(.title2)
+                .foregroundStyle(.red)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(rating?.region ?? "暂无分级")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(
+                    rating?.original.isEmpty == false
+                        ? rating?.original ?? "未分级"
+                        : "未分级"
+                )
+                .font(.title.bold())
+                .foregroundStyle(.red)
+                Text("CineBar \(rating?.cineBar ?? "未分级")")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(
+            Color.red.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 12)
         )
-        .font(.caption.bold())
-        .padding(.horizontal, 9)
-        .padding(.vertical, 5)
-        .background(Color.indigo.opacity(0.10), in: Capsule())
+        .overlay {
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.red.opacity(0.22), lineWidth: 1)
+        }
         .help("优先显示当前地区分级，其次制片地区、美国；CineBar 标签为统一年龄提示")
     }
 }
@@ -8594,6 +8616,31 @@ final class CineBarPanel: NSPanel {
     override var canBecomeMain: Bool { true }
 }
 
+enum PanelPlacement {
+    static func frame(
+        anchorX: CGFloat,
+        currentFrame: NSRect,
+        visibleFrame: NSRect,
+        minHeight: CGFloat
+    ) -> NSRect {
+        let width: CGFloat = 520
+        let maximumHeight = max(minHeight, visibleFrame.height - 16)
+        let height = min(
+            max(currentFrame.height, minHeight),
+            maximumHeight
+        )
+        let proposedX = anchorX - width / 2
+        let maximumX = visibleFrame.maxX - width
+        let x = min(max(proposedX, visibleFrame.minX), maximumX)
+        return NSRect(
+            x: x,
+            y: max(visibleFrame.maxY - height, visibleFrame.minY),
+            width: width,
+            height: height
+        )
+    }
+}
+
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     UNUserNotificationCenterDelegate {
@@ -8793,9 +8840,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
     @objc private func showMainPanelRequested(_ notification: Notification) {
         guard let panel else { return }
-        if !store.isPanelMovable {
-            positionPanelOnActiveScreen(panel)
-        }
+        positionPanelOnActiveScreen(panel)
         panel.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         scheduleAutoHide()
@@ -8826,9 +8871,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             return
         }
 
-        if !store.isPanelMovable {
-            positionPanelOnActiveScreen(panel)
-        }
+        positionPanelOnActiveScreen(panel)
         panel.makeKeyAndOrderFront(nil)
         NSApplication.shared.activate(ignoringOtherApps: true)
         scheduleAutoHide()
@@ -8836,22 +8879,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
     private func positionPanelOnActiveScreen(_ panel: NSPanel) {
         let pointer = NSEvent.mouseLocation
-        let targetScreen = NSScreen.screens.first {
+        let statusAnchor: (screen: NSScreen, x: CGFloat)? = {
+            guard let button = statusItem?.button,
+                  let window = button.window,
+                  let screen = window.screen
+            else { return nil }
+            let windowRect = button.convert(button.bounds, to: nil)
+            let screenRect = window.convertToScreen(windowRect)
+            return (screen, screenRect.midX)
+        }()
+        let pointerScreen = NSScreen.screens.first {
             NSMouseInRect(pointer, $0.frame, false)
-        } ?? NSScreen.main
-        guard let targetScreen else { return }
+        }
+        guard let targetScreen = statusAnchor?.screen ??
+                pointerScreen ??
+                NSScreen.main
+        else { return }
 
         let visibleFrame = targetScreen.visibleFrame
         let maximumHeight = max(panel.minSize.height, visibleFrame.height - 16)
         panel.maxSize = NSSize(width: 520, height: maximumHeight)
-        var frame = panel.frame
-        frame.size.width = 520
-        frame.size.height = min(max(frame.height, panel.minSize.height), maximumHeight)
-        let proposedX = pointer.x - panel.frame.width / 2
-        let x = min(max(proposedX, visibleFrame.minX), visibleFrame.maxX - frame.width)
-        frame.origin = NSPoint(
-            x: x,
-            y: max(visibleFrame.maxY - frame.height, visibleFrame.minY)
+        let frame = PanelPlacement.frame(
+            anchorX: statusAnchor?.x ?? pointer.x,
+            currentFrame: panel.frame,
+            visibleFrame: visibleFrame,
+            minHeight: panel.minSize.height
         )
         panel.setFrame(frame, display: true)
     }

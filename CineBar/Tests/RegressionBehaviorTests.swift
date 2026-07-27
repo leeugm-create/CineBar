@@ -54,6 +54,32 @@ struct CineBarRegressionBehaviorTests {
         precondition(slider.numberOfTickMarks == 21)
         precondition(slider.allowsTickMarkValuesOnly)
         precondition(!slider.mouseDownCanMoveWindow)
+
+        let secondDisplay = NSRect(
+            x: 1_920,
+            y: 0,
+            width: 2_560,
+            height: 1_440
+        )
+        let secondDisplayPanel = PanelPlacement.frame(
+            anchorX: 2_200,
+            currentFrame: NSRect(x: 0, y: 0, width: 520, height: 720),
+            visibleFrame: secondDisplay,
+            minHeight: 560
+        )
+        precondition(secondDisplay.contains(secondDisplayPanel))
+        precondition(secondDisplayPanel.origin.x == 1_940)
+
+        let smallDisplay = NSRect(x: 0, y: 0, width: 1_440, height: 900)
+        let clampedPanel = PanelPlacement.frame(
+            anchorX: 720,
+            currentFrame: NSRect(x: 0, y: 0, width: 520, height: 1_200),
+            visibleFrame: smallDisplay,
+            minHeight: 560
+        )
+        precondition(clampedPanel.height == 884)
+        precondition(clampedPanel.origin.y == 16)
+        precondition(clampedPanel.origin.x == 460)
     }
 }
 #endif
