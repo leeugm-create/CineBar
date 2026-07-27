@@ -266,3 +266,5 @@
 "这部影片已经评分，不能重复评分" = "You have already rated this title";
 "提交后不可修改" = "Cannot be changed after submission";
 "正在加载 CineBar 评分…" = "Loading CineBar rating…";
+"玻璃背景不透明度" = "Glass background opacity";
+"恢复默认" = "Restore Default";

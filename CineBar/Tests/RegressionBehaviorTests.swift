@@ -59,6 +59,11 @@ struct CineBarRegressionBehaviorTests {
         precondition(unratedPresentation.officialValue == "未分级")
         precondition(unratedPresentation.cineBarValue == "未分级")
 
+        precondition(GlassBackgroundOpacity.normalized(nil) == 0.85)
+        precondition(GlassBackgroundOpacity.normalized(0.2) == 0.5)
+        precondition(GlassBackgroundOpacity.normalized(0.73) == 0.73)
+        precondition(GlassBackgroundOpacity.normalized(1.4) == 1.0)
+
         let store = MovieStore()
         store.communityRating = CommunityRatingSummary(
             mediaType: "movie",

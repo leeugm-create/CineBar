@@ -1284,6 +1284,19 @@ enum RatingPresentation {
     }
 }
 
+enum GlassBackgroundOpacity {
+    static let defaultsKey = "glassBackgroundOpacity"
+    static let defaultValue = 0.85
+    static let range = 0.5...1.0
+
+    static func normalized(_ value: Double?) -> Double {
+        min(
+            max(value ?? defaultValue, range.lowerBound),
+            range.upperBound
+        )
+    }
+}
+
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
     case light
@@ -2450,6 +2463,7 @@ final class MovieStore: ObservableObject {
     @Published var isLoadingCommunityRating = false
     @Published var communityRatingMessage = ""
     @Published var appearanceMode: AppearanceMode
+    @Published var glassBackgroundOpacity: Double
     @Published var appLanguage: AppLanguage
     @Published var autoHideInterval: AutoHideInterval
     @Published var launchAtLogin: Bool
@@ -2497,6 +2511,11 @@ final class MovieStore: ObservableObject {
         appearanceMode = AppearanceMode(
             rawValue: defaults.string(forKey: "appearanceMode") ?? ""
         ) ?? .system
+        glassBackgroundOpacity = GlassBackgroundOpacity.normalized(
+            defaults.object(
+                forKey: GlassBackgroundOpacity.defaultsKey
+            ) as? Double
+        )
         appLanguage = AppLanguage(
             rawValue: defaults.string(forKey: "appLanguage") ?? ""
         ) ?? .zhCN
@@ -2652,6 +2671,15 @@ final class MovieStore: ObservableObject {
         NotificationCenter.default.post(
             name: .cineBarAppearanceDidChange,
             object: mode.rawValue
+        )
+    }
+
+    func setGlassBackgroundOpacity(_ value: Double) {
+        let normalized = GlassBackgroundOpacity.normalized(value)
+        glassBackgroundOpacity = normalized
+        defaults.set(
+            normalized,
+            forKey: GlassBackgroundOpacity.defaultsKey
         )
     }
 
@@ -7224,6 +7252,29 @@ struct SettingsRootView: View {
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
+                Divider()
+                HStack {
+                    Text("玻璃背景不透明度")
+                    Spacer()
+                    Text(
+                        "\(Int((store.glassBackgroundOpacity * 100).rounded()))%"
+                    )
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                }
+                Slider(
+                    value: Binding(
+                        get: { store.glassBackgroundOpacity },
+                        set: { store.setGlassBackgroundOpacity($0) }
+                    ),
+                    in: GlassBackgroundOpacity.range,
+                    step: 0.01
+                )
+                Button("恢复默认") {
+                    store.setGlassBackgroundOpacity(
+                        GlassBackgroundOpacity.defaultValue
+                    )
+                }
             }
             settingsCard {
                 Label("语言与地区", systemImage: "globe").font(.headline)
@@ -8114,15 +8165,19 @@ struct ContentView: View {
             Locale(identifier: store.appLanguage.localeIdentifier)
         )
         .background {
-            LinearGradient(
-                colors: [
-                    Color.indigo.opacity(0.055),
-                    Color.orange.opacity(0.035),
-                    Color.clear
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            ZStack {
+                Color(nsColor: .windowBackgroundColor)
+                    .opacity(store.glassBackgroundOpacity)
+                LinearGradient(
+                    colors: [
+                        Color.indigo.opacity(0.055),
+                        Color.orange.opacity(0.035),
+                        Color.clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            }
         }
         .onAppear {
             if store.hasToken, store.movies == Movie.demo {
