@@ -43,6 +43,22 @@ struct CineBarRegressionBehaviorTests {
         )
         identityDefaults.removePersistentDomain(forName: identitySuite)
 
+        let ratedPresentation = ContentRatingPresentation(
+            ContentRatingSummary(
+                region: "US",
+                original: "PG-13",
+                cineBar: "13+"
+            )
+        )
+        precondition(ratedPresentation.regionLabel == "US")
+        precondition(ratedPresentation.officialValue == "PG-13")
+        precondition(ratedPresentation.cineBarValue == "13+")
+
+        let unratedPresentation = ContentRatingPresentation(nil)
+        precondition(unratedPresentation.regionLabel == "地区分级")
+        precondition(unratedPresentation.officialValue == "未分级")
+        precondition(unratedPresentation.cineBarValue == "未分级")
+
         let store = MovieStore()
         store.communityRating = CommunityRatingSummary(
             mediaType: "movie",

@@ -1241,6 +1241,24 @@ struct ContentRatingSummary: Hashable {
     }
 }
 
+struct ContentRatingPresentation {
+    let regionLabel: String
+    let officialValue: String
+    let cineBarValue: String
+
+    init(_ rating: ContentRatingSummary?) {
+        regionLabel = rating?.region.isEmpty == false
+            ? rating?.region ?? "地区分级"
+            : "地区分级"
+        officialValue = rating?.original.isEmpty == false
+            ? rating?.original ?? "未分级"
+            : "未分级"
+        cineBarValue = rating?.cineBar.isEmpty == false
+            ? rating?.cineBar ?? "未分级"
+            : "未分级"
+    }
+}
+
 struct CommunityRatingSummary: Codable, Hashable {
     let mediaType: String
     let mediaID: Int
@@ -4660,37 +4678,60 @@ struct ContentRatingBadge: View {
     let rating: ContentRatingSummary?
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "person.badge.shield.checkmark.fill")
-                .font(.title2)
-                .foregroundStyle(.red)
+        let presentation = ContentRatingPresentation(rating)
+        HStack(spacing: 10) {
+            CertificationCard(
+                label: presentation.regionLabel,
+                value: presentation.officialValue,
+                accent: .red,
+                symbol: "person.badge.shield.checkmark.fill"
+            )
+            CertificationCard(
+                label: "CineBar 分级",
+                value: presentation.cineBarValue,
+                accent: .orange,
+                symbol: "play.rectangle.fill"
+            )
+        }
+        .help("优先显示当前地区分级，其次制片地区、美国；CineBar 标签为统一年龄提示")
+    }
+}
+
+private struct CertificationCard: View {
+    let label: String
+    let value: String
+    let accent: Color
+    let symbol: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(accent)
             VStack(alignment: .leading, spacing: 2) {
-                Text(rating?.region ?? "暂无分级")
+                Text(label)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text(
-                    rating?.original.isEmpty == false
-                        ? rating?.original ?? "未分级"
-                        : "未分级"
-                )
-                .font(.title.bold())
-                .foregroundStyle(.red)
-                Text("CineBar \(rating?.cineBar ?? "未分级")")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                Text(value)
+                    .font(.title.bold())
+                    .foregroundStyle(accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
+        .frame(minWidth: 128, maxWidth: .infinity, minHeight: 52)
+        .padding(.horizontal, 11)
         .padding(.vertical, 9)
         .background(
-            Color.red.opacity(0.08),
+            accent.opacity(0.08),
             in: RoundedRectangle(cornerRadius: 12)
         )
         .overlay {
             RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.red.opacity(0.22), lineWidth: 1)
+                .stroke(accent.opacity(0.22), lineWidth: 1)
         }
-        .help("优先显示当前地区分级，其次制片地区、美国；CineBar 标签为统一年龄提示")
     }
 }
 
