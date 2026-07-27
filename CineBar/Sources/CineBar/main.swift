@@ -7710,20 +7710,18 @@ struct SettingsRootView: View {
         settingsCard {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("CineBar 0.8.0").font(.title3.bold())
-                    Text("Build 12 · 2026 年 7 月 27 日")
+                    Text("CineBar 0.8.2").font(.title3.bold())
+                    Text("Build 15 · 2026 年 7 月 27 日")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
             }
             Divider()
-            featureRow("电影与电视剧新增匿名 CineBar 共享评分")
-            featureRow("评分范围 0–10 分，以 0.5 为间隔，可修改或删除")
-            featureRow("多重评分移至年代下方，并显示平均分、人数和我的评分")
-            featureRow("电影与电视剧筛选新增可搜索国家 / 地区单选")
-            featureRow("电影与电视剧推荐偏好新增国家 / 地区多选")
-            featureRow("新增原始地区分级与 CineBar 统一年龄提示")
+            featureRow("用户无需申请或填写 TMDB Token")
+            featureRow("OMDb 多重评分改用 CineBar 后台代理")
+            featureRow("数据来源页面改为内置服务状态")
+            featureRow("继续保留 IMDb、烂番茄和 Metacritic 评分")
         }
     }
 

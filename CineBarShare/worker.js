@@ -154,15 +154,15 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.1",
-        build: 14,
+        version: "0.8.2",
+        build: 15,
         published_at: "2026-07-27",
         download_url: null,
         notes: [
-          "移除首次使用时不必要的钥匙串密码提示",
-          "拆分地区分级与 CineBar 分级",
-          "增加玻璃背景不透明度设置",
-          "增加电影与电视剧短链接及完整分享文字",
+          "用户无需申请或填写 TMDB Token",
+          "OMDb 多重评分改用 CineBar 后台代理",
+          "数据来源页面改为内置服务状态",
+          "继续保留 IMDb、烂番茄和 Metacritic 评分",
         ],
       }), {
         headers: {
