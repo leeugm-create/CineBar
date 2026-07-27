@@ -268,3 +268,13 @@
 "正在加载 CineBar 评分…" = "Loading CineBar rating…";
 "玻璃背景不透明度" = "Glass background opacity";
 "恢复默认" = "Restore Default";
+"地区分级" = "Regional rating";
+"CineBar 分级" = "CineBar rating";
+"未分级" = "Not rated";
+"全年龄" = "All ages";
+"家长指导" = "Parental guidance";
+"分享电视剧" = "Share TV show";
+"🎬《%@》（%@）" = "🎬 %@ (%@)";
+"📺《%@》（%@）" = "📺 %@ (%@)";
+"在 CineBar 查看简介、演员阵容与观看信息：" = "View the overview, cast, and streaming information in CineBar:";
+"在 CineBar 查看剧集资料与播出信息：" = "View show and airing information in CineBar:";
