@@ -1,7 +1,6 @@
 import AppKit
 import Combine
 import Foundation
-import Security
 import ServiceManagement
 import SwiftUI
 import UserNotifications
@@ -2258,34 +2257,16 @@ enum CommunityMediaType: String {
 }
 
 enum CineBarDeviceIdentity {
-    private static let service = "com.indiedev.cinebar.community"
-    private static let account = "anonymous-install-id"
+    static let defaultsKey = "communityAnonymousInstallID"
 
-    static func value() -> String {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
-        ]
-        var result: CFTypeRef?
-        if SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-           let data = result as? Data,
-           let saved = String(data: data, encoding: .utf8),
-           !saved.isEmpty {
+    static func value(defaults: UserDefaults = .standard) -> String {
+        if let saved = defaults.string(forKey: defaultsKey),
+           UUID(uuidString: saved) != nil {
             return saved
         }
 
         let created = UUID().uuidString
-        let attributes: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: Data(created.utf8),
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
-        ]
-        SecItemAdd(attributes as CFDictionary, nil)
+        defaults.set(created, forKey: defaultsKey)
         return created
     }
 }

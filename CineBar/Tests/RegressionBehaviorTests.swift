@@ -25,6 +25,24 @@ struct CineBarRegressionBehaviorTests {
             )
         )
 
+        let identitySuite = "CineBarIdentityTests.\(UUID().uuidString)"
+        let identityDefaults = UserDefaults(suiteName: identitySuite)!
+        identityDefaults.removePersistentDomain(forName: identitySuite)
+        let firstIdentity = CineBarDeviceIdentity.value(
+            defaults: identityDefaults
+        )
+        let secondIdentity = CineBarDeviceIdentity.value(
+            defaults: identityDefaults
+        )
+        precondition(firstIdentity == secondIdentity)
+        precondition(UUID(uuidString: firstIdentity) != nil)
+        precondition(
+            identityDefaults.string(
+                forKey: CineBarDeviceIdentity.defaultsKey
+            ) == firstIdentity
+        )
+        identityDefaults.removePersistentDomain(forName: identitySuite)
+
         let store = MovieStore()
         store.communityRating = CommunityRatingSummary(
             mediaType: "movie",
