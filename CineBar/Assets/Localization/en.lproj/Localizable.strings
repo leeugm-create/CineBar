@@ -259,3 +259,10 @@
 "新增本机我的片单及全局爱心收藏" = "Added a local My List with heart buttons throughout the app";
 "新增登录启动、窗口移动和可拖动拉伸手柄" = "Added launch at login, movable windows, and a working resize handle";
 "修复跟随系统外观及退出预告后主面板消失" = "Fixed Follow System appearance and the main panel disappearing after closing a trailer";
+"每部影片只能评分一次，提交后不可修改或删除，请谨慎评分。" = "Each title can be rated only once. Your score cannot be changed or deleted after submission.";
+"评分提交后不可修改" = "Ratings cannot be changed after submission";
+"确认提交评分" = "Submit rating";
+"评分已保存，其他 CineBar 用户现在可以看到" = "Rating saved and now visible to other CineBar users";
+"这部影片已经评分，不能重复评分" = "You have already rated this title";
+"提交后不可修改" = "Cannot be changed after submission";
+"正在加载 CineBar 评分…" = "Loading CineBar rating…";

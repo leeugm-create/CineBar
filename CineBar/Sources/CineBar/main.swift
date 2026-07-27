@@ -4526,60 +4526,152 @@ struct RatingBadge: View {
     }
 }
 
+final class RatingNSSlider: NSSlider {
+    convenience init() {
+        self.init(frame: .zero)
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        configure()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        configure()
+    }
+
+    override var mouseDownCanMoveWindow: Bool {
+        false
+    }
+
+    private func configure() {
+        minValue = 0
+        maxValue = 10
+        numberOfTickMarks = 21
+        tickMarkPosition = .below
+        allowsTickMarkValuesOnly = true
+        isContinuous = true
+        controlSize = .large
+    }
+}
+
+struct RatingSlider: NSViewRepresentable {
+    @Binding var value: Double
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(value: $value)
+    }
+
+    func makeNSView(context: Context) -> RatingNSSlider {
+        let slider = RatingNSSlider()
+        slider.target = context.coordinator
+        slider.action = #selector(Coordinator.valueChanged(_:))
+        slider.doubleValue = value
+        return slider
+    }
+
+    func updateNSView(_ slider: RatingNSSlider, context: Context) {
+        if slider.doubleValue != value {
+            slider.doubleValue = value
+        }
+        context.coordinator.value = $value
+    }
+
+    final class Coordinator: NSObject {
+        var value: Binding<Double>
+
+        init(value: Binding<Double>) {
+            self.value = value
+        }
+
+        @objc func valueChanged(_ sender: NSSlider) {
+            value.wrappedValue = sender.doubleValue
+        }
+    }
+}
+
 struct CommunityRatingPanel: View {
     @ObservedObject var store: MovieStore
     let mediaType: CommunityMediaType
     let mediaID: Int
+    @State private var isConfirmingRating = false
 
+    @ViewBuilder
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label("我的评分", systemImage: "person.crop.circle.badge.checkmark")
-                    .font(.headline)
-                Spacer()
-                Text(String(format: "%.1f", store.communityRatingDraft))
-                    .font(.title3.bold().monospacedDigit())
-                    .foregroundStyle(.orange)
+        if RatingPresentation.shouldShowEditor(
+            myScore: store.communityRating?.myScore,
+            isLoading: store.isLoadingCommunityRating
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Label("我的评分", systemImage: "person.crop.circle.badge.checkmark")
+                        .font(.headline)
+                    Spacer()
+                    Text(String(format: "%.1f", store.communityRatingDraft))
+                        .font(.title2.bold().monospacedDigit())
+                        .foregroundStyle(.orange)
+                }
+                Label(
+                    "每部影片只能评分一次，提交后不可修改或删除，请谨慎评分。",
+                    systemImage: "exclamationmark.triangle.fill"
+                )
+                .font(.callout.bold())
+                .foregroundStyle(.red)
+                RatingSlider(value: $store.communityRatingDraft)
+                    .frame(height: 38)
+                    .disabled(store.isLoadingCommunityRating)
+                HStack {
+                    Text("0")
+                    Spacer()
+                    Text("每 0.5 分一档")
+                    Spacer()
+                    Text("10")
+                }
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                HStack {
+                    Spacer()
+                    Button("保存评分") {
+                        isConfirmingRating = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(
+                        !store.hasCommunityService ||
+                            store.isLoadingCommunityRating
+                    )
+                }
+                if !store.communityRatingMessage.isEmpty {
+                    Text(store.communityRatingMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Slider(
-                value: $store.communityRatingDraft,
-                in: 0...10,
-                step: 0.5
+            .padding(12)
+            .background(
+                Color.orange.opacity(0.06),
+                in: RoundedRectangle(cornerRadius: 12)
             )
-            HStack {
-                Text("0")
-                Spacer()
-                Text("每 0.5 分一档")
-                Spacer()
-                Text("10")
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            HStack {
-                Spacer()
-                Button("保存评分") {
+            .confirmationDialog(
+                "评分提交后不可修改",
+                isPresented: $isConfirmingRating,
+                titleVisibility: .visible
+            ) {
+                Button("确认提交评分", role: .destructive) {
                     store.saveCommunityRating(
                         mediaType: mediaType,
                         mediaID: mediaID
                     )
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(
-                    !store.hasCommunityService ||
-                        store.isLoadingCommunityRating
-                )
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("每部影片只能评分一次，提交后不可修改或删除，请谨慎评分。")
             }
-            if store.isLoadingCommunityRating {
-                ProgressView().controlSize(.small)
-            }
-            if !store.communityRatingMessage.isEmpty {
-                Text(store.communityRatingMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        } else if store.isLoadingCommunityRating &&
+                    store.communityRating == nil {
+            ProgressView("正在加载 CineBar 评分…")
+                .controlSize(.small)
         }
-        .padding(12)
-        .background(Color.orange.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
     }
 }
 

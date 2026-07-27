@@ -47,6 +47,13 @@ struct CineBarRegressionBehaviorTests {
         let televisionRatings = store.ratings(for: TVShow.demo)
         precondition(televisionRatings.last?.source == "我的评分")
         precondition(televisionRatings.last?.value == "9.5/10")
+
+        let slider = RatingNSSlider()
+        precondition(slider.minValue == 0)
+        precondition(slider.maxValue == 10)
+        precondition(slider.numberOfTickMarks == 21)
+        precondition(slider.allowsTickMarkValuesOnly)
+        precondition(!slider.mouseDownCanMoveWindow)
     }
 }
 #endif
