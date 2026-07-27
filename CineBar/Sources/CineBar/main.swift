@@ -1258,6 +1258,15 @@ struct CommunityRatingSummary: Codable, Hashable {
     }
 }
 
+enum RatingPresentation {
+    static func shouldShowEditor(
+        myScore: Double?,
+        isLoading: Bool
+    ) -> Bool {
+        myScore == nil && !isLoading
+    }
+}
+
 enum AppearanceMode: String, CaseIterable, Identifiable {
     case system
     case light
@@ -1396,6 +1405,17 @@ enum CineBarError: LocalizedError {
             return "服务器返回了无法识别的数据"
         case .server(let message):
             return message
+        }
+    }
+}
+
+enum CommunityRatingError: LocalizedError {
+    case alreadyRated
+
+    var errorDescription: String? {
+        switch self {
+        case .alreadyRated:
+            return "这部影片已经评分，不能重复评分"
         }
     }
 }
@@ -2300,18 +2320,6 @@ struct CommunityRatingClient {
         )
     }
 
-    func delete(
-        mediaType: CommunityMediaType,
-        mediaID: Int
-    ) async throws -> CommunityRatingSummary {
-        try await request(
-            mediaType: mediaType,
-            mediaID: mediaID,
-            method: "DELETE",
-            score: nil
-        )
-    }
-
     private func request(
         mediaType: CommunityMediaType,
         mediaID: Int,
@@ -2343,6 +2351,9 @@ struct CommunityRatingClient {
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
             throw CineBarError.invalidResponse
+        }
+        if http.statusCode == 409 {
+            throw CommunityRatingError.alreadyRated
         }
         guard (200...299).contains(http.statusCode) else {
             let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -3146,27 +3157,17 @@ final class MovieStore: ObservableObject {
                     score: communityRatingDraft
                 )
                 communityRatingMessage = "评分已保存，其他 CineBar 用户现在可以看到"
-            } catch {
-                communityRatingMessage = error.localizedDescription
-            }
-            isLoadingCommunityRating = false
-        }
-    }
-
-    func deleteCommunityRating(
-        mediaType: CommunityMediaType,
-        mediaID: Int
-    ) {
-        guard mediaID > 0, hasCommunityService else { return }
-        isLoadingCommunityRating = true
-        Task {
-            do {
-                communityRating = try await communityClient.delete(
-                    mediaType: mediaType,
-                    mediaID: mediaID
-                )
-                communityRatingDraft = 0
-                communityRatingMessage = "已删除我的评分"
+            } catch CommunityRatingError.alreadyRated {
+                communityRatingMessage = "这部影片已经评分，不能重复评分"
+                do {
+                    communityRating = try await communityClient.summary(
+                        mediaType: mediaType,
+                        mediaID: mediaID
+                    )
+                    communityRatingDraft = communityRating?.myScore ?? 0
+                } catch {
+                    // Preserve the duplicate-rating message if refresh fails.
+                }
             } catch {
                 communityRatingMessage = error.localizedDescription
             }
@@ -4244,6 +4245,15 @@ final class MovieStore: ObservableObject {
                         : "等待首个评分"
                 )
             )
+            if let myScore = communityRating.myScore {
+                result.append(
+                    MovieRating(
+                        source: "我的评分",
+                        value: String(format: "%.1f/10", myScore),
+                        note: "提交后不可修改"
+                    )
+                )
+            }
         }
         return result
     }
@@ -4268,6 +4278,15 @@ final class MovieStore: ObservableObject {
                         : "等待首个评分"
                 )
             )
+            if let myScore = communityRating.myScore {
+                result.append(
+                    MovieRating(
+                        source: "我的评分",
+                        value: String(format: "%.1f/10", myScore),
+                        note: "提交后不可修改"
+                    )
+                )
+            }
         }
         return result
     }
@@ -4537,15 +4556,6 @@ struct CommunityRatingPanel: View {
             .font(.caption2)
             .foregroundStyle(.secondary)
             HStack {
-                if store.communityRating?.myScore != nil {
-                    Button("删除我的评分", role: .destructive) {
-                        store.deleteCommunityRating(
-                            mediaType: mediaType,
-                            mediaID: mediaID
-                        )
-                    }
-                    .buttonStyle(.borderless)
-                }
                 Spacer()
                 Button("保存评分") {
                     store.saveCommunityRating(
@@ -8812,6 +8822,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 }
 
+#if !CINEBAR_TEST
 @main
 @MainActor
 struct CineBarMain {
@@ -8823,3 +8834,4 @@ struct CineBarMain {
         withExtendedLifetime(delegate) {}
     }
 }
+#endif
