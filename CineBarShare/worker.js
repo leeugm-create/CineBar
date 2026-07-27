@@ -155,14 +155,14 @@ export default {
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
         version: "0.8.1",
-        build: 13,
+        build: 14,
         published_at: "2026-07-27",
         download_url: null,
         notes: [
-          "匿名评分改为每部作品只能提交一次",
-          "修复评分滑块与可移动窗口的拖动冲突",
-          "修复双显示器菜单栏面板定位",
-          "放大并强化电影与电视剧分级显示",
+          "移除首次使用时不必要的钥匙串密码提示",
+          "拆分地区分级与 CineBar 分级",
+          "增加玻璃背景不透明度设置",
+          "增加电影与电视剧短链接及完整分享文字",
         ],
       }), {
         headers: {
