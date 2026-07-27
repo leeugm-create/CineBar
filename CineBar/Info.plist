@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh_CN</string>
+    <key>CFBundleDisplayName</key>
+    <string>CineBar</string>
+    <key>CFBundleIconFile</key>
+    <string>CineBar.icns</string>
+    <key>CFBundleExecutable</key>
+    <string>CineBar</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.indiedev.cinebar</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>zh-Hant</string>
+        <string>en</string>
+        <string>ja</string>
+        <string>ko</string>
+    </array>
+    <key>CFBundleName</key>
+    <string>CineBar</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.8.0</string>
+    <key>CFBundleVersion</key>
+    <string>12</string>
+    <key>CineBarCommunityURL</key>
+    <string>https://cinebar-community.leeugm.workers.dev</string>
+    <key>CineBarCommunityPublicKey</key>
+    <string>8e9956c2ccd76b7d1ebb972984fc04c6f761e2fd68b960bd</string>
+    <key>CineBarShareURL</key>
+    <string></string>
+    <key>CineBarDataProxyURL</key>
+    <string></string>
+    <key>CineBarUpdateManifestURL</key>
+    <string></string>
+    <key>CineBarSupportURL</key>
+    <string></string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+</dict>
+</plist>

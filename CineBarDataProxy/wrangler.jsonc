@@ -1,0 +1,6 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinebar-data",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-25"
+}
