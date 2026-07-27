@@ -21,7 +21,8 @@ macOS Gatekeeper 安全确认，但不需要配置 Cloudflare、TMDB、OMDb、D1
 
 - 保留客户端当前使用的路径结构，减少客户端改动。
 - 只允许 CineBar 已使用的 `/trending/`、`/search/`、`/discover/`、
-  `/movie/`、`/tv/` 和 `/person/` 路径。
+  `/movie/`、`/tv/`、`/person/` 路径，以及精确的
+  `/configuration/countries` 国家地区清单路径。
 - 拒绝非 GET 请求、路径穿越和不在允许列表中的路径。
 - Worker 使用 Cloudflare Secret `TMDB_TOKEN` 添加上游授权。
 - 成功响应缓存 15 分钟；失败响应不缓存。
