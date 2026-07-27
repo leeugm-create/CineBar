@@ -10,6 +10,17 @@
 4. 将返回的 `https://cinebar-share.<你的子域>.workers.dev` 写入
    CineBar `Info.plist` 的 `CineBarShareURL`，然后重新构建应用。
 
+测试版建议使用独立名称，避免与未来正式服务混淆：
+
+```bash
+cd CineBarShare
+npx wrangler deploy --name cinebar-share-test
+```
+
+部署完成后，终端会显示测试服务地址。把完整的 `https://...workers.dev`
+地址写入 `CineBarShareURL`，不要添加 `/share/movies/...` 路径，也不要在末尾
+粘贴测试参数。
+
 部署后可访问：
 
 - `/`：健康检查。

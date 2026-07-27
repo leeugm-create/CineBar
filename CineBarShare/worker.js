@@ -89,16 +89,15 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.6.0",
-        build: 10,
-        published_at: "2026-07-26",
+        version: "0.8.1",
+        build: 13,
+        published_at: "2026-07-27",
         download_url: null,
         notes: [
-          "电影与电视剧栏目分页及每日推荐",
-          "电视剧分季分集资料与自定义提醒时间",
-          "演员模糊搜索、完整资料与照片",
-          "我的片单及全局爱心收藏",
-          "窗口移动、登录启动及播放器稳定性修复",
+          "匿名评分改为每部作品只能提交一次",
+          "修复评分滑块与可移动窗口的拖动冲突",
+          "修复双显示器菜单栏面板定位",
+          "放大并强化电影与电视剧分级显示",
         ],
       }), {
         headers: {
