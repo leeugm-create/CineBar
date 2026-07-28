@@ -93,10 +93,8 @@
 "在浏览器中打开" = "Open in browser";
 "收起预告" = "Close trailer";
 "复制片名" = "Copy title";
-"复制分享文案" = "Copy share text";
-"系统分享（微信、Instagram 等）" = "System share (WeChat, Instagram, and more)";
-"分享到 X" = "Share to X";
-"分享到微博" = "Share to Weibo";
+"分享" = "Share";
+"分享服务暂不可用" = "Sharing is temporarily unavailable";
 "分享影片" = "Share movie";
 "查看演员详情" = "View actor details";
 "返回影片" = "Back to movie";
@@ -110,7 +108,6 @@
 "重新加载影片详情" = "Reload movie details";
 "加载更多" = "Load more";
 "正在加载更多…" = "Loading more…";
-"部署 CineBar 分享服务后可使用品牌分享页面" = "Deploy CineBar sharing to enable branded share pages";
 "影片资料" = "Movie details";
 "全球首映" = "Global premiere";
 "影片时长" = "Runtime";

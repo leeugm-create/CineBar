@@ -2389,43 +2389,10 @@ enum BrandedShareLink {
 struct SharePayload {
     let mediaType: CommunityMediaType
     let title: String
-    let year: String
-    let tmdbScore: Double
-    let cineBarScore: Double?
     let url: URL
 
-    var text: String {
-        let headerKey = mediaType == .movie
-            ? "🎬《%@》（%@）"
-            : "📺《%@》（%@）"
-        let header = String(
-            format: NSLocalizedString(headerKey, comment: ""),
-            title,
-            year
-        )
-        var scores = [
-            "TMDB \(Self.scoreText(tmdbScore))"
-        ]
-        if let cineBarScore {
-            scores.append("CineBar \(Self.scoreText(cineBarScore))")
-        }
-        let promptKey = mediaType == .movie
-            ? "在 CineBar 查看简介、演员阵容与观看信息："
-            : "在 CineBar 查看剧集资料与播出信息："
-        return [
-            header,
-            "⭐ \(scores.joined(separator: "｜"))",
-            NSLocalizedString(promptKey, comment: ""),
-            url.absoluteString
-        ].joined(separator: "\n")
-    }
-
-    private static func scoreText(_ value: Double) -> String {
-        String(
-            format: "%.1f",
-            locale: Locale(identifier: "en_US_POSIX"),
-            value
-        )
+    var systemItems: [Any] {
+        [url as NSURL]
     }
 }
 
@@ -5523,9 +5490,7 @@ private enum SystemSharePresenter {
         guard let anchor = NSApp.keyWindow?.contentView ??
                 NSApp.mainWindow?.contentView
         else { return }
-        let picker = NSSharingServicePicker(
-            items: [payload.text as NSString, payload.url as NSURL]
-        )
+        let picker = NSSharingServicePicker(items: payload.systemItems)
         activePicker = picker
         picker.show(
             relativeTo: anchor.bounds,
@@ -5535,73 +5500,21 @@ private enum SystemSharePresenter {
     }
 }
 
-struct MediaShareMenu: View {
+struct MediaShareButton: View {
     let payload: SharePayload?
-    let helpText: LocalizedStringKey
-    @Environment(\.openURL) private var openURL
-
-    private var xURL: URL? {
-        guard let payload else { return nil }
-        var components = URLComponents(
-            string: "https://twitter.com/intent/tweet"
-        )
-        components?.queryItems = [
-            URLQueryItem(name: "text", value: payload.text),
-            URLQueryItem(name: "url", value: payload.url.absoluteString)
-        ]
-        return components?.url
-    }
-
-    private var weiboURL: URL? {
-        guard let payload else { return nil }
-        var components = URLComponents(
-            string: "https://service.weibo.com/share/share.php"
-        )
-        components?.queryItems = [
-            URLQueryItem(name: "title", value: payload.text),
-            URLQueryItem(name: "url", value: payload.url.absoluteString)
-        ]
-        return components?.url
-    }
 
     var body: some View {
-        Menu {
-            Button("复制分享文案") {
-                if let payload {
-                    copyToPasteboard(payload.text)
-                }
-            }
-            .disabled(payload == nil)
-
+        Button {
             if let payload {
-                Divider()
-                Button {
-                    SystemSharePresenter.present(payload)
-                } label: {
-                    Label("系统分享（微信、Instagram 等）", systemImage: "square.and.arrow.up")
-                }
-            }
-            if let xURL {
-                Button("分享到 X") {
-                    openURL(xURL)
-                }
-            }
-            if let weiboURL {
-                Button("分享到微博") {
-                    openURL(weiboURL)
-                }
-            }
-            if payload == nil {
-                Divider()
-                Text("部署 CineBar 分享服务后可使用品牌分享页面")
-                    .foregroundStyle(.secondary)
+                SystemSharePresenter.present(payload)
             }
         } label: {
             Image(systemName: "square.and.arrow.up")
         }
-        .menuStyle(.borderlessButton)
-        .frame(width: 32)
-        .help(helpText)
+        .buttonStyle(.plain)
+        .disabled(payload == nil)
+        .help(payload == nil ? "分享服务暂不可用" : "分享")
+        .accessibilityLabel("分享")
     }
 }
 
@@ -5616,18 +5529,9 @@ struct MovieDetailView: View {
         guard let url = store.brandedShareURL(for: movie) else {
             return nil
         }
-        let cineBarScore = store.communityRating.flatMap { summary in
-            summary.mediaType == CommunityMediaType.movie.rawValue &&
-                summary.mediaID == movie.id
-                ? summary.averageScore
-                : nil
-        }
         return SharePayload(
             mediaType: .movie,
             title: movie.title,
-            year: movie.year,
-            tmdbScore: movie.voteAverage,
-            cineBarScore: cineBarScore,
             url: url
         )
     }
@@ -5656,10 +5560,7 @@ struct MovieDetailView: View {
                 .buttonStyle(.plain)
                 .help("重新加载影片详情")
 
-                MediaShareMenu(
-                    payload: sharePayload,
-                    helpText: "分享影片"
-                )
+                MediaShareButton(payload: sharePayload)
             }
             .padding()
 
@@ -6267,18 +6168,9 @@ struct TVDetailView: View {
         guard let url = store.brandedShareURL(for: show) else {
             return nil
         }
-        let cineBarScore = store.communityRating.flatMap { summary in
-            summary.mediaType == CommunityMediaType.tv.rawValue &&
-                summary.mediaID == show.id
-                ? summary.averageScore
-                : nil
-        }
         return SharePayload(
             mediaType: .tv,
             title: show.name,
-            year: show.year,
-            tmdbScore: show.voteAverage,
-            cineBarScore: cineBarScore,
             url: url
         )
     }
@@ -6338,10 +6230,7 @@ struct TVDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help("重新加载电视剧详情")
-                MediaShareMenu(
-                    payload: sharePayload,
-                    helpText: "分享电视剧"
-                )
+                MediaShareButton(payload: sharePayload)
             }
             .padding()
 

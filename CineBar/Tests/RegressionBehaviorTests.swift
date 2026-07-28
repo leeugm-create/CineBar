@@ -144,30 +144,28 @@ struct CineBarRegressionBehaviorTests {
         let moviePayload = SharePayload(
             mediaType: .movie,
             title: "沙丘2",
-            year: "2024",
-            tmdbScore: 8.1,
-            cineBarScore: 8.6,
             url: movieShareURL!
         )
-        precondition(moviePayload.text.contains("🎬《沙丘2》（2024）"))
-        precondition(moviePayload.text.contains("TMDB 8.1"))
-        precondition(moviePayload.text.contains("CineBar 8.6"))
-        precondition(moviePayload.text.contains("演员阵容与观看信息"))
-        precondition(moviePayload.text.contains("/m/603"))
+        let movieShareItems = moviePayload.systemItems
+        precondition(movieShareItems.count == 1)
+        precondition(movieShareItems[0] is NSURL)
+        precondition(!(movieShareItems[0] is NSString))
+        precondition(
+            (movieShareItems[0] as? NSURL)?.absoluteString ==
+                "https://share.example/m/603"
+        )
 
         let televisionPayload = SharePayload(
             mediaType: .tv,
             title: "幕府将军",
-            year: "2024",
-            tmdbScore: 8.5,
-            cineBarScore: nil,
             url: televisionShareURL!
         )
-        let televisionLines = televisionPayload.text.split(separator: "\n")
-        precondition(televisionPayload.text.contains("📺《幕府将军》（2024）"))
-        precondition(televisionPayload.text.contains("剧集资料与播出信息"))
-        precondition(televisionLines[1] == "⭐ TMDB 8.5")
-        precondition(televisionPayload.text.contains("/t/1399"))
+        let televisionShareItems = televisionPayload.systemItems
+        precondition(televisionShareItems.count == 1)
+        precondition(
+            (televisionShareItems[0] as? NSURL)?.absoluteString ==
+                "https://share.example/t/1399"
+        )
 
         let store = MovieStore()
         store.communityRating = CommunityRatingSummary(
