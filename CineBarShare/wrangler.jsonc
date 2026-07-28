@@ -4,7 +4,6 @@
   "main": "worker.js",
   "compatibility_date": "2026-07-25",
   "vars": {
-    // 有正式 HTTPS 下载页以后再填写；空字符串会隐藏下载按钮。
-    "CINEBAR_DOWNLOAD_URL": ""
+    "CINEBAR_DOWNLOAD_URL": "https://github.com/leeugm-create/CineBar/releases"
   }
 }

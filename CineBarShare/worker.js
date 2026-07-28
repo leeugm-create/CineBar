@@ -40,15 +40,8 @@ const validatedDownloadURL = (value) => {
   }
 };
 
-const loadMetadata = async (route, env) => {
-  if (!normalize(env.TMDB_BEARER_TOKEN)) {
-    throw new Error("TMDB bearer token is not configured");
-  }
+const loadTMDBJSON = async (endpoint, env) => {
   const fetcher = env.MEDIA_FETCHER ?? fetch;
-  const endpoint = new URL(
-    `https://api.themoviedb.org/3/${route.mediaType}/${route.mediaID}`,
-  );
-  endpoint.searchParams.set("language", "zh-CN");
   const response = await fetcher(endpoint.href, {
     headers: {
       accept: "application/json",
@@ -58,7 +51,29 @@ const loadMetadata = async (route, env) => {
   if (!response.ok) {
     throw new Error(`TMDB request failed with ${response.status}`);
   }
-  const payload = await response.json();
+  return response.json();
+};
+
+const loadMetadata = async (route, env) => {
+  if (!normalize(env.TMDB_BEARER_TOKEN)) {
+    throw new Error("TMDB bearer token is not configured");
+  }
+  const basePath = `${route.mediaType}/${route.mediaID}`;
+  const detailsURL = new URL(`https://api.themoviedb.org/3/${basePath}`);
+  detailsURL.searchParams.set("language", "zh-CN");
+  const payload = await loadTMDBJSON(detailsURL, env);
+
+  const creditsURL = new URL(
+    `https://api.themoviedb.org/3/${basePath}/credits`,
+  );
+  creditsURL.searchParams.set("language", "zh-CN");
+  let credits = { cast: [] };
+  try {
+    credits = await loadTMDBJSON(creditsURL, env);
+  } catch {
+    credits = { cast: [] };
+  }
+
   const isMovie = route.mediaType === "movie";
   return {
     title: normalize(isMovie ? payload.title : payload.name).slice(0, 120),
@@ -70,6 +85,12 @@ const loadMetadata = async (route, env) => {
       : "",
     summary: normalize(payload.overview).slice(0, 240),
     posterPath: normalize(payload.poster_path),
+    cast: Array.isArray(credits.cast)
+      ? credits.cast.slice(0, 6).map((member) => ({
+        name: normalize(member.name).slice(0, 80),
+        character: normalize(member.character).slice(0, 100),
+      })).filter((member) => member.name)
+      : [],
   };
 };
 
@@ -83,6 +104,12 @@ const sharePage = (url, route, metadata, downloadURL) => {
     (metadata
       ? `在 CineBar 发现这部${isMovie ? "电影" : "电视剧"}。`
       : "影片资料暂时无法加载，请稍后再试。");
+  const cast = metadata?.cast ?? [];
+  const brandedTitle = `《${title}》— CineBar`;
+  const castSummary = cast.map((member) => member.name).join("、");
+  const socialDescription = normalize(
+    `${castSummary ? `主演：${castSummary}。` : ""}${summary}`,
+  ).slice(0, 300);
   const posterPath = metadata?.posterPath || "";
   const poster = /^\/[A-Za-z0-9._/-]+$/.test(posterPath)
     ? `https://image.tmdb.org/t/p/w500${posterPath}`
@@ -92,7 +119,18 @@ const sharePage = (url, route, metadata, downloadURL) => {
   );
   const safeDownloadURL = validatedDownloadURL(downloadURL);
   const downloadBlock = safeDownloadURL
-    ? `<a class="download" href="${escapeHTML(safeDownloadURL)}">下载 CineBar for macOS</a>`
+    ? `<a class="download" href="${escapeHTML(safeDownloadURL)}">查看 CineBar 版本与下载</a>`
+    : "";
+  const castBlock = cast.length
+    ? `<section class="cast"><h2>主要演员</h2><div class="cast-list">${
+      cast.map((member) =>
+        `<div class="cast-member"><strong>${escapeHTML(member.name)}</strong>${
+          member.character
+            ? `<span>饰 ${escapeHTML(member.character)}</span>`
+            : ""
+        }</div>`
+      ).join("")
+    }</div></section>`
     : "";
 
   return new Response(`<!doctype html>
@@ -100,17 +138,17 @@ const sharePage = (url, route, metadata, downloadURL) => {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${escapeHTML(title)} · CineBar</title>
-  <meta name="description" content="${escapeHTML(summary)}">
+  <title>${escapeHTML(brandedTitle)}</title>
+  <meta name="description" content="${escapeHTML(socialDescription)}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="CineBar">
-  <meta property="og:title" content="${escapeHTML(title)} · CineBar">
-  <meta property="og:description" content="${escapeHTML(summary)}">
+  <meta property="og:title" content="${escapeHTML(brandedTitle)}">
+  <meta property="og:description" content="${escapeHTML(socialDescription)}">
   <meta property="og:image" content="${escapeHTML(poster)}">
   <meta property="og:url" content="${pageURL}">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="${escapeHTML(title)} · CineBar">
-  <meta name="twitter:description" content="${escapeHTML(summary)}">
+  <meta name="twitter:title" content="${escapeHTML(brandedTitle)}">
+  <meta name="twitter:description" content="${escapeHTML(socialDescription)}">
   <meta name="twitter:image" content="${escapeHTML(poster)}">
   <style>
     :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -130,6 +168,9 @@ const sharePage = (url, route, metadata, downloadURL) => {
     p{color:#c2cae0;font-size:18px;line-height:1.7}.from{margin-top:30px;color:#7f8caf;font-size:14px}
     .download{display:inline-flex;margin-top:22px;padding:11px 16px;border-radius:12px;
     background:#f59e0b;color:#111827;text-decoration:none;font-weight:750}
+    .cast{margin-top:24px}.cast h2{font-size:16px;margin:0 0 10px;color:#f8fafc}
+    .cast-list{display:grid;gap:8px}.cast-member{display:flex;gap:8px;flex-wrap:wrap;
+    color:#d8def0}.cast-member span{color:#a9b4d0}
     @media(max-width:650px){.card{grid-template-columns:1fr;padding:20px}.poster{max-width:280px;margin:auto}}
   </style>
 </head>
@@ -139,7 +180,7 @@ const sharePage = (url, route, metadata, downloadURL) => {
 <div class="content"><h1>${escapeHTML(title)}</h1><div class="meta">
 ${year ? `<span class="pill">${escapeHTML(year)}</span>` : ""}
 ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : ""}
-</div><p>${escapeHTML(summary)}</p>${downloadBlock}<div class="from">由 CineBar for macOS 分享</div>
+</div><p>${escapeHTML(summary)}</p>${castBlock}${downloadBlock}<div class="from">由 CineBar for macOS 分享</div>
 </div></section></main></body></html>`, {
     headers: {
       "content-type": "text/html; charset=utf-8",
