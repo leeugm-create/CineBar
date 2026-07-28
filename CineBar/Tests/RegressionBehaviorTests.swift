@@ -141,6 +141,69 @@ struct CineBarRegressionBehaviorTests {
         precondition(movieShareURL?.query == nil)
         precondition(televisionShareURL?.query == nil)
 
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026-07-31",
+                language: .zhCN
+            ) == .dated("2026年7月31日")
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026-07-31",
+                language: .zhTW
+            ) == .dated("2026年7月31日")
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026-07-31",
+                language: .enUS
+            ) == .dated("Jul 31, 2026")
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: nil,
+                language: .zhCN
+            ) == .undated
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026",
+                language: .zhCN
+            ) == .undated
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "not-a-date",
+                language: .zhCN
+            ) == .undated
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026/07/31",
+                language: .zhCN
+            ) == .undated
+        )
+        precondition(
+            UpcomingReleasePresentation.make(
+                rawValue: "2026-7-031",
+                language: .zhCN
+            ) == .undated
+        )
+        precondition(
+            MovieRowPresentation.upcomingRelease(
+                section: .upcoming,
+                rawValue: "2026-07-31",
+                language: .zhCN
+            ) == .dated("2026年7月31日")
+        )
+        precondition(
+            MovieRowPresentation.upcomingRelease(
+                section: .trending,
+                rawValue: "2026-07-31",
+                language: .zhCN
+            ) == nil
+        )
+
         let moviePayload = SharePayload(
             mediaType: .movie,
             title: "沙丘2",

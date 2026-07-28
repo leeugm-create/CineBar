@@ -4579,14 +4579,95 @@ struct PosterView: View {
     }
 }
 
+enum UpcomingReleasePresentation: Equatable {
+    case dated(String)
+    case undated
+
+    static func make(
+        rawValue: String?,
+        language: AppLanguage
+    ) -> UpcomingReleasePresentation {
+        guard let rawValue, rawValue.count == 10 else {
+            return .undated
+        }
+        guard rawValue.utf8.enumerated().allSatisfy({ index, value in
+            switch index {
+            case 4, 7:
+                return value == 45
+            default:
+                return value >= 48 && value <= 57
+            }
+        }) else {
+            return .undated
+        }
+        let input = DateFormatter()
+        input.calendar = Calendar(identifier: .gregorian)
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.dateFormat = "yyyy-MM-dd"
+        input.isLenient = false
+        guard let date = input.date(from: rawValue) else {
+            return .undated
+        }
+
+        let output = DateFormatter()
+        output.calendar = Calendar(identifier: .gregorian)
+        switch language {
+        case .zhCN, .zhHK, .zhTW:
+            output.locale = Locale(identifier: language.localeIdentifier)
+            output.dateFormat = "yyyy年M月d日"
+        case .enUS:
+            output.locale = Locale(identifier: "en_US")
+            output.dateFormat = "MMM d, yyyy"
+        case .jaJP:
+            output.locale = Locale(identifier: "ja_JP")
+            output.dateFormat = "yyyy年M月d日"
+        case .koKR:
+            output.locale = Locale(identifier: "ko_KR")
+            output.dateFormat = "yyyy년 M월 d일"
+        }
+        return .dated(output.string(from: date))
+    }
+}
+
+enum MovieRowPresentation {
+    static func upcomingRelease(
+        section: MovieBrowseSection,
+        rawValue: String?,
+        language: AppLanguage
+    ) -> UpcomingReleasePresentation? {
+        guard section == .upcoming else { return nil }
+        return UpcomingReleasePresentation.make(
+            rawValue: rawValue,
+            language: language
+        )
+    }
+}
+
 struct MovieRow: View {
     let movie: Movie
+    var upcomingRelease: UpcomingReleasePresentation? = nil
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             PosterView(movie: movie, width: 66, height: 96)
 
             VStack(alignment: .leading, spacing: 5) {
+                if let upcomingRelease {
+                    switch upcomingRelease {
+                    case .dated(let date):
+                        Label(date, systemImage: "calendar")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.indigo)
+                    case .undated:
+                        Label(
+                            "上映日期待定",
+                            systemImage: "calendar.badge.questionmark"
+                        )
+                        .font(.caption2.bold())
+                        .foregroundStyle(.secondary)
+                    }
+                }
+
                 Text(movie.title)
                     .font(.headline)
                     .lineLimit(2)
@@ -8657,7 +8738,14 @@ struct ContentView: View {
                                 Button {
                                     store.select(movie)
                                 } label: {
-                                    MovieRow(movie: movie)
+                                    MovieRow(
+                                        movie: movie,
+                                        upcomingRelease: MovieRowPresentation.upcomingRelease(
+                                            section: store.movieBrowseSection,
+                                            rawValue: movie.releaseDate,
+                                            language: store.appLanguage
+                                        )
+                                    )
                                 }
                                 .buttonStyle(.plain)
                                 if store.movieBrowseSection == .upcoming,
