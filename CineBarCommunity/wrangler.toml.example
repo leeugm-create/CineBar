@@ -2,6 +2,10 @@ name = "cinebar-community"
 main = "worker.js"
 compatibility_date = "2026-07-01"
 
+[[routes]]
+pattern = "community.cinebar.cc"
+custom_domain = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "cinebar-community"

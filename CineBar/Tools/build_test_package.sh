@@ -4,9 +4,10 @@ set -euo pipefail
 script_dir=$(cd "$(dirname "$0")" && pwd)
 app_source_dir=$(cd "$script_dir/.." && pwd)
 repo_root=$(cd "$app_source_dir/.." && pwd)
-source_file="$app_source_dir/Sources/CineBar/main.swift"
+source_dir="$app_source_dir/Sources/CineBar"
+swift_sources=("$source_dir"/*.swift)
 info_plist="$app_source_dir/Info.plist"
-package_name="CineBar-0.8.2-share-preview"
+package_name="CineBar-0.8.2-test.2"
 dist_dir="$repo_root/dist"
 output_zip="$dist_dir/$package_name-universal.zip"
 build_dir=$(mktemp -d "${TMPDIR:-/tmp}/cinebar-test-build.XXXXXX")
@@ -27,7 +28,7 @@ xcrun swiftc \
   -parse-as-library \
   -O \
   -target arm64-apple-macosx13.0 \
-  "$source_file" \
+  "${swift_sources[@]}" \
   -o "$arm_binary"
 
 echo "Compiling CineBar for Intel Macs…"
@@ -35,7 +36,7 @@ xcrun swiftc \
   -parse-as-library \
   -O \
   -target x86_64-apple-macosx13.0 \
-  "$source_file" \
+  "${swift_sources[@]}" \
   -o "$intel_binary"
 
 mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"

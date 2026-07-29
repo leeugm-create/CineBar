@@ -1,8 +1,12 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "cinebar-share",
+  "name": "cinebar-share-test",
   "main": "worker.js",
   "compatibility_date": "2026-07-25",
+  "routes": [
+    { "pattern": "share.cinebar.cc", "custom_domain": true },
+    { "pattern": "cinebar.cc", "custom_domain": true }
+  ],
   "vars": {
     "CINEBAR_DOWNLOAD_URL": "https://github.com/leeugm-create/CineBar/releases"
   }

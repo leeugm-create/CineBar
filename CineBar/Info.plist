@@ -31,15 +31,21 @@
     <key>CFBundleVersion</key>
     <string>16</string>
     <key>CineBarCommunityURL</key>
-    <string>https://cinebar-community.leeugm.workers.dev</string>
+    <string>https://community.cinebar.cc</string>
+    <key>CineBarCommunityBackupURLs</key>
+    <array/>
     <key>CineBarCommunityPublicKey</key>
     <string>8e9956c2ccd76b7d1ebb972984fc04c6f761e2fd68b960bd</string>
     <key>CineBarShareURL</key>
-    <string>https://cinebar-share-test.leeugm.workers.dev</string>
+    <string>https://share.cinebar.cc</string>
+    <key>CineBarShareBackupURLs</key>
+    <array/>
     <key>CineBarDataProxyURL</key>
-    <string>https://cinebar-data.leeugm.workers.dev</string>
+    <string>https://api.cinebar.cc</string>
+    <key>CineBarDataBackupURLs</key>
+    <array/>
     <key>CineBarUpdateManifestURL</key>
-    <string></string>
+    <string>https://share.cinebar.cc/updates/latest.json</string>
     <key>CineBarSupportURL</key>
     <string></string>
     <key>LSMinimumSystemVersion</key>

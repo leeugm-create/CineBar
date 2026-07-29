@@ -2,27 +2,210 @@ import AppKit
 import Foundation
 
 #if CINEBAR_TEST
+private actor RecordingServiceLoader: ServiceDataLoading {
+    enum Result {
+        case failure(URLError)
+        case response(statusCode: Int, body: Data)
+    }
+
+    private var results: [Result]
+    private(set) var requestedURLs: [URL] = []
+
+    init(results: [Result]) {
+        self.results = results
+    }
+
+    func data(for request: URLRequest) async throws -> (Data, URLResponse) {
+        requestedURLs.append(request.url!)
+        let result = results.removeFirst()
+        switch result {
+        case .failure(let error):
+            throw error
+        case .response(let statusCode, let body):
+            return (
+                body,
+                HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: statusCode,
+                    httpVersion: "HTTP/1.1",
+                    headerFields: ["content-type": "application/json"]
+                )!
+            )
+        }
+    }
+}
+
 @main
 struct CineBarRegressionBehaviorTests {
     @MainActor
-    static func main() {
+    static func main() async {
+        let serviceEndpoints = ServiceEndpointSet(
+            primary: "https://api.cinebar.cc/",
+            backups: [
+                "",
+                "ftp://invalid",
+                "https://api.cinebar.cc",
+                "https://api-hk.cinebar.cc/",
+            ]
+        )
+        precondition(
+            serviceEndpoints.urls.map(\.absoluteString) == [
+                "https://api.cinebar.cc",
+                "https://api-hk.cinebar.cc",
+            ]
+        )
+        precondition(ServiceRequestPolicy.attemptsPerEndpoint == 2)
+        precondition(
+            ServiceRequestPolicy.isRetryable(
+                error: URLError(.secureConnectionFailed)
+            )
+        )
+        precondition(
+            ServiceRequestPolicy.isRetryable(
+                error: URLError(.cannotFindHost)
+            )
+        )
+        precondition(
+            ServiceRequestPolicy.isRetryable(
+                error: URLError(.timedOut)
+            )
+        )
+        precondition(ServiceRequestPolicy.isRetryable(statusCode: 503))
+        precondition(!ServiceRequestPolicy.isRetryable(statusCode: 404))
+
+        let diagnostic = ServiceDiagnostic(
+            service: "data",
+            category: .tls,
+            timestamp: Date(timeIntervalSince1970: 0),
+            appVersion: "0.8.2 (16)",
+            requestURL: URL(
+                string:
+                    "https://api.cinebar.cc/omdb?i=tt0133093&apikey=secret"
+            )!
+        )
+        precondition(diagnostic.redactedText.contains("api.cinebar.cc"))
+        precondition(!diagnostic.redactedText.contains("apikey"))
+        precondition(!diagnostic.redactedText.contains("secret"))
+        precondition(!diagnostic.redactedText.contains("tt0133093"))
+        precondition(
+            ServiceFailureCategory.classify(
+                URLError(.secureConnectionFailed)
+            ) == .tls
+        )
+        precondition(
+            ServiceFailureCategory.classify(
+                URLError(.cannotFindHost)
+            ) == .dns
+        )
+        precondition(
+            ServiceFailureCategory.classify(
+                URLError(.timedOut)
+            ) == .timeout
+        )
+        precondition(
+            ServiceFailureCategory.classify(
+                ServiceHTTPError.statusCode(503, Data())
+            ) == .server
+        )
+        precondition(
+            ServiceFailureCategory.classify(
+                ServiceHTTPError.statusCode(404, Data())
+            ) == .client
+        )
+
+        let retryLoader = RecordingServiceLoader(
+            results: [
+                .failure(URLError(.secureConnectionFailed)),
+                .response(statusCode: 503, body: Data()),
+                .response(statusCode: 200, body: Data("{}".utf8)),
+            ]
+        )
+        let retryClient = ResilientHTTPClient(loader: retryLoader)
+        let retryResult = try! await retryClient.data(
+            endpointSet: serviceEndpoints
+        ) { baseURL in
+            URLRequest(url: baseURL.appendingPathComponent("health"))
+        }
+        precondition(retryResult.1.statusCode == 200)
+        let retryURLs = await retryLoader.requestedURLs
+        precondition(retryURLs.count == 3)
+        precondition(retryURLs[0].host == "api.cinebar.cc")
+        precondition(retryURLs[1].host == "api.cinebar.cc")
+        precondition(retryURLs[2].host == "api-hk.cinebar.cc")
+
+        let clientErrorLoader = RecordingServiceLoader(
+            results: [
+                .response(statusCode: 404, body: Data()),
+                .response(statusCode: 200, body: Data("{}".utf8)),
+            ]
+        )
+        let clientErrorClient = ResilientHTTPClient(
+            loader: clientErrorLoader
+        )
+        var clientErrorThrown = false
+        do {
+            _ = try await clientErrorClient.data(
+                endpointSet: serviceEndpoints
+            ) { baseURL in
+                URLRequest(url: baseURL.appendingPathComponent("health"))
+            }
+        } catch {
+            clientErrorThrown = true
+        }
+        precondition(clientErrorThrown)
+        let clientErrorURLs = await clientErrorLoader.requestedURLs
+        precondition(clientErrorURLs.count == 1)
+
+        let cacheSuite = "CineBarBrowseCacheTests.\(UUID().uuidString)"
+        let cacheDefaults = UserDefaults(suiteName: cacheSuite)!
+        cacheDefaults.removePersistentDomain(forName: cacheSuite)
+        let browseCache = LastSuccessfulBrowseCache(
+            defaults: cacheDefaults
+        )
+        browseCache.saveMovies(Movie.demo)
+        precondition(browseCache.loadMovies() == Movie.demo)
+        browseCache.saveTelevision([TVShow.demo])
+        precondition(browseCache.loadTelevision() == [TVShow.demo])
+        cacheDefaults.set(
+            Data("invalid".utf8),
+            forKey: "lastSuccessfulMovies"
+        )
+        precondition(browseCache.loadMovies() == nil)
+        precondition(
+            cacheDefaults.data(forKey: "lastSuccessfulMovies") == nil
+        )
+        cacheDefaults.removePersistentDomain(forName: cacheSuite)
+
+        precondition(
+            ServiceErrorPresentation.message(
+                language: .zhCN,
+                hasCachedContent: true
+            ) == "网络不稳定，正在显示上次更新内容"
+        )
+        precondition(
+            ServiceErrorPresentation.message(
+                language: .enUS,
+                hasCachedContent: false
+            ).contains("temporarily unavailable")
+        )
+
         precondition(
             DataProxyConfiguration.normalizedBaseURL(
-                "https://cinebar-data.leeugm.workers.dev/"
-            ) == "https://cinebar-data.leeugm.workers.dev"
+                "https://api.cinebar.cc/"
+            ) == "https://api.cinebar.cc"
         )
         precondition(
             DataProxyConfiguration.normalizedBaseURL("ftp://invalid") == nil
         )
 
         let proxiedOMDbURL = OMDbEndpoint.url(
-            proxyBaseURL: "https://cinebar-data.leeugm.workers.dev",
+            proxyBaseURL: "https://api.cinebar.cc",
             apiKey: "",
             imdbID: "tt0133093"
         )
         precondition(
             proxiedOMDbURL?.absoluteString ==
-                "https://cinebar-data.leeugm.workers.dev/omdb?i=tt0133093"
+                "https://api.cinebar.cc/omdb?i=tt0133093"
         )
         precondition(
             !(proxiedOMDbURL?.absoluteString.contains("apikey") ?? true)
@@ -47,14 +230,14 @@ struct CineBarRegressionBehaviorTests {
         )
         precondition(
             OMDbEndpoint.url(
-                proxyBaseURL: "https://cinebar-data.leeugm.workers.dev",
+                proxyBaseURL: "https://api.cinebar.cc",
                 apiKey: "",
                 imdbID: "603"
             ) == nil
         )
 
         let builtInSettings = DataSettingsPresentation(
-            proxyBaseURL: "https://cinebar-data.leeugm.workers.dev"
+            proxyBaseURL: "https://api.cinebar.cc"
         )
         precondition(builtInSettings.usesBuiltInService)
         precondition(!builtInSettings.showsCredentialFields)

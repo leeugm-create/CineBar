@@ -197,3 +197,53 @@ test("returns a branded fallback page when metadata is unavailable", async () =>
   assert.match(html, /电影 #603/);
   assert.match(html, /影片资料暂时无法加载/);
 });
+
+test("reports share service health", async () => {
+  const response = await fetchPage("/health");
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.service, "cinebar-share");
+  assert.equal(body.version, "0.8.2-test.2");
+  assert.match(body.utc, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});
+
+test("redirects plain HTTP requests to the same HTTPS URL", async () => {
+  const response = await worker.fetch(
+    new Request("http://cinebar.cc/m/603?source=test"),
+    {
+      TMDB_BEARER_TOKEN: "test-token",
+      MEDIA_FETCHER: metadataFetcher,
+    },
+  );
+
+  assert.equal(response.status, 308);
+  assert.equal(
+    response.headers.get("location"),
+    "https://cinebar.cc/m/603?source=test",
+  );
+});
+
+test("publishes the Build 16 custom-domain update manifest", async () => {
+  const response = await fetchPage("/updates/latest.json");
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.version, "0.8.2");
+  assert.equal(body.build, 16);
+  assert.equal(body.download_url, null);
+  assert.ok(body.notes.some((note) => note.includes("自定义域名")));
+});
+
+test("renders a lightweight CineBar root page", async () => {
+  const response = await fetchPage("/");
+  const html = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.match(html, /CineBar/);
+  assert.match(html, /今晚看什么/);
+  assert.match(html, /电影与电视剧发现工具/);
+  assert.doesNotMatch(html, /workers\.dev/);
+});

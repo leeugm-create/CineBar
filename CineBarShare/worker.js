@@ -40,6 +40,57 @@ const validatedDownloadURL = (value) => {
   }
 };
 
+const healthResponse = (service) =>
+  new Response(
+    JSON.stringify({
+      ok: true,
+      service,
+      version: "0.8.2-test.2",
+      utc: new Date().toISOString(),
+    }),
+    {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    },
+  );
+
+const rootPage = () =>
+  new Response(`<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>CineBar — 今晚看什么？</title>
+  <meta name="description" content="CineBar 是一款面向 macOS 的电影与电视剧发现工具。">
+  <style>
+    :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
+    padding:28px;color:#f8fafc;background:radial-gradient(circle at 75% 15%,#f59e0b38,
+    transparent 30rem),linear-gradient(145deg,#070a24,#11183f 55%,#080b22)}
+    main{width:min(760px,100%);padding:42px;border:1px solid #ffffff1f;border-radius:30px;
+    background:#ffffff0d;backdrop-filter:blur(22px);box-shadow:0 28px 90px #0008}
+    header{display:flex;align-items:center;gap:16px}.logo{width:70px;height:70px;border-radius:18px}
+    h1{font-size:clamp(42px,9vw,82px);margin:34px 0 12px;letter-spacing:-.05em}
+    .tagline{font-size:24px;color:#ffd36a}.summary{max-width:620px;color:#c2cae0;
+    font-size:18px;line-height:1.75;margin:24px 0 0}.status{display:inline-flex;margin-top:30px;
+    padding:8px 12px;border-radius:999px;background:#34d39920;color:#86efac}
+  </style>
+</head>
+<body><main><header><img class="logo" src="/cinebar-logo.svg" alt="CineBar">
+<strong>CineBar</strong></header><h1>今晚看什么？</h1>
+<div class="tagline">电影与电视剧发现工具</div>
+<p class="summary">在 macOS 菜单栏中发现热门作品、查看评分与演职员信息，并保存自己的片单。</p>
+<div class="status">cinebar.cc 已启用</div></main></body></html>`, {
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=300",
+      "x-content-type-options": "nosniff",
+    },
+  });
+
 const loadTMDBJSON = async (endpoint, env) => {
   const fetcher = env.MEDIA_FETCHER ?? fetch;
   const response = await fetcher(endpoint.href, {
@@ -193,17 +244,27 @@ ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : "
 export default {
   async fetch(request, env = {}) {
     const url = new URL(request.url);
+    if (url.protocol === "http:") {
+      url.protocol = "https:";
+      return Response.redirect(url.toString(), 308);
+    }
+    if (request.method === "GET" && url.pathname === "/health") {
+      return healthResponse("cinebar-share");
+    }
+    if (request.method === "GET" && url.pathname === "/") {
+      return rootPage();
+    }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
         version: "0.8.2",
-        build: 15,
-        published_at: "2026-07-27",
+        build: 16,
+        published_at: "2026-07-30",
         download_url: null,
         notes: [
-          "用户无需申请或填写 TMDB Token",
-          "OMDb 多重评分改用 CineBar 后台代理",
-          "数据来源页面改为内置服务状态",
-          "继续保留 IMDb、烂番茄和 Metacritic 评分",
+          "中国区服务改用 CineBar 自定义域名",
+          "增加网络错误重试与未来备用入口支持",
+          "网络异常时优先显示上次成功加载的数据",
+          "保留 B16 的即将上映日期、主演分享页与系统分享功能",
         ],
       }), {
         headers: {
@@ -235,8 +296,8 @@ export default {
         env.CINEBAR_DOWNLOAD_URL,
       );
     }
-    return new Response("CineBar Share is running.", {
-      status: url.pathname === "/" ? 200 : 404,
+    return new Response("Not found.", {
+      status: 404,
       headers: { "content-type": "text/plain; charset=utf-8" },
     });
   },

@@ -193,3 +193,27 @@ test("does not cache upstream failures", async () => {
   assert.equal(ctx.promises.length, 0);
   assert.equal(cache.entries.size, 0);
 });
+
+test("reports data service health without calling an upstream", async () => {
+  let upstreamCalls = 0;
+  const response = await worker.fetch(
+    new Request("https://api.cinebar.cc/health"),
+    {
+      UPSTREAM_FETCHER: async () => {
+        upstreamCalls += 1;
+        throw new Error("must not be called");
+      },
+    },
+    context(),
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.service, "cinebar-data");
+  assert.equal(body.version, "0.8.2-test.2");
+  assert.match(body.utc, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(upstreamCalls, 0);
+  assert.equal(JSON.stringify(body).includes("TOKEN"), false);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});

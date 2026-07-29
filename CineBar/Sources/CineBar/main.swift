@@ -2236,34 +2236,53 @@ struct TMDBClient {
         let cleanedToken = token.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
-        guard !cleanedToken.isEmpty || proxyBaseURL != nil else {
+        let proxy = proxyBaseURL
+        guard !cleanedToken.isEmpty || proxy != nil else {
             throw CineBarError.missingToken
         }
-
-        let baseURL = proxyBaseURL ?? "https://api.themoviedb.org/3"
-        var components = URLComponents(string: "\(baseURL)\(path)")
-        components?.queryItems = query
-        guard let url = components?.url else { throw CineBarError.invalidResponse }
-
-        var request = URLRequest(url: url)
-        if proxyBaseURL == nil {
-            request.setValue(
-                "Bearer \(cleanedToken)",
-                forHTTPHeaderField: "Authorization"
-            )
-        }
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 15
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CineBarError.invalidResponse
-        }
-        guard (200...299).contains(http.statusCode) else {
-            if http.statusCode == 401 {
-                throw CineBarError.server("API Token 无效，请检查后重试")
+        let endpointSet = ServiceEndpointSet(
+            primary: proxy ?? "https://api.themoviedb.org/3",
+            backups: proxy == nil
+                ? []
+                : ServiceBundleConfiguration.stringArray(
+                    forInfoDictionaryKey: "CineBarDataBackupURLs"
+                )
+        )
+        let data: Data
+        do {
+            (data, _) = try await ResilientHTTPClient().data(
+                endpointSet: endpointSet
+            ) { baseURL in
+                var components = URLComponents(
+                    string: "\(baseURL.absoluteString)\(path)"
+                )
+                components?.queryItems = query
+                guard let url = components?.url else {
+                    throw CineBarError.invalidResponse
+                }
+                var request = URLRequest(url: url)
+                if proxy == nil {
+                    request.setValue(
+                        "Bearer \(cleanedToken)",
+                        forHTTPHeaderField: "Authorization"
+                    )
+                }
+                request.setValue(
+                    "application/json",
+                    forHTTPHeaderField: "Accept"
+                )
+                request.timeoutInterval = 15
+                return request
             }
-            throw CineBarError.server("TMDB 请求失败（\(http.statusCode)）")
+        } catch ServiceHTTPError.statusCode(let statusCode, _) {
+            if statusCode == 401 {
+                throw CineBarError.server(
+                    "API Token 无效，请检查后重试"
+                )
+            }
+            throw CineBarError.server(
+                "TMDB 请求失败（\(statusCode)）"
+            )
         }
         return try JSONDecoder().decode(T.self, from: data)
     }
@@ -2326,18 +2345,47 @@ struct OMDbClient {
     let proxyBaseURL: String?
 
     func ratings(imdbID: String) async throws -> [MovieRating] {
-        guard let url = OMDbEndpoint.url(
-            proxyBaseURL: proxyBaseURL,
-            apiKey: apiKey,
-            imdbID: imdbID
-        ) else { throw CineBarError.invalidResponse }
-
-        var request = URLRequest(url: url)
-        request.timeoutInterval = 15
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode)
-        else {
+        let proxy = DataProxyConfiguration.normalizedBaseURL(proxyBaseURL)
+        let endpointSet: ServiceEndpointSet
+        if let proxy {
+            endpointSet = ServiceEndpointSet(
+                primary: proxy,
+                backups: ServiceBundleConfiguration.stringArray(
+                    forInfoDictionaryKey: "CineBarDataBackupURLs"
+                )
+            )
+        } else {
+            guard let directURL = OMDbEndpoint.url(
+                proxyBaseURL: nil,
+                apiKey: apiKey,
+                imdbID: imdbID
+            ) else { throw CineBarError.invalidResponse }
+            endpointSet = ServiceEndpointSet(
+                primary: directURL.absoluteString,
+                backups: []
+            )
+        }
+        let data: Data
+        do {
+            (data, _) = try await ResilientHTTPClient().data(
+                endpointSet: endpointSet
+            ) { endpoint in
+                let url: URL
+                if proxy != nil {
+                    guard let proxiedURL = OMDbEndpoint.url(
+                        proxyBaseURL: endpoint.absoluteString,
+                        apiKey: "",
+                        imdbID: imdbID
+                    ) else { throw CineBarError.invalidResponse }
+                    url = proxiedURL
+                } else {
+                    url = endpoint
+                }
+                var request = URLRequest(url: url)
+                request.timeoutInterval = 15
+                return request
+            }
+        } catch ServiceHTTPError.statusCode {
             throw CineBarError.server("OMDb 请求失败")
         }
 
@@ -2447,37 +2495,60 @@ struct CommunityRatingClient {
         method: String,
         score: Double?
     ) async throws -> CommunityRatingSummary {
-        let cleaned = baseURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !cleaned.isEmpty else {
+        guard let primary = DataProxyConfiguration.normalizedBaseURL(
+            baseURL
+        ) else {
             throw CineBarError.server("发布者尚未配置 CineBar 评分服务")
         }
-        let root = cleaned.hasSuffix("/") ? String(cleaned.dropLast()) : cleaned
-        guard let url = URL(
-            string: "\(root)/v1/\(mediaType.rawValue)/\(mediaID)/rating"
-        ) else { throw CineBarError.invalidResponse }
-        var request = URLRequest(url: url)
-        request.httpMethod = method
-        request.timeoutInterval = 12
-        request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(deviceID, forHTTPHeaderField: "x-cinebar-device")
-        if !publicKey.isEmpty {
-            request.setValue(publicKey, forHTTPHeaderField: "x-cinebar-key")
-        }
-        if let score {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            request.httpBody = try JSONSerialization.data(
-                withJSONObject: ["score": score]
+        let endpointSet = ServiceEndpointSet(
+            primary: primary,
+            backups: ServiceBundleConfiguration.stringArray(
+                forInfoDictionaryKey: "CineBarCommunityBackupURLs"
             )
-        }
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CineBarError.invalidResponse
-        }
-        if http.statusCode == 409 {
+        )
+        let data: Data
+        do {
+            (data, _) = try await ResilientHTTPClient().data(
+                endpointSet: endpointSet
+            ) { endpoint in
+                guard let url = URL(
+                    string:
+                        "\(endpoint.absoluteString)/v1/\(mediaType.rawValue)/\(mediaID)/rating"
+                ) else { throw CineBarError.invalidResponse }
+                var request = URLRequest(url: url)
+                request.httpMethod = method
+                request.timeoutInterval = 12
+                request.setValue(
+                    "application/json",
+                    forHTTPHeaderField: "Accept"
+                )
+                request.setValue(
+                    deviceID,
+                    forHTTPHeaderField: "x-cinebar-device"
+                )
+                if !publicKey.isEmpty {
+                    request.setValue(
+                        publicKey,
+                        forHTTPHeaderField: "x-cinebar-key"
+                    )
+                }
+                if let score {
+                    request.setValue(
+                        "application/json",
+                        forHTTPHeaderField: "Content-Type"
+                    )
+                    request.httpBody = try JSONSerialization.data(
+                        withJSONObject: ["score": score]
+                    )
+                }
+                return request
+            }
+        } catch ServiceHTTPError.statusCode(409, _) {
             throw CommunityRatingError.alreadyRated
-        }
-        guard (200...299).contains(http.statusCode) else {
-            let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        } catch ServiceHTTPError.statusCode(_, let responseData) {
+            let payload = try? JSONSerialization.jsonObject(
+                with: responseData
+            ) as? [String: Any]
             throw CineBarError.server(
                 payload?["error"] as? String ?? "CineBar 评分服务暂时不可用"
             )
@@ -2587,7 +2658,13 @@ final class MovieStore: ObservableObject {
     @Published var isCheckingForUpdates = false
     @Published var updateMessage = "尚未检查更新"
     @Published var availableUpdate: UpdateManifest?
+    @Published private(set) var latestServiceDiagnostic:
+        ServiceDiagnostic?
+    @Published var diagnosticCopyMessage = ""
     private let defaults = UserDefaults.standard
+    private var browseCache: LastSuccessfulBrowseCache {
+        LastSuccessfulBrowseCache(defaults: defaults)
+    }
     private var catalogNextPage = 2
     private var tvCatalogNextPage = 2
     private var movieBrowseNextPage = 2
@@ -2719,6 +2796,38 @@ final class MovieStore: ObservableObject {
         return cleaned.isEmpty ? nil : URL(string: cleaned)
     }
 
+    private func recordServiceDiagnostic(
+        service: String,
+        endpoint: String,
+        error: Error
+    ) {
+        guard let requestURL = URL(string: endpoint) else { return }
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "0"
+        let build = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String ?? "0"
+        latestServiceDiagnostic = ServiceDiagnostic(
+            service: service,
+            category: ServiceFailureCategory.classify(error),
+            timestamp: Date(),
+            appVersion: "\(version) (\(build))",
+            requestURL: requestURL
+        )
+        diagnosticCopyMessage = ""
+    }
+
+    func copyLatestServiceDiagnostic() {
+        guard let diagnostic = latestServiceDiagnostic else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(
+            diagnostic.redactedText,
+            forType: .string
+        )
+        diagnosticCopyMessage = "诊断信息已复制"
+    }
+
     private var updateManifestURL: URL? {
         if let raw = Bundle.main.object(
             forInfoDictionaryKey: "CineBarUpdateManifestURL"
@@ -2816,15 +2925,25 @@ final class MovieStore: ObservableObject {
         updateMessage = "正在检查更新…"
         Task {
             do {
-                var request = URLRequest(url: url)
-                request.timeoutInterval = 15
-                request.cachePolicy = .reloadIgnoringLocalCacheData
-                let (data, response) = try await URLSession.shared.data(
-                    for: request
+                let backupManifestURLs =
+                    ServiceBundleConfiguration.stringArray(
+                        forInfoDictionaryKey: "CineBarShareBackupURLs"
+                    )
+                    .compactMap {
+                        DataProxyConfiguration.normalizedBaseURL($0)
+                    }
+                    .map { "\($0)/updates/latest.json" }
+                let endpointSet = ServiceEndpointSet(
+                    primary: url.absoluteString,
+                    backups: backupManifestURLs
                 )
-                guard let http = response as? HTTPURLResponse,
-                      (200...299).contains(http.statusCode) else {
-                    throw CineBarError.server("更新服务暂时不可用")
+                let (data, _) = try await ResilientHTTPClient().data(
+                    endpointSet: endpointSet
+                ) { endpoint in
+                    var request = URLRequest(url: endpoint)
+                    request.timeoutInterval = 15
+                    request.cachePolicy = .reloadIgnoringLocalCacheData
+                    return request
                 }
                 let manifest = try JSONDecoder().decode(
                     UpdateManifest.self,
@@ -2845,6 +2964,11 @@ final class MovieStore: ObservableObject {
                 defaults.set(Date(), forKey: "lastUpdateCheck")
             } catch {
                 updateMessage = error.localizedDescription
+                recordServiceDiagnostic(
+                    service: "share-update",
+                    endpoint: url.absoluteString,
+                    error: error
+                )
             }
             isCheckingForUpdates = false
         }
@@ -3270,6 +3394,11 @@ final class MovieStore: ObservableObject {
                 communityRatingDraft = result.myScore ?? 0
             } catch {
                 communityRatingMessage = error.localizedDescription
+                recordServiceDiagnostic(
+                    service: "community",
+                    endpoint: communityServiceURL,
+                    error: error
+                )
             }
             isLoadingCommunityRating = false
         }
@@ -3303,6 +3432,11 @@ final class MovieStore: ObservableObject {
                 }
             } catch {
                 communityRatingMessage = error.localizedDescription
+                recordServiceDiagnostic(
+                    service: "community",
+                    endpoint: communityServiceURL,
+                    error: error
+                )
             }
             isLoadingCommunityRating = false
         }
@@ -3358,12 +3492,30 @@ final class MovieStore: ObservableObject {
                     result = try await client.trending(page: 1)
                 }
                 movies = result.movies
+                browseCache.saveMovies(result.movies)
                 movieBrowseNextPage = result.page + 1
                 canLoadMoreMovieBrowse = result.page < result.totalPages
                 selectedShelf = nil
                 message = "\(section.title) · \(result.movies.count) 部"
             } catch {
-                message = error.localizedDescription
+                recordServiceDiagnostic(
+                    service: "data",
+                    endpoint: dataProxyURL,
+                    error: error
+                )
+                if let cached = browseCache.loadMovies() {
+                    movies = cached
+                    message = ServiceErrorPresentation.message(
+                        language: appLanguage,
+                        hasCachedContent: true
+                    )
+                } else {
+                    movies = Movie.demo
+                    message = ServiceErrorPresentation.message(
+                        language: appLanguage,
+                        hasCachedContent: false
+                    )
+                }
             }
             isLoading = false
         }
@@ -3992,11 +4144,29 @@ final class MovieStore: ObservableObject {
                     result = try await client.trendingTV(page: 1)
                 }
                 televisionShows = result.shows
+                browseCache.saveTelevision(result.shows)
                 tvBrowseNextPage = result.page + 1
                 canLoadMoreTVBrowse = result.page < result.totalPages
                 message = "\(section.title) · \(televisionShows.count) 部"
             } catch {
-                message = error.localizedDescription
+                recordServiceDiagnostic(
+                    service: "data",
+                    endpoint: dataProxyURL,
+                    error: error
+                )
+                if let cached = browseCache.loadTelevision() {
+                    televisionShows = cached
+                    message = ServiceErrorPresentation.message(
+                        language: appLanguage,
+                        hasCachedContent: true
+                    )
+                } else {
+                    televisionShows = [TVShow.demo]
+                    message = ServiceErrorPresentation.message(
+                        language: appLanguage,
+                        hasCachedContent: false
+                    )
+                }
             }
             isLoading = false
         }
@@ -7633,6 +7803,38 @@ struct SettingsRootView: View {
             Text("电视剧下一集播出时间由 TVMaze 补充，无需用户申请账号或 API Key。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            if let diagnostic = store.latestServiceDiagnostic {
+                Divider()
+                Label("最近一次服务异常", systemImage: "exclamationmark.triangle")
+                    .font(.headline)
+                    .foregroundStyle(.orange)
+                LabeledContent("服务") {
+                    Text(diagnostic.service)
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("错误类型") {
+                    Text(
+                        diagnostic.category.displayName(
+                            language: store.appLanguage
+                        )
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                LabeledContent("服务地址") {
+                    Text(diagnostic.requestURL.host ?? "—")
+                        .foregroundStyle(.secondary)
+                }
+                HStack {
+                    Button("复制诊断信息") {
+                        store.copyLatestServiceDiagnostic()
+                    }
+                    if !store.diagnosticCopyMessage.isEmpty {
+                        Text(LocalizedStringKey(store.diagnosticCopyMessage))
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    }
+                }
+            }
             HStack {
                 Spacer()
                 Button("保存并刷新") { store.saveSettings() }

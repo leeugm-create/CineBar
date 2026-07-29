@@ -29,9 +29,29 @@ function proxiedResponse(upstream, maxAge) {
   return response;
 }
 
+const healthResponse = (service) =>
+  new Response(
+    JSON.stringify({
+      ok: true,
+      service,
+      version: "0.8.2-test.2",
+      utc: new Date().toISOString(),
+    }),
+    {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    },
+  );
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/health") {
+      return healthResponse("cinebar-data");
+    }
     if (url.pathname === "/") {
       return new Response("CineBar Data Proxy is running.");
     }

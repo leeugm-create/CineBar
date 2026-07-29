@@ -201,3 +201,18 @@ test("does not expose a rating deletion route", async () => {
   const payload = await summary.json();
   assert.equal(payload.my_score, 9);
 });
+
+test("reports community service health without querying D1", async () => {
+  const response = await worker.fetch(
+    new Request("https://community.cinebar.cc/health"),
+    {},
+  );
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.equal(body.service, "cinebar-community");
+  assert.equal(body.version, "0.8.2-test.2");
+  assert.match(body.utc, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+});

@@ -10,6 +10,23 @@ const json = (data, status = 200) =>
     },
   });
 
+const healthResponse = (service) =>
+  new Response(
+    JSON.stringify({
+      ok: true,
+      service,
+      version: "0.8.2-test.2",
+      utc: new Date().toISOString(),
+    }),
+    {
+      headers: {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+        "x-content-type-options": "nosniff",
+      },
+    },
+  );
+
 const normalizeText = (value) =>
   String(value ?? "")
     .replace(/\s+/g, " ")
@@ -249,9 +266,12 @@ async function createRating(request, mediaType, mediaID, env) {
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+    if (request.method === "GET" && url.pathname === "/health") {
+      return healthResponse("cinebar-community");
+    }
     if (request.method === "OPTIONS") return json({ ok: true });
 
-    const url = new URL(request.url);
     const shareMatch = url.pathname.match(/^\/share\/movies\/(\d+)$/);
     if (shareMatch && request.method === "GET") {
       return sharePage(url, Number(shareMatch[1]));
