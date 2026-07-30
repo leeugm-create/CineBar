@@ -5,22 +5,26 @@ import { readFile } from "node:fs/promises";
 const read = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-const parseJsonc = (source) =>
-  JSON.parse(
-    source
-      .replace(/\/\*[\s\S]*?\*\//g, "")
-      .replace(/^\s*\/\/.*$/gm, ""),
-  );
+const parseJsonc = (source) => JSON.parse(source);
 
 test("deploys the reviewed vinext outputs as an isolated Worker", async () => {
   const config = parseJsonc(await read("wrangler.public.jsonc"));
   assert.equal(config.name, "cinebar-website");
   assert.equal(config.main, "dist/server/index.js");
+  assert.equal(config.compatibility_date, "2026-05-15");
   assert.deepEqual(config.compatibility_flags, ["nodejs_compat"]);
   assert.equal(config.no_bundle, true);
   assert.equal(config.workers_dev, true);
+  assert.equal(config.preview_urls, true);
+  assert.deepEqual(config.rules, [
+    {
+      type: "ESModule",
+      globs: ["**/*.js", "**/*.mjs"],
+    },
+  ]);
   assert.equal(config.assets.directory, "dist/client");
   assert.equal(config.observability.enabled, true);
+  assert.equal(config.route, undefined);
   assert.equal(config.routes, undefined);
 });
 
