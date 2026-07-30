@@ -7,7 +7,12 @@ repo_root=$(cd "$app_source_dir/.." && pwd)
 source_dir="$app_source_dir/Sources/CineBar"
 swift_sources=("$source_dir"/*.swift)
 info_plist="$app_source_dir/Info.plist"
-package_name="CineBar-0.8.2-test.2"
+"$script_dir/fetch_sparkle.sh"
+sparkle_dir="$app_source_dir/.vendor/Sparkle-2.9.2"
+version=$(/usr/libexec/PlistBuddy \
+  -c "Print :CFBundleShortVersionString" "$info_plist")
+build=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$info_plist")
+package_name="CineBar-$version-test-build-$build"
 dist_dir="$repo_root/dist"
 output_zip="$dist_dir/$package_name-universal.zip"
 build_dir=$(mktemp -d "${TMPDIR:-/tmp}/cinebar-test-build.XXXXXX")
@@ -28,6 +33,10 @@ xcrun swiftc \
   -parse-as-library \
   -O \
   -target arm64-apple-macosx13.0 \
+  -F "$sparkle_dir" \
+  -framework Sparkle \
+  -Xlinker -rpath \
+  -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \
   -o "$arm_binary"
 
@@ -36,10 +45,17 @@ xcrun swiftc \
   -parse-as-library \
   -O \
   -target x86_64-apple-macosx13.0 \
+  -F "$sparkle_dir" \
+  -framework Sparkle \
+  -Xlinker -rpath \
+  -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \
   -o "$intel_binary"
 
-mkdir -p "$contents_dir/MacOS" "$contents_dir/Resources"
+mkdir -p \
+  "$contents_dir/MacOS" \
+  "$contents_dir/Resources" \
+  "$contents_dir/Frameworks"
 lipo -create "$arm_binary" "$intel_binary" \
   -output "$contents_dir/MacOS/CineBar"
 chmod 755 "$contents_dir/MacOS/CineBar"
@@ -50,6 +66,9 @@ cp "$app_source_dir/Assets/CineBar.icns" \
   "$contents_dir/Resources/CineBar.icns"
 cp "$app_source_dir/Assets/MenuBarIcon-template.png" \
   "$contents_dir/Resources/MenuBarIcon-template.png"
+ditto "$sparkle_dir/Sparkle.framework" \
+  "$contents_dir/Frameworks/Sparkle.framework"
+xattr -cr "$contents_dir/Frameworks/Sparkle.framework"
 
 for localization in "$app_source_dir"/Assets/Localization/*.lproj; do
   destination="$contents_dir/Resources/$(basename "$localization")"
@@ -58,7 +77,16 @@ for localization in "$app_source_dir"/Assets/Localization/*.lproj; do
     "$destination/Localizable.strings"
 done
 
-codesign --force --deep --sign - "$app_bundle"
+sparkle_framework="$contents_dir/Frameworks/Sparkle.framework"
+for xpc_service in \
+  "$sparkle_framework"/Versions/Current/XPCServices/*.xpc; do
+  codesign --force --sign - "$xpc_service"
+done
+codesign --force --sign - \
+  "$sparkle_framework/Versions/Current/Updater.app"
+codesign --force --sign - "$sparkle_framework"
+codesign --force --sign - "$app_bundle"
+codesign --verify --deep --strict "$app_bundle"
 
 cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
