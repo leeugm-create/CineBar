@@ -27,9 +27,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.8.2</string>
+    <string>0.8.3</string>
     <key>CFBundleVersion</key>
-    <string>16</string>
+    <string>17</string>
     <key>CineBarCommunityURL</key>
     <string>https://community.cinebar.cc</string>
     <key>CineBarCommunityBackupURLs</key>
@@ -44,8 +44,6 @@
     <string>https://api.cinebar.cc</string>
     <key>CineBarDataBackupURLs</key>
     <array/>
-    <key>CineBarUpdateManifestURL</key>
-    <string>https://share.cinebar.cc/updates/latest.json</string>
     <key>CineBarSupportURL</key>
     <string></string>
     <key>LSMinimumSystemVersion</key>
@@ -57,5 +55,13 @@
         <key>NSAllowsArbitraryLoads</key>
         <false/>
     </dict>
+    <key>SUFeedURL</key>
+    <string>https://cinebar.cc/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>R7z+aK5MYtIFkCD9UgYM3sqn3EtwYZn84Piq3l0eVlk=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAutomaticallyUpdate</key>
+    <false/>
 </dict>
 </plist>

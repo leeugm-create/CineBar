@@ -581,20 +581,6 @@ struct TVGenre: Identifiable, Hashable {
     ]
 }
 
-struct UpdateManifest: Codable {
-    let version: String
-    let build: Int
-    let publishedAt: String
-    let downloadURL: String?
-    let notes: [String]
-
-    enum CodingKeys: String, CodingKey {
-        case version, build, notes
-        case publishedAt = "published_at"
-        case downloadURL = "download_url"
-    }
-}
-
 struct MovieShelf: Identifiable, Hashable {
     let id: String
     let title: String
@@ -2654,10 +2640,6 @@ final class MovieStore: ObservableObject {
     @Published private(set) var shareServiceURL: String
     @Published private(set) var dataProxyURL: String
     @Published private(set) var communityServiceURL: String
-    @Published var automaticallyChecksForUpdates: Bool
-    @Published var isCheckingForUpdates = false
-    @Published var updateMessage = "尚未检查更新"
-    @Published var availableUpdate: UpdateManifest?
     @Published private(set) var latestServiceDiagnostic:
         ServiceDiagnostic?
     @Published var diagnosticCopyMessage = ""
@@ -2721,9 +2703,6 @@ final class MovieStore: ObservableObject {
         } else {
             watchlistTVShows = []
         }
-        automaticallyChecksForUpdates = defaults.object(
-            forKey: "automaticallyChecksForUpdates"
-        ) as? Bool ?? true
         if let reminderData = defaults.data(forKey: "releaseReminders"),
            let savedReminders = try? JSONDecoder().decode(
                [ReleaseReminder].self,
@@ -2828,25 +2807,6 @@ final class MovieStore: ObservableObject {
         diagnosticCopyMessage = "诊断信息已复制"
     }
 
-    private var updateManifestURL: URL? {
-        if let raw = Bundle.main.object(
-            forInfoDictionaryKey: "CineBarUpdateManifestURL"
-        ) as? String {
-            let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !cleaned.isEmpty, let url = URL(string: cleaned) {
-                return url
-            }
-        }
-        guard hasShareService,
-              var components = URLComponents(string: shareServiceURL)
-        else { return nil }
-        let basePath = components.path.hasSuffix("/")
-            ? String(components.path.dropLast())
-            : components.path
-        components.path = "\(basePath)/updates/latest.json"
-        return components.url
-    }
-
     func saveSettings() {
         let cleanedToken = token.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanedOMDbKey = omdbKey.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -2906,72 +2866,6 @@ final class MovieStore: ObservableObject {
         loadTrending()
         loadDailyRecommendation(forceRefresh: true)
         loadDailyTVRecommendation(forceRefresh: true)
-    }
-
-    func setAutomaticallyChecksForUpdates(_ enabled: Bool) {
-        automaticallyChecksForUpdates = enabled
-        defaults.set(enabled, forKey: "automaticallyChecksForUpdates")
-    }
-
-    func checkForUpdates(manual: Bool = true) {
-        guard let url = updateManifestURL else {
-            if manual {
-                updateMessage = "发布者尚未配置更新服务"
-            }
-            return
-        }
-        guard !isCheckingForUpdates else { return }
-        isCheckingForUpdates = true
-        updateMessage = "正在检查更新…"
-        Task {
-            do {
-                let backupManifestURLs =
-                    ServiceBundleConfiguration.stringArray(
-                        forInfoDictionaryKey: "CineBarShareBackupURLs"
-                    )
-                    .compactMap {
-                        DataProxyConfiguration.normalizedBaseURL($0)
-                    }
-                    .map { "\($0)/updates/latest.json" }
-                let endpointSet = ServiceEndpointSet(
-                    primary: url.absoluteString,
-                    backups: backupManifestURLs
-                )
-                let (data, _) = try await ResilientHTTPClient().data(
-                    endpointSet: endpointSet
-                ) { endpoint in
-                    var request = URLRequest(url: endpoint)
-                    request.timeoutInterval = 15
-                    request.cachePolicy = .reloadIgnoringLocalCacheData
-                    return request
-                }
-                let manifest = try JSONDecoder().decode(
-                    UpdateManifest.self,
-                    from: data
-                )
-                let currentBuild = Int(
-                    Bundle.main.object(
-                        forInfoDictionaryKey: "CFBundleVersion"
-                    ) as? String ?? "0"
-                ) ?? 0
-                if manifest.build > currentBuild {
-                    availableUpdate = manifest
-                    updateMessage = "发现新版本 \(manifest.version)"
-                } else {
-                    availableUpdate = nil
-                    updateMessage = "CineBar 已是最新版本"
-                }
-                defaults.set(Date(), forKey: "lastUpdateCheck")
-            } catch {
-                updateMessage = error.localizedDescription
-                recordServiceDiagnostic(
-                    service: "share-update",
-                    endpoint: url.absoluteString,
-                    error: error
-                )
-            }
-            isCheckingForUpdates = false
-        }
     }
 
     func setAutoHideInterval(_ interval: AutoHideInterval) {
@@ -7847,32 +7741,21 @@ struct SettingsRootView: View {
         VStack(alignment: .leading, spacing: 16) {
             settingsCard {
                 Toggle("启动时自动检查更新", isOn: Binding(
-                    get: { store.automaticallyChecksForUpdates },
-                    set: { store.setAutomaticallyChecksForUpdates($0) }
+                    get: {
+                        UpdaterService.shared.automaticallyChecksForUpdates
+                    },
+                    set: {
+                        UpdaterService.shared.automaticallyChecksForUpdates = $0
+                    }
                 ))
                 HStack {
-                    if store.isCheckingForUpdates {
-                        ProgressView().controlSize(.small)
-                    }
-                    Text(store.updateMessage).foregroundStyle(.secondary)
+                    Text("更新包会在安装前验证 CineBar 的独立签名。")
+                        .foregroundStyle(.secondary)
                     Spacer()
-                    Button("立即检查") { store.checkForUpdates() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(store.isCheckingForUpdates)
-                }
-            }
-            if let update = store.availableUpdate {
-                settingsCard {
-                    Text("CineBar \(update.version)").font(.headline)
-                    Text("发布日期：\(update.publishedAt)")
-                        .font(.caption).foregroundStyle(.secondary)
-                    ForEach(update.notes, id: \.self) { note in
-                        Label(note, systemImage: "checkmark.circle.fill")
+                    Button("立即检查") {
+                        UpdaterService.shared.checkForUpdates()
                     }
-                    if let value = update.downloadURL, let url = URL(string: value) {
-                        Button("下载新版本") { openURL(url) }
-                            .buttonStyle(.borderedProminent)
-                    }
+                    .disabled(!UpdaterService.shared.canCheckForUpdates)
                 }
             }
         }
@@ -8576,9 +8459,6 @@ struct ContentView: View {
             store.loadDailyTVRecommendation()
             store.loadCountries()
             store.checkReleaseReminders()
-            if store.automaticallyChecksForUpdates {
-                store.checkForUpdates(manual: false)
-            }
         }
         .onReceive(reminderCheckTimer) { _ in
             store.checkReleaseReminders()

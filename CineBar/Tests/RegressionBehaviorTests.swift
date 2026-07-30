@@ -2,6 +2,16 @@ import AppKit
 import Foundation
 
 #if CINEBAR_TEST
+@MainActor
+final class UpdaterService {
+    static let shared = UpdaterService()
+
+    var automaticallyChecksForUpdates = true
+    var canCheckForUpdates = true
+
+    func checkForUpdates() {}
+}
+
 private actor RecordingServiceLoader: ServiceDataLoading {
     enum Result {
         case failure(URLError)
@@ -39,6 +49,14 @@ private actor RecordingServiceLoader: ServiceDataLoading {
 struct CineBarRegressionBehaviorTests {
     @MainActor
     static func main() async {
+        precondition(
+            UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"
+        )
+        precondition(
+            UpdatePolicy.automaticChecksDefaultsKey
+                == "SUEnableAutomaticChecks"
+        )
+
         let serviceEndpoints = ServiceEndpointSet(
             primary: "https://api.cinebar.cc/",
             backups: [
