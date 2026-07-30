@@ -12,6 +12,7 @@ wrangler.toml
 build/
 build*/
 DerivedData/
+CineBar/.vendor/
 *.app/
 *.dSYM/
 *.dmg
