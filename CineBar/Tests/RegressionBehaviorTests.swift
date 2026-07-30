@@ -1,13 +1,14 @@
 import AppKit
+import Combine
 import Foundation
 
 #if CINEBAR_TEST
 @MainActor
-final class UpdaterService {
+final class UpdaterService: ObservableObject {
     static let shared = UpdaterService()
 
     var automaticallyChecksForUpdates = true
-    var canCheckForUpdates = true
+    @Published var canCheckForUpdates = true
 
     func checkForUpdates() {}
 }
@@ -55,6 +56,24 @@ struct CineBarRegressionBehaviorTests {
         precondition(
             UpdatePolicy.automaticChecksDefaultsKey
                 == "SUEnableAutomaticChecks"
+        )
+        precondition(
+            UpdatePolicy.automaticChecksMigrationValue(
+                legacyValue: false,
+                hasExistingSparkleValue: false
+            ) == false
+        )
+        precondition(
+            UpdatePolicy.automaticChecksMigrationValue(
+                legacyValue: true,
+                hasExistingSparkleValue: false
+            ) == true
+        )
+        precondition(
+            UpdatePolicy.automaticChecksMigrationValue(
+                legacyValue: false,
+                hasExistingSparkleValue: true
+            ) == nil
         )
 
         let serviceEndpoints = ServiceEndpointSet(

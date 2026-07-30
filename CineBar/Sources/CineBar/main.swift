@@ -7414,6 +7414,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsRootView: View {
     @ObservedObject var store: MovieStore
+    @ObservedObject var updaterService: UpdaterService
     @State private var selection: SettingsSection = .general
     @Environment(\.openURL) private var openURL
 
@@ -7742,10 +7743,10 @@ struct SettingsRootView: View {
             settingsCard {
                 Toggle("启动时自动检查更新", isOn: Binding(
                     get: {
-                        UpdaterService.shared.automaticallyChecksForUpdates
+                        updaterService.automaticallyChecksForUpdates
                     },
                     set: {
-                        UpdaterService.shared.automaticallyChecksForUpdates = $0
+                        updaterService.automaticallyChecksForUpdates = $0
                     }
                 ))
                 HStack {
@@ -7753,9 +7754,9 @@ struct SettingsRootView: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     Button("立即检查") {
-                        UpdaterService.shared.checkForUpdates()
+                        updaterService.checkForUpdates()
                     }
-                    .disabled(!UpdaterService.shared.canCheckForUpdates)
+                    .disabled(!updaterService.canCheckForUpdates)
                 }
             }
         }
@@ -8998,6 +8999,7 @@ enum PanelPlacement {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     UNUserNotificationCenterDelegate {
     private let store = MovieStore()
+    private lazy var updaterService = UpdaterService.shared
     private var statusItem: NSStatusItem?
     private var panel: NSPanel?
     private var settingsWindow: NSWindow?
@@ -9006,6 +9008,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var isMediaPlaybackActive = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        _ = updaterService
         NSApplication.shared.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
 
@@ -9176,7 +9179,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             created.isReleasedWhenClosed = false
             created.setFrameAutosaveName("CineBarSettingsWindow")
             created.contentView = NSHostingView(
-                rootView: SettingsRootView(store: store)
+                rootView: SettingsRootView(
+                    store: store,
+                    updaterService: updaterService
+                )
             )
             settingsWindow = created
             window = created
