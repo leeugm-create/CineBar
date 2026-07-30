@@ -7,6 +7,45 @@ import { promisify } from "node:util";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 const execFileAsync = promisify(execFile);
+const repositoryRoot = fileURLToPath(new URL("../../", import.meta.url));
+
+async function hasGitWorktree() {
+  try {
+    const { stdout } = await execFileAsync(
+      "git",
+      ["rev-parse", "--is-inside-work-tree"],
+      { cwd: repositoryRoot },
+    );
+    return stdout.trim() === "true";
+  } catch (error) {
+    if (error.code === 128 || error.code === "ENOENT") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+function contrastRatio(foreground, background) {
+  const luminance = (hex) =>
+    hex
+      .slice(1)
+      .match(/../g)
+      .map((part) => parseInt(part, 16) / 255)
+      .map((value) =>
+        value <= 0.04045
+          ? value / 12.92
+          : ((value + 0.055) / 1.055) ** 2.4,
+      )
+      .reduce(
+        (sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index],
+        0,
+      );
+
+  return (
+    (Math.max(luminance(foreground), luminance(background)) + 0.05) /
+    (Math.min(luminance(foreground), luminance(background)) + 0.05)
+  );
+}
 
 test("publishes the approved CineBar identity and download entry", async () => {
   const page = await read("app/page.tsx");
@@ -44,6 +83,27 @@ test("follows system appearance and reduced-motion preferences", async () => {
   assert.match(css, /--foreground:/);
 });
 
+test("uses a contrast-safe token pair for the light primary button", async () => {
+  const css = await read("app/globals.css");
+  const primaryBackground = css.match(
+    /--primary-background:\s*(#[0-9a-f]{6})/i,
+  )?.[1];
+  const primaryForeground = css.match(
+    /--primary-foreground:\s*(#[0-9a-f]{6})/i,
+  )?.[1];
+
+  assert.ok(primaryBackground, "primary buttons need a dedicated background token");
+  assert.ok(primaryForeground, "primary buttons need a dedicated foreground token");
+  assert.ok(
+    contrastRatio(primaryForeground, primaryBackground) >= 4.5,
+    "light primary-button text must meet 4.5:1 contrast",
+  );
+  assert.match(
+    css,
+    /\.primary\s*\{\s*background:\s*var\(--primary-background\);[^}]*color:\s*var\(--primary-foreground\);/,
+  );
+});
+
 test("keeps the Sites Vite plugin in a tracked source path", async () => {
   const viteConfig = await read("vite.config.ts");
   const pluginImport = viteConfig.match(
@@ -55,9 +115,11 @@ test("keeps the Sites Vite plugin in a tracked source path", async () => {
 
   const pluginPath = `${pluginImport.replace(/^\.\//, "")}.ts`;
   await access(new URL(`../${pluginPath}`, import.meta.url));
-  await execFileAsync(
-    "git",
-    ["ls-files", "--error-unmatch", `CineBarWebsite/${pluginPath}`],
-    { cwd: fileURLToPath(new URL("../../", import.meta.url)) },
-  );
+  if (await hasGitWorktree()) {
+    await execFileAsync(
+      "git",
+      ["ls-files", "--error-unmatch", `CineBarWebsite/${pluginPath}`],
+      { cwd: repositoryRoot },
+    );
+  }
 });

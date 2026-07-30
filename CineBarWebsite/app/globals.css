@@ -7,6 +7,8 @@
   --border: rgba(16, 22, 47, 0.12);
   --accent: #a84c00;
   --accent-ink: #1b1208;
+  --primary-background: #7e3400;
+  --primary-foreground: #fff7f0;
   --shadow: 0 24px 70px rgba(31, 38, 71, 0.12);
 }
 
@@ -19,6 +21,8 @@
     --border: rgba(255, 255, 255, 0.14);
     --accent: #ffad4d;
     --accent-ink: #211303;
+    --primary-background: #ffad4d;
+    --primary-foreground: #211303;
     --shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
   }
 }
@@ -171,7 +175,7 @@ footer { color: var(--muted); }
 }
 
 .button:hover { transform: translateY(-2px); }
-.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.primary { background: var(--primary-background); border-color: var(--primary-background); color: var(--primary-foreground); }
 .secondary { background: var(--surface); color: var(--foreground); }
 
 .compatibility { margin-bottom: 0; font-size: 0.93rem; }
