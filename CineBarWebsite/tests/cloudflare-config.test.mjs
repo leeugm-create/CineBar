@@ -1,9 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
 
 const read = (path) =>
   readFile(new URL(`../${path}`, import.meta.url), "utf8");
+const execFileAsync = promisify(execFile);
+const websiteRoot = new URL("..", import.meta.url);
 
 const parseJsonc = (source) => JSON.parse(source);
 
@@ -23,6 +27,8 @@ test("deploys the reviewed vinext outputs as an isolated Worker", async () => {
     },
   ]);
   assert.equal(config.assets.directory, "dist/client");
+  assert.equal(config.assets.binding, "ASSETS");
+  assert.equal(config.assets.run_worker_first, true);
   assert.equal(config.observability.enabled, true);
   assert.equal(config.route, undefined);
 });
@@ -44,4 +50,11 @@ test("owns only the CineBar apex custom domain after cutover", async () => {
   assert.deepEqual(config.routes, [
     { pattern: "cinebar.cc", custom_domain: true },
   ]);
+});
+
+test("lint ignores Wrangler's generated dry-run output", async () => {
+  await execFileAsync("npm", ["run", "lint"], {
+    cwd: websiteRoot,
+    env: { ...process.env, NO_COLOR: "1" },
+  });
 });
