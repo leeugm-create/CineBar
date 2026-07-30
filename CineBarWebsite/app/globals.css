@@ -5,7 +5,7 @@
   --foreground: #10162f;
   --muted: #5d6479;
   --border: rgba(16, 22, 47, 0.12);
-  --accent: #e87919;
+  --accent: #a84c00;
   --accent-ink: #1b1208;
   --shadow: 0 24px 70px rgba(31, 38, 71, 0.12);
 }
@@ -237,7 +237,14 @@ footer { justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; paddin
   main { width: min(100% - 24px, 1180px); }
   .site-header { align-items: flex-start; min-height: 0; padding: 14px 0; }
   nav { flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; }
-  nav a { font-size: 0.82rem; }
+  nav a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    font-size: 0.82rem;
+  }
   .hero { padding-top: 46px; }
   .recommendation { grid-template-columns: 84px 1fr; gap: 16px; }
   .poster { min-height: 132px; }

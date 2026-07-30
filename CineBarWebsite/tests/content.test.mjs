@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+const execFileAsync = promisify(execFile);
 
 test("publishes the approved CineBar identity and download entry", async () => {
   const page = await read("app/page.tsx");
@@ -38,4 +42,22 @@ test("follows system appearance and reduced-motion preferences", async () => {
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /--background:/);
   assert.match(css, /--foreground:/);
+});
+
+test("keeps the Sites Vite plugin in a tracked source path", async () => {
+  const viteConfig = await read("vite.config.ts");
+  const pluginImport = viteConfig.match(
+    /from ["'](?<path>\.\/(?:[^"']*\/)?sites-vite-plugin)["']/,
+  )?.groups?.path;
+
+  assert.ok(pluginImport, "vite.config.ts must import the Sites Vite plugin");
+  assert.doesNotMatch(pluginImport, /(^|\/)build\//);
+
+  const pluginPath = `${pluginImport.replace(/^\.\//, "")}.ts`;
+  await access(new URL(`../${pluginPath}`, import.meta.url));
+  await execFileAsync(
+    "git",
+    ["ls-files", "--error-unmatch", `CineBarWebsite/${pluginPath}`],
+    { cwd: fileURLToPath(new URL("../../", import.meta.url)) },
+  );
 });

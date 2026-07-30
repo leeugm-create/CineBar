@@ -1,8 +1,9 @@
-# vinext-starter
+# CineBar Website
 
-A clean full-stack starter running on
+The public product website for CineBar, a macOS menu-bar discovery tool for
+movies and television. It runs on
 [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Drizzle support inherited from the Sites project shape.
 
 ## Prerequisites
 
@@ -89,7 +90,8 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 - `npm run dev`: start local development
 - `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
+- `npm test`: build the CineBar site and verify the required product content,
+  navigation sections, appearance preferences, and tracked Sites Vite plugin
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
 ## Learn More
