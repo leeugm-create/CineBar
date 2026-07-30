@@ -18,5 +18,11 @@
   },
   "observability": {
     "enabled": true
-  }
+  },
+  "routes": [
+    {
+      "pattern": "cinebar.cc",
+      "custom_domain": true
+    }
+  ]
 }

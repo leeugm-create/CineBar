@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import worker, { mediaPath } from "../worker.js";
+
+const config = JSON.parse(
+  readFileSync(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
+);
 
 const movieMetadata = {
   id: 603,
@@ -246,4 +251,10 @@ test("renders a lightweight CineBar root page", async () => {
   assert.match(html, /今晚看什么/);
   assert.match(html, /电影与电视剧发现工具/);
   assert.doesNotMatch(html, /workers\.dev/);
+});
+
+test("keeps only the public share hostname", () => {
+  const patterns = config.routes.map((route) => route.pattern);
+  assert.deepEqual(patterns, ["share.cinebar.cc"]);
+  assert.equal(config.routes[0].custom_domain, true);
 });

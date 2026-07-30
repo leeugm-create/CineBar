@@ -25,7 +25,6 @@ test("deploys the reviewed vinext outputs as an isolated Worker", async () => {
   assert.equal(config.assets.directory, "dist/client");
   assert.equal(config.observability.enabled, true);
   assert.equal(config.route, undefined);
-  assert.equal(config.routes, undefined);
 });
 
 test("package scripts build before dry-run or deployment", async () => {
@@ -38,4 +37,11 @@ test("package scripts build before dry-run or deployment", async () => {
     packageJson.scripts["deploy:public"],
     "npm run build && wrangler deploy --config wrangler.public.jsonc",
   );
+});
+
+test("owns only the CineBar apex custom domain after cutover", async () => {
+  const config = parseJsonc(await read("wrangler.public.jsonc"));
+  assert.deepEqual(config.routes, [
+    { pattern: "cinebar.cc", custom_domain: true },
+  ]);
 });
