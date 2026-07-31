@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>CineBar tamper-rejection test</title>
+    <item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;Tamper-rejection test only&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 31 Jul 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-tamper-test/CineBar-0.8.3-test-build-18-tampered.zip"
+        sparkle:version="18"
+        sparkle:shortVersionString="0.8.3"
+        length="5170098"
+        type="application/octet-stream"
+        sparkle:edSignature="UxIs0jMihhVKZXt72eyndAeW4XR5X3JipuPXfNPCEjnHtTHajM37wf0crmd2C/SqIxXSSnvksF3aTNmeBbqYCQ=="/>
+    </item>
+  </channel>
+</rss>
