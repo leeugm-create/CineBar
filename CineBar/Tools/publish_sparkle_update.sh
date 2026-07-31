@@ -24,6 +24,10 @@ published_at=$5
   echo "Build must be a positive integer" >&2
   exit 65
 }
+[[ "$published_at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || {
+  echo "Publication date must use YYYY-MM-DD" >&2
+  exit 65
+}
 
 script_dir=$(cd "$(dirname "$0")" && pwd)
 app_dir=$(cd "$script_dir/.." && pwd)
@@ -37,6 +41,38 @@ output_dir=$(dirname "$output")
   exit 69
 }
 
+format_rfc822_date() {
+  local formatted
+  if formatted=$(LC_ALL=C date -j -u -f '%Y-%m-%d' "$published_at" \
+    '+%Y-%m-%d|%a, %d %b %Y 00:00:00 +0000' 2>/dev/null); then
+    :
+  elif formatted=$(LC_ALL=C date -u -d "$published_at 00:00:00" \
+    '+%Y-%m-%d|%a, %d %b %Y 00:00:00 +0000' 2>/dev/null); then
+    :
+  else
+    return 1
+  fi
+
+  [[ "${formatted%%|*}" == "$published_at" ]] || return 1
+  printf '%s' "${formatted#*|}"
+}
+
+rfc822_published_at=$(format_rfc822_date) || {
+  echo "Publication date is not a valid calendar date" >&2
+  exit 65
+}
+
+if [[ -f "$output" ]] && xmllint --noout "$output" 2>/dev/null; then
+  existing_build=$(xmllint --xpath \
+    'string(//*[local-name()="enclosure"]/@*[local-name()="version"])' \
+    "$output")
+  if [[ "$existing_build" =~ ^[1-9][0-9]*$ ]] &&
+    (( build <= existing_build )); then
+    echo "Build must be greater than existing appcast Build $existing_build" >&2
+    exit 65
+  fi
+fi
+
 xml_escape() {
   sed \
     -e 's/&/\&amp;/g' \
@@ -48,7 +84,6 @@ xml_escape() {
 
 escaped_download_url=$(printf '%s' "$download_url" | xml_escape)
 escaped_version=$(printf '%s' "$version" | xml_escape)
-escaped_published_at=$(printf '%s' "$published_at" | xml_escape)
 
 signature_output=$("$sign_update" "$archive")
 ed_signature=$(printf '%s\n' "$signature_output" |
@@ -82,7 +117,8 @@ trap cleanup EXIT
   printf '%s\n' '    <description>CineBar signed application updates</description>'
   printf '    <item>\n'
   printf '      <title>CineBar %s</title>\n' "$escaped_version"
-  printf '      <pubDate>%s</pubDate>\n' "$escaped_published_at"
+  printf '%s\n' '      <description>&lt;ul&gt;&lt;li&gt;新增经过 CineBar 独立签名验证的应用内更新&lt;/li&gt;&lt;li&gt;后续版本可在 CineBar 内安装并重新启动&lt;/li&gt;&lt;li&gt;Build 16 用户本次需要从 GitHub Releases 手动安装&lt;/li&gt;&lt;/ul&gt;</description>'
+  printf '      <pubDate>%s</pubDate>\n' "$rfc822_published_at"
   printf '%s\n' '      <enclosure'
   printf '        url="%s"\n' "$escaped_download_url"
   printf '        sparkle:version="%s"\n' "$build"

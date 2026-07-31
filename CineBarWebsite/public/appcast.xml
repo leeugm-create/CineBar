@@ -6,7 +6,8 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <pubDate>2026-07-30</pubDate>
+      <description>&lt;ul&gt;&lt;li&gt;新增经过 CineBar 独立签名验证的应用内更新&lt;/li&gt;&lt;li&gt;后续版本可在 CineBar 内安装并重新启动&lt;/li&gt;&lt;li&gt;Build 16 用户本次需要从 GitHub Releases 手动安装&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Thu, 30 Jul 2026 00:00:00 +0000</pubDate>
       <enclosure
         url="https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-test.1/CineBar-0.8.3-test-build-17-universal.zip"
         sparkle:version="17"
