@@ -2,7 +2,7 @@
 
 一个直接分发的 macOS 菜单栏影片发现原型。
 
-当前测试分支构建为 **0.8.2-test.2（Build 16）**，不代表正式发布版本。
+当前测试分支构建为 **0.8.3-test.2（Build 18）**，不代表正式发布版本。
 测试安装包必须同时包含 `请先阅读-测试版安装说明.html` 和纯文本备用说明。
 
 ## 功能
@@ -76,6 +76,16 @@
 
 此包使用临时签名且未经 Apple 公证，第一次打开时仍需按安装说明完成 macOS
 安全确认。本测试包仅在本地交付，没有上传 GitHub。
+
+## 更新
+
+Build 16 需要先通过 [GitHub Releases](https://github.com/leeugm-create/CineBar/releases)
+手动安装一次 Sparkle 版本（Build 17 或更新版本）。完成这次迁移后，后续版本可以
+在 CineBar 的“设置”→“更新”中检查、下载并安装。每个更新包都会由 CineBar 内置的
+EdDSA 公钥验证；签名不匹配的包不会安装。
+
+测试构建仍未经过 Apple 公证。若不希望启动时自动检查，可在“设置”→“更新”关闭
+“启动时自动检查更新”，并可随时使用“立即检查”手动检查。
 
 Rotten Tomatoes Popcornmeter 观众分未抓取、未内置。接入该数据需要
 Rotten Tomatoes 的正式数据授权。

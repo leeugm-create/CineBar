@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CineBar 0.8.2 测试版安装说明</title>
+  <title>CineBar 0.8.3 测试版安装说明</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -29,8 +29,8 @@
   </style>
 </head>
 <body>
-  <h1>CineBar 0.8.2 测试版安装说明</h1>
-  <p class="small">测试编号：0.8.2-test.2（Build 16）｜适用于 macOS 13 及以上</p>
+  <h1>CineBar 0.8.3 测试版安装说明</h1>
+  <p class="small">测试编号：0.8.3-test.2（Build 18）｜适用于 macOS 13 及以上</p>
 
   <div class="warning">
     <strong>请注意：</strong>这是用于功能验证的测试版本，不是正式发行版。
@@ -69,7 +69,19 @@
     不需要、也不要关闭整个 macOS 安全保护功能。
   </div>
 
-  <h2>四、首次使用建议</h2>
+  <h2>四、更新</h2>
+  <ol>
+    <li>Build 16 用户需要先从 <a href="https://github.com/leeugm-create/CineBar/releases">GitHub Releases</a>
+      手动安装一次 Sparkle 版本（Build 17 或更新版本）。</li>
+    <li>完成这次迁移后，后续版本可在 CineBar 的“设置”→“更新”中检查、下载并安装。</li>
+    <li>每个更新包都会用 CineBar 内置的 EdDSA 公钥验证；签名不匹配的包不会安装。</li>
+    <li>本测试构建仍未经过 Apple 公证。首次安装的 macOS 安全确认与更新签名验证是
+      两个不同的步骤。</li>
+    <li>如果不希望启动时自动检查，在“设置”→“更新”关闭“启动时自动检查更新”；
+      仍可随时点击“立即检查”手动检查。</li>
+  </ol>
+
+  <h2>五、首次使用建议</h2>
   <ol>
     <li>点击菜单栏 CineBar 图标打开主面板。</li>
     <li>进入“设置”检查语言、白天/夜晚外观、玻璃背景不透明度、自动隐藏时间和
@@ -86,7 +98,7 @@
       “上映日期待定”。</li>
   </ol>
 
-  <h2>五、一次性评分说明</h2>
+  <h2>六、一次性评分说明</h2>
   <ul>
     <li>电影和电视剧使用 0–10 分制，每次调整 0.5 分。</li>
     <li>同一台 Mac 的同一份 CineBar 安装，对同一作品只能评分一次。</li>
@@ -97,7 +109,7 @@
       要求输入钥匙串密码。</li>
   </ul>
 
-  <h2>六、分享功能</h2>
+  <h2>七、分享功能</h2>
   <ul>
     <li>一个“分享”按钮会直接打开 macOS 系统分享面板。</li>
     <li>CineBar 只向系统提交一个网页链接，因此微信等提供兼容原生分享扩展的
@@ -116,7 +128,7 @@
     <li>分享页只展示影片资料，不提供非法下载资源。</li>
   </ul>
 
-  <h2>七、退出与卸载</h2>
+  <h2>八、退出与卸载</h2>
   <p><strong>退出：</strong>点击菜单栏 CineBar 图标，再点击面板左下角带电源图标的
     “退出”。仅关闭面板不会退出程序。</p>
   <p><strong>卸载：</strong></p>
@@ -127,7 +139,7 @@
       “系统设置”→“通用”→“登录项”中移除。</li>
   </ol>
 
-  <h2>八、常见问题</h2>
+  <h2>九、常见问题</h2>
   <p><strong>菜单栏没有图标：</strong>检查程序是否已经运行；菜单栏空间不足或
     刘海屏隐藏图标时，先退出部分菜单栏应用再查看。</p>
   <p><strong>面板出现在错误屏幕：</strong>关闭面板后，在目标屏幕顶部直接点击
