@@ -231,15 +231,17 @@ test("redirects plain HTTP requests to the same HTTPS URL", async () => {
   );
 });
 
-test("publishes the Build 16 custom-domain update manifest", async () => {
+test("publishes the Build 17 GitHub Releases migration manifest", async () => {
   const response = await fetchPage("/updates/latest.json");
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(body.version, "0.8.2");
-  assert.equal(body.build, 16);
-  assert.equal(body.download_url, null);
-  assert.ok(body.notes.some((note) => note.includes("自定义域名")));
+  assert.equal(body.version, "0.8.3");
+  assert.equal(body.build, 17);
+  assert.equal(
+    body.download_url,
+    "https://github.com/leeugm-create/CineBar/releases",
+  );
 });
 
 test("renders a lightweight CineBar root page", async () => {

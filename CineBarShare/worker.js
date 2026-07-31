@@ -256,15 +256,14 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.2",
-        build: 16,
+        version: "0.8.3",
+        build: 17,
         published_at: "2026-07-30",
-        download_url: null,
+        download_url: "https://github.com/leeugm-create/CineBar/releases",
         notes: [
-          "中国区服务改用 CineBar 自定义域名",
-          "增加网络错误重试与未来备用入口支持",
-          "网络异常时优先显示上次成功加载的数据",
-          "保留 B16 的即将上映日期、主演分享页与系统分享功能",
+          "新增经过 CineBar 独立签名验证的应用内更新",
+          "后续版本可在 CineBar 内安装并重新启动",
+          "Build 16 用户本次需要从 GitHub Releases 手动安装",
         ],
       }), {
         headers: {

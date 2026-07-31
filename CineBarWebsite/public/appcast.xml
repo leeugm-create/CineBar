@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>CineBar Updates</title>
+    <link>https://cinebar.cc/appcast.xml</link>
+    <description>CineBar signed application updates</description>
+    <item>
+      <title>CineBar 0.8.3</title>
+      <pubDate>2026-07-30</pubDate>
+      <enclosure
+        url="https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-test.1/CineBar-0.8.3-test-build-17-universal.zip"
+        sparkle:version="17"
+        sparkle:shortVersionString="0.8.3"
+        length="5169450"
+        type="application/octet-stream"
+        sparkle:edSignature="gzaRRGzpMurRgE1Z+h2vqIfKHSriAjU7/TlPSMcBMC1ZO7BjJHm1RyTe85YiQb7dgYkt7+woy1rMXwu6xXV+Dw=="/>
+    </item>
+  </channel>
+</rss>
