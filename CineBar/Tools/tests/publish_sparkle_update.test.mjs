@@ -26,6 +26,7 @@ const createFixture = () => {
   );
   const archive = join(root, "update.zip");
   const appcast = join(root, "CineBarWebsite/public/appcast.xml");
+  const releaseNotes = join(root, "release-notes.txt");
 
   mkdirSync(dirname(fixturePublisher), { recursive: true });
   mkdirSync(dirname(signer), { recursive: true });
@@ -42,8 +43,12 @@ printf 'sparkle:edSignature="fixture-signature" length="%s"\\n' "$length"
   );
   chmodSync(signer, 0o755);
   writeFileSync(archive, "fixture archive");
+  writeFileSync(
+    releaseNotes,
+    "改进测试版内更新体验\nBuild 16 用户本次需要从 GitHub Releases 手动安装\n",
+  );
 
-  const publish = (build, publishedAt = "2026-07-30") =>
+  const publish = (build, publishedAt = "2026-07-30", notesFile = releaseNotes) =>
     spawnSync(
       fixturePublisher,
       [
@@ -52,6 +57,7 @@ printf 'sparkle:edSignature="fixture-signature" length="%s"\\n' "$length"
         "0.8.3",
         String(build),
         publishedAt,
+        notesFile,
       ],
       { encoding: "utf8" },
     );
@@ -60,10 +66,10 @@ printf 'sparkle:edSignature="fixture-signature" length="%s"\\n' "$length"
       encoding: "utf8",
     }).trimEnd();
 
-  return { appcast, publish, root, xpath };
+  return { appcast, publish, releaseNotes, root, xpath };
 };
 
-test("publishes self-contained Build 17 notes and an RFC822 UTC date", (t) => {
+test("publishes reviewed release-notes file content and an RFC822 UTC date", (t) => {
   const fixture = createFixture();
   t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
 
@@ -78,9 +84,26 @@ test("publishes self-contained Build 17 notes and an RFC822 UTC date", (t) => {
   const description = fixture.xpath(
     'string(//*[local-name()="item"]/*[local-name()="description"])',
   );
-  assert.match(description, /新增经过 CineBar 独立签名验证的应用内更新/);
-  assert.match(description, /后续版本可在 CineBar 内安装并重新启动/);
+  assert.match(description, /改进测试版内更新体验/);
   assert.match(description, /Build 16 用户本次需要从 GitHub Releases 手动安装/);
+  assert.doesNotMatch(description, /新增经过 CineBar 独立签名验证的应用内更新/);
+});
+
+test("escapes reviewed release notes and rejects an unavailable notes file atomically", (t) => {
+  const fixture = createFixture();
+  t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
+
+  writeFileSync(fixture.releaseNotes, "安全修复 & <兼容性>\n");
+  assert.equal(fixture.publish(17).status, 0);
+  const description = fixture.xpath(
+    'string(//*[local-name()="item"]/*[local-name()="description"])',
+  );
+  assert.match(description, /安全修复 & <兼容性>/);
+  const before = readFileSync(fixture.appcast);
+
+  const result = fixture.publish(18, "2026-07-31", join(fixture.root, "missing.txt"));
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(readFileSync(fixture.appcast), before);
 });
 
 test("rejects an invalid calendar date without changing the appcast", (t) => {

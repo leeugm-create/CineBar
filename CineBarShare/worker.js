@@ -256,10 +256,10 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.3",
-        build: 17,
-        published_at: "2026-07-30",
-        download_url: "https://github.com/leeugm-create/CineBar/releases",
+        version: "0.8.3-test.2",
+        build: 18,
+        published_at: "2026-07-31",
+        download_url: "https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-test.2/CineBar-0.8.3-test-build-18-universal.zip",
         notes: [
           "新增经过 CineBar 独立签名验证的应用内更新",
           "后续版本可在 CineBar 内安装并重新启动",

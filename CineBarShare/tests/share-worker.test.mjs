@@ -231,16 +231,22 @@ test("redirects plain HTTP requests to the same HTTPS URL", async () => {
   );
 });
 
-test("publishes the Build 17 GitHub Releases migration manifest", async () => {
+test("publishes the current Build 18 test.2 manifest and retains Build 16 migration guidance", async () => {
   const response = await fetchPage("/updates/latest.json");
   const body = await response.json();
 
   assert.equal(response.status, 200);
-  assert.equal(body.version, "0.8.3");
-  assert.equal(body.build, 17);
+  assert.equal(body.version, "0.8.3-test.2");
+  assert.equal(body.build, 18);
+  assert.equal(body.published_at, "2026-07-31");
   assert.equal(
     body.download_url,
-    "https://github.com/leeugm-create/CineBar/releases",
+    "https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-test.2/CineBar-0.8.3-test-build-18-universal.zip",
+  );
+  assert.ok(
+    body.notes.includes(
+      "Build 16 用户本次需要从 GitHub Releases 手动安装",
+    ),
   );
 });
 

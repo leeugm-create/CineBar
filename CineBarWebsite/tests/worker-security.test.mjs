@@ -159,8 +159,8 @@ test("redirects an apex HTTP path and query to the same HTTPS URL", async () => 
   );
 });
 
-test("adds HSTS to dynamic and static HTTPS responses", async () => {
-  for (const path of ["/", "/health", "/og.png"]) {
+test("adds the audited security headers to dynamic and static HTTPS responses", async () => {
+  for (const path of ["/", "/health", "/appcast.xml", "/og.png"]) {
     const response = await request({
       ...httpsServer,
       path,
@@ -170,6 +170,23 @@ test("adds HSTS to dynamic and static HTTPS responses", async () => {
     assert.equal(
       response.headers["strict-transport-security"],
       "max-age=31536000; includeSubDomains",
+      path,
+    );
+    assert.equal(response.headers["x-content-type-options"], "nosniff", path);
+    assert.equal(response.headers["x-frame-options"], "DENY", path);
+    assert.equal(
+      response.headers["referrer-policy"],
+      "strict-origin-when-cross-origin",
+      path,
+    );
+    assert.equal(
+      response.headers["permissions-policy"],
+      "accelerometer=(), camera=(), geolocation=(), microphone=(), payment=(), usb=()",
+      path,
+    );
+    assert.equal(
+      response.headers["content-security-policy"],
+      "default-src 'self'; base-uri 'self'; form-action 'self' https://www.paypal.com; frame-ancestors 'none'; img-src 'self' data: blob: https:; object-src 'none'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cinebar.cc https://share.cinebar.cc; font-src 'self' data:; upgrade-insecure-requests",
       path,
     );
   }

@@ -33,7 +33,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">CineBar for macOS · 当前为测试版</p>
+          <p className="eyebrow">CineBar for macOS · 0.8.3-test.2（Build 18）测试版</p>
           <h1>今晚看什么？</h1>
           <p className="lede">
             macOS 菜单栏里的电影与电视剧发现工具。更快找到想看的作品，
@@ -49,6 +49,9 @@ export default function Home() {
           </div>
           <p className="compatibility">
             支持 Apple 芯片与 Intel Mac · 免费 · 无广告 · 无订阅
+          </p>
+          <p className="compatibility">
+            当前测试包可通过应用内更新安装并重新启动；它不是正式稳定版。
           </p>
         </div>
         <div className="product-card" aria-label="CineBar 产品界面示意">
@@ -105,6 +108,10 @@ export default function Home() {
         </div>
         <div>
           <p>片单和推荐偏好默认保存在本机。CineBar 不出售个人数据。</p>
+          <p>
+            社区评分使用仅保存在本机偏好中的匿名设备标识；服务端只保存其哈希，
+            每个作品仅可评分一次。
+          </p>
           <p>
             影片资料来自 TMDB，IMDb、烂番茄与 Metacritic 评分经 OMDb 提供，
             电视剧播出时间由 TVMaze 补充。CineBar 不提供盗版片源或非法下载。

@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-if [[ $# -ne 5 ]]; then
-  echo "Usage: $0 ARCHIVE DOWNLOAD_URL VERSION BUILD PUBLISHED_AT" >&2
+if [[ $# -ne 6 ]]; then
+  echo "Usage: $0 ARCHIVE DOWNLOAD_URL VERSION BUILD PUBLISHED_AT RELEASE_NOTES_FILE" >&2
   exit 64
 fi
 
@@ -11,9 +11,14 @@ download_url=$2
 version=$3
 build=$4
 published_at=$5
+release_notes_file=$6
 
 [[ -f "$archive" ]] || {
   echo "Archive does not exist: $archive" >&2
+  exit 66
+}
+[[ -f "$release_notes_file" ]] || {
+  echo "Release notes file does not exist: $release_notes_file" >&2
   exit 66
 }
 [[ "$download_url" == https://* ]] || {
@@ -82,6 +87,18 @@ xml_escape() {
     -e "s/'/\\&apos;/g"
 }
 
+release_notes_count=0
+while IFS= read -r release_note || [[ -n "$release_note" ]]; do
+  release_note=${release_note%$'\r'}
+  if [[ "$release_note" =~ [^[:space:]] ]]; then
+    ((release_notes_count += 1))
+  fi
+done < "$release_notes_file"
+[[ "$release_notes_count" -gt 0 ]] || {
+  echo "Release notes file must contain at least one non-empty line" >&2
+  exit 65
+}
+
 escaped_download_url=$(printf '%s' "$download_url" | xml_escape)
 escaped_version=$(printf '%s' "$version" | xml_escape)
 
@@ -117,7 +134,14 @@ trap cleanup EXIT
   printf '%s\n' '    <description>CineBar signed application updates</description>'
   printf '    <item>\n'
   printf '      <title>CineBar %s</title>\n' "$escaped_version"
-  printf '%s\n' '      <description>&lt;ul&gt;&lt;li&gt;新增经过 CineBar 独立签名验证的应用内更新&lt;/li&gt;&lt;li&gt;后续版本可在 CineBar 内安装并重新启动&lt;/li&gt;&lt;li&gt;Build 16 用户本次需要从 GitHub Releases 手动安装&lt;/li&gt;&lt;/ul&gt;</description>'
+  printf '%s' '      <description>&lt;ul&gt;'
+  while IFS= read -r release_note || [[ -n "$release_note" ]]; do
+    release_note=${release_note%$'\r'}
+    [[ "$release_note" =~ [^[:space:]] ]] || continue
+    escaped_release_note=$(printf '%s' "$release_note" | xml_escape)
+    printf '&lt;li&gt;%s&lt;/li&gt;' "$escaped_release_note"
+  done < "$release_notes_file"
+  printf '%s\n' '&lt;/ul&gt;</description>'
   printf '      <pubDate>%s</pubDate>\n' "$rfc822_published_at"
   printf '%s\n' '      <enclosure'
   printf '        url="%s"\n' "$escaped_download_url"

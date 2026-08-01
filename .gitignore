@@ -19,9 +19,7 @@ CineBar/.vendor/
 *.pkg
 *.zip
 
-# The current reviewed test package may be explicitly placed here.
-!dist/
-!dist/*.zip
+# Release ZIPs belong in GitHub Releases, not Git history.
 !dist/*.md
 
 # Locally compiled executables

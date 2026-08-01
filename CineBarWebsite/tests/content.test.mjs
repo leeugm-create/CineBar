@@ -63,6 +63,17 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(page, /VVVZUSU9QUJBW/);
 });
 
+test("discloses the current Build 18 test update and anonymous community-rating limit", async () => {
+  const page = await read("app/page.tsx");
+
+  assert.match(page, /0\.8\.3-test\.2（Build 18）/);
+  assert.match(page, /当前测试包可通过应用内更新安装并重新启动/);
+  assert.match(page, /匿名设备标识/);
+  assert.match(page, /每个作品仅可评分一次/);
+  assert.match(page, /不是正式稳定版/);
+  assert.doesNotMatch(page, /已经.*公证/);
+});
+
 test("contains accessible navigation and all required sections", async () => {
   const page = await read("app/page.tsx");
   for (const id of ["features", "install", "privacy", "support"]) {
