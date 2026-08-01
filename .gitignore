@@ -1,0 +1,27 @@
+.DS_Store
+.cache/
+.wrangler/
+.worktrees/
+
+# Local Cloudflare deployment bindings and credentials
+wrangler.toml
+!.example
+!wrangler.toml.example
+
+# macOS build products and historical packages
+build/
+build*/
+DerivedData/
+CineBar/.vendor/
+*.app/
+*.dSYM/
+*.dmg
+*.pkg
+*.zip
+
+# Release ZIPs belong in GitHub Releases, not Git history.
+!dist/*.md
+
+# Locally compiled executables
+CineBar-arm64*
+CineBar-x86_64*

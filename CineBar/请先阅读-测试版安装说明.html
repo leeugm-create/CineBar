@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CineBar 0.8.3 测试版安装说明</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      max-width: 820px;
+      margin: 40px auto;
+      padding: 0 24px 56px;
+      font: 16px/1.7 -apple-system, BlinkMacSystemFont, "PingFang SC",
+        "Helvetica Neue", sans-serif;
+    }
+    h1, h2 { line-height: 1.3; }
+    h1 { margin-bottom: 8px; }
+    h2 { margin-top: 34px; border-bottom: 1px solid #8885; padding-bottom: 8px; }
+    .notice, .warning {
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin: 18px 0;
+    }
+    .notice { background: #3478f622; border: 1px solid #3478f666; }
+    .warning { background: #ff3b3020; border: 1px solid #ff3b3066; }
+    li { margin: 8px 0; }
+    code { background: #8882; border-radius: 5px; padding: 2px 5px; }
+    .small { opacity: .72; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>CineBar 0.8.3 测试版安装说明</h1>
+  <p class="small">测试编号：0.8.3-test.2（Build 18）｜适用于 macOS 13 及以上</p>
+
+  <div class="warning">
+    <strong>请注意：</strong>这是用于功能验证的测试版本，不是正式发行版。
+    它尚未经过 Apple 公证，也没有上架 Mac App Store。请只使用从
+    开发者直接提供的完整 CineBar 测试 ZIP。
+  </div>
+
+  <h2>一、安装前准备</h2>
+  <ol>
+    <li>确认 Mac 系统版本为 macOS 13 Ventura 或更高版本。</li>
+    <li>如果已经运行旧版 CineBar，点击菜单栏 CineBar 图标，再点击左下角
+      “退出”，确保旧程序已经完全关闭。</li>
+    <li>下载后双击 ZIP 文件解压。你会看到 <code>CineBar.app</code> 和本说明。</li>
+  </ol>
+
+  <h2>二、安装 CineBar</h2>
+  <ol>
+    <li>打开 Finder，在左侧选择“应用程序”。</li>
+    <li>把解压得到的 <code>CineBar.app</code> 拖进“应用程序”文件夹。</li>
+    <li>如果系统询问是否替换旧版本，确认旧版已经退出后选择“替换”。</li>
+    <li>不要直接在 ZIP 压缩包或“下载”文件夹里长期运行程序。</li>
+  </ol>
+
+  <h2>三、第一次打开</h2>
+  <ol>
+    <li>在 Finder 的“应用程序”中找到 CineBar。</li>
+    <li><strong>按住 Control 键点击 CineBar，选择“打开”</strong>。</li>
+    <li>系统再次提示无法验证开发者时，继续选择“打开”。</li>
+    <li>程序启动后不会显示普通 Dock 窗口，请在屏幕顶部菜单栏寻找 CineBar
+      黑白图标。</li>
+  </ol>
+
+  <div class="notice">
+    如果没有出现“打开”按钮：进入“系统设置”→“隐私与安全性”，向下找到
+    CineBar 被阻止的提示，点击“仍要打开”，验证 Mac 密码或 Touch ID 后再试。
+    不需要、也不要关闭整个 macOS 安全保护功能。
+  </div>
+
+  <h2>四、更新</h2>
+  <ol>
+    <li>Build 16 用户需要先从 <a href="https://github.com/leeugm-create/CineBar/releases">GitHub Releases</a>
+      手动安装一次 Sparkle 版本（Build 17 或更新版本）。</li>
+    <li>完成这次迁移后，后续版本可在 CineBar 的“设置”→“更新”中检查、下载并安装。</li>
+    <li>每个更新包都会用 CineBar 内置的 EdDSA 公钥验证；签名不匹配的包不会安装。</li>
+    <li>本测试构建仍未经过 Apple 公证。首次安装的 macOS 安全确认与更新签名验证是
+      两个不同的步骤。</li>
+    <li>如果不希望启动时自动检查，在“设置”→“更新”关闭“启动时自动检查更新”；
+      仍可随时点击“立即检查”手动检查。</li>
+  </ol>
+
+  <h2>五、首次使用建议</h2>
+  <ol>
+    <li>点击菜单栏 CineBar 图标打开主面板。</li>
+    <li>进入“设置”检查语言、白天/夜晚外观、玻璃背景不透明度、自动隐藏时间和
+      是否允许移动窗口。背景不透明度范围为 50%–100%，默认 85%，不会降低文字、
+      海报和按钮的清晰度。</li>
+    <li>系统请求通知权限时请选择“允许”，否则上映和剧集提醒无法弹出。</li>
+    <li>如需开机后自动运行，可在“设置”→“通用”中开启登录启动。</li>
+    <li>在双显示器环境下，请直接点击当前屏幕上的菜单栏图标；面板应出现在
+      被点击图标所在的屏幕。</li>
+    <li>预览使用者<strong>无需域名、Cloudflare、API Key 或数据库</strong>，
+      也无需注册社区账号或部署任何项目。影片资料、多重评分、社区评分和品牌
+      分享服务均已配置。</li>
+    <li>“即将上映”的每一行都会显示日期；没有确定日期时显示
+      “上映日期待定”。</li>
+  </ol>
+
+  <h2>六、一次性评分说明</h2>
+  <ul>
+    <li>电影和电视剧使用 0–10 分制，每次调整 0.5 分。</li>
+    <li>同一台 Mac 的同一份 CineBar 安装，对同一作品只能评分一次。</li>
+    <li><strong>评分提交后不能修改，也不能删除，请确认分数后再提交。</strong></li>
+    <li>提交成功后，评分编辑区域会消失，“我的评分”会显示在多重评分末尾。</li>
+    <li>更换电脑、重装系统或清除本机身份数据后，可能会被识别为新的安装实例。</li>
+    <li>匿名安装编号只保存在 CineBar 本地偏好中，不会读取登录钥匙串，也不会
+      要求输入钥匙串密码。</li>
+  </ul>
+
+  <h2>七、分享功能</h2>
+  <ul>
+    <li>一个“分享”按钮会直接打开 macOS 系统分享面板。</li>
+    <li>CineBar 只向系统提交一个网页链接，因此微信等提供兼容原生分享扩展的
+      应用可以出现在面板中；系统的“拷贝”项目是没有原生分享扩展时的备用方式。</li>
+    <li>通过 Chrome 安装的 X 网页应用不会作为 macOS 原生分享服务出现；不保证
+      X 或其他所有第三方应用都会出现在系统分享面板中。</li>
+    <li>电影链接使用 <code>/m/编号</code>，电视剧链接使用
+      <code>/t/编号</code>，不会附带很长的影片资料参数。</li>
+    <li>分享页最多显示六位主要演员，并链接到 CineBar 的 GitHub Releases
+      页面。</li>
+    <li>影片、社区评分和分享服务使用 <code>cinebar.cc</code> 自定义域名，
+      不依赖旧测试服务域名，不要求代理或 VPN。网络暂时异常时会
+      优先显示上次成功加载的真实影片列表。</li>
+    <li>当前没有香港备用服务器；单一网络测试成功不能代表所有中国大陆运营商。</li>
+    <li>测试版分享服务可能临时维护；这不会影响本地片单和影片浏览。</li>
+    <li>分享页只展示影片资料，不提供非法下载资源。</li>
+  </ul>
+
+  <h2>八、退出与卸载</h2>
+  <p><strong>退出：</strong>点击菜单栏 CineBar 图标，再点击面板左下角带电源图标的
+    “退出”。仅关闭面板不会退出程序。</p>
+  <p><strong>卸载：</strong></p>
+  <ol>
+    <li>先按上述方法退出 CineBar。</li>
+    <li>打开 Finder“应用程序”，把 CineBar 拖到废纸篓。</li>
+    <li>如果开启过登录启动，可先在 CineBar 设置中关闭；程序已删除时，也可在
+      “系统设置”→“通用”→“登录项”中移除。</li>
+  </ol>
+
+  <h2>九、常见问题</h2>
+  <p><strong>菜单栏没有图标：</strong>检查程序是否已经运行；菜单栏空间不足或
+    刘海屏隐藏图标时，先退出部分菜单栏应用再查看。</p>
+  <p><strong>面板出现在错误屏幕：</strong>关闭面板后，在目标屏幕顶部直接点击
+    CineBar 菜单栏图标重新打开，并把问题和显示器排列截图反馈给测试人员。</p>
+  <p><strong>影片资料加载失败：</strong>确认网络正常，在详情页点击刷新；短时间内
+    仍失败可能是数据服务限流或维护。</p>
+  <p><strong>程序提示已损坏：</strong>请删除该副本，并向开发者重新取得完整测试
+    ZIP。不要从不明网盘或第三方重新打包的网站安装。</p>
+  <p><strong>系统要求验证 Mac 密码或 Touch ID：</strong>第一次通过“隐私与安全性”
+    允许未公证测试版时可能出现，这是 macOS 安全确认；CineBar 本身不会要求登录
+    钥匙串密码。</p>
+
+  <div class="notice">
+    反馈问题时请提供：Mac 型号、macOS 版本、CineBar 版本、是否双屏、复现步骤和
+    截图。请勿在截图中泄露邮箱、API Key 或其他隐私信息。
+  </div>
+</body>
+</html>

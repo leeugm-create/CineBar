@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>zh_CN</string>
+    <key>CFBundleDisplayName</key>
+    <string>CineBar</string>
+    <key>CFBundleIconFile</key>
+    <string>CineBar.icns</string>
+    <key>CFBundleExecutable</key>
+    <string>CineBar</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.indiedev.cinebar</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+        <string>zh-Hans</string>
+        <string>zh-Hant</string>
+        <string>en</string>
+        <string>ja</string>
+        <string>ko</string>
+    </array>
+    <key>CFBundleName</key>
+    <string>CineBar</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.8.3</string>
+    <key>CFBundleVersion</key>
+    <string>18</string>
+    <key>CineBarCommunityURL</key>
+    <string>https://community.cinebar.cc</string>
+    <key>CineBarCommunityBackupURLs</key>
+    <array/>
+    <key>CineBarCommunityPublicKey</key>
+    <string>8e9956c2ccd76b7d1ebb972984fc04c6f761e2fd68b960bd</string>
+    <key>CineBarShareURL</key>
+    <string>https://share.cinebar.cc</string>
+    <key>CineBarShareBackupURLs</key>
+    <array/>
+    <key>CineBarDataProxyURL</key>
+    <string>https://api.cinebar.cc</string>
+    <key>CineBarDataBackupURLs</key>
+    <array/>
+    <key>CineBarSupportURL</key>
+    <string></string>
+    <key>LSMinimumSystemVersion</key>
+    <string>13.0</string>
+    <key>LSUIElement</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+    </dict>
+    <key>SUFeedURL</key>
+    <string>https://cinebar.cc/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>R7z+aK5MYtIFkCD9UgYM3sqn3EtwYZn84Piq3l0eVlk=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAutomaticallyUpdate</key>
+    <false/>
+</dict>
+</plist>

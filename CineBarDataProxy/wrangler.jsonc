@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinebar-data",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-25",
+  "routes": [
+    { "pattern": "api.cinebar.cc", "custom_domain": true }
+  ],
+  "secrets": {
+    "required": ["TMDB_TOKEN", "OMDB_API_KEY"]
+  }
+}
