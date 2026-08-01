@@ -99,6 +99,9 @@ export default function Home() {
           GitHub Releases 下载；用户无需部署 Cloudflare、安装 Node.js 或申请 API
           Key。
         </p>
+        <p className="notice">
+          安装前请验证 CineBar 独立签名；独立签名不等于 Apple 公证。
+        </p>
       </section>
 
       <section className="section split" id="privacy">

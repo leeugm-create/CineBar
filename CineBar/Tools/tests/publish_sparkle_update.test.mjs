@@ -93,12 +93,28 @@ test("escapes reviewed release notes and rejects an unavailable notes file atomi
   const fixture = createFixture();
   t.after(() => rmSync(fixture.root, { recursive: true, force: true }));
 
-  writeFileSync(fixture.releaseNotes, "安全修复 & <兼容性>\n");
+  writeFileSync(fixture.releaseNotes, "安全修复 <script>alert(1)</script> & 兼容性\n");
   assert.equal(fixture.publish(17).status, 0);
   const description = fixture.xpath(
     'string(//*[local-name()="item"]/*[local-name()="description"])',
   );
-  assert.match(description, /安全修复 & <兼容性>/);
+  const descriptionFragment = join(fixture.root, "description-fragment.xml");
+  writeFileSync(descriptionFragment, `<root>${description}</root>`);
+  assert.doesNotThrow(() =>
+    execFileSync("xmllint", ["--noout", descriptionFragment], {
+      encoding: "utf8",
+    }),
+  );
+  const fragmentXPath = (expression) =>
+    execFileSync("xmllint", ["--xpath", expression, descriptionFragment], {
+      encoding: "utf8",
+    }).trimEnd();
+  assert.equal(fragmentXPath("count(/root/ul/li)"), "1");
+  assert.equal(fragmentXPath("count(/root//script)"), "0");
+  assert.equal(
+    fragmentXPath("string(/root/ul/li)"),
+    "安全修复 <script>alert(1)</script> & 兼容性",
+  );
   const before = readFileSync(fixture.appcast);
 
   const result = fixture.publish(18, "2026-07-31", join(fixture.root, "missing.txt"));

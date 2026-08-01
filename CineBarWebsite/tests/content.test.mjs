@@ -72,6 +72,8 @@ test("discloses the current Build 18 test update and anonymous community-rating 
   assert.match(page, /每个作品仅可评分一次/);
   assert.match(page, /不是正式稳定版/);
   assert.doesNotMatch(page, /已经.*公证/);
+  assert.match(page, /安装前请验证 CineBar 独立签名/);
+  assert.match(page, /不等于 Apple 公证/);
 });
 
 test("contains accessible navigation and all required sections", async () => {

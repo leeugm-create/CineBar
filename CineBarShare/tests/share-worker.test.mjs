@@ -231,18 +231,34 @@ test("redirects plain HTTP requests to the same HTTPS URL", async () => {
   );
 });
 
-test("publishes the current Build 18 test.2 manifest and retains Build 16 migration guidance", async () => {
+test("publishes the Build 18 GitHub Releases migration manifest consistent with the app and appcast", async () => {
   const response = await fetchPage("/updates/latest.json");
   const body = await response.json();
+  const infoPlist = readFileSync(
+    new URL("../../CineBar/Info.plist", import.meta.url),
+    "utf8",
+  );
+  const appcast = readFileSync(
+    new URL("../../CineBarWebsite/public/appcast.xml", import.meta.url),
+    "utf8",
+  );
+  const plistValue = (key) =>
+    infoPlist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`))?.[1];
+  const appcastBuild = appcast.match(/sparkle:version="(\d+)"/)?.[1];
+  const appcastDate = appcast.match(/<pubDate>[^,]+, (\d{2}) (\w{3}) (\d{4})/)?.slice(1);
 
   assert.equal(response.status, 200);
-  assert.equal(body.version, "0.8.3-test.2");
+  assert.equal(body.version, "0.8.3");
   assert.equal(body.build, 18);
   assert.equal(body.published_at, "2026-07-31");
   assert.equal(
     body.download_url,
-    "https://github.com/leeugm-create/CineBar/releases/download/v0.8.3-test.2/CineBar-0.8.3-test-build-18-universal.zip",
+    "https://github.com/leeugm-create/CineBar/releases",
   );
+  assert.equal(body.version, plistValue("CFBundleShortVersionString"));
+  assert.equal(String(body.build), plistValue("CFBundleVersion"));
+  assert.equal(String(body.build), appcastBuild);
+  assert.deepEqual(appcastDate, ["31", "Jul", "2026"]);
   assert.ok(
     body.notes.includes(
       "Build 16 用户本次需要从 GitHub Releases 手动安装",

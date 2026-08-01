@@ -87,6 +87,10 @@ xml_escape() {
     -e "s/'/\\&apos;/g"
 }
 
+description_text_escape() {
+  printf '%s' "$1" | xml_escape | xml_escape
+}
+
 release_notes_count=0
 while IFS= read -r release_note || [[ -n "$release_note" ]]; do
   release_note=${release_note%$'\r'}
@@ -138,7 +142,7 @@ trap cleanup EXIT
   while IFS= read -r release_note || [[ -n "$release_note" ]]; do
     release_note=${release_note%$'\r'}
     [[ "$release_note" =~ [^[:space:]] ]] || continue
-    escaped_release_note=$(printf '%s' "$release_note" | xml_escape)
+    escaped_release_note=$(description_text_escape "$release_note")
     printf '&lt;li&gt;%s&lt;/li&gt;' "$escaped_release_note"
   done < "$release_notes_file"
   printf '%s\n' '&lt;/ul&gt;</description>'
