@@ -55,26 +55,32 @@ final class LocalLibraryStore: ObservableObject {
             throw LocalLibraryStoreError.entryNotFound
         }
         let fileURL = url.standardizedFileURL
-        let fileSignature = try signature(for: fileURL)
         let oldEntry = entries[entryIndex]
-        guard signaturesMatch(oldEntry.signature, fileSignature) else {
-            throw LocalLibraryStoreError.signatureMismatch
-        }
-        guard let location = folderLocation(containing: fileURL) else {
-            throw LocalLibraryStoreError.fileOutsideAuthorizedFolders
-        }
-
-        var updatedEntries = entries
-        updatedEntries[entryIndex].folderID = location.folderID
-        updatedEntries[entryIndex].relativePath = location.relativePath
-        updatedEntries[entryIndex].signature = fileSignature
-        updatedEntries[entryIndex].state = .available
-        try persistence.save(LocalLibrarySnapshot(
+        try Self.withAuthorizedFolderScope(
             folders: folders,
-            entries: updatedEntries
-        ))
-        entries = updatedEntries
-        message = nil
+            containing: fileURL
+        ) { folder, resolvedFolder in
+            let fileSignature = try signature(for: fileURL)
+            guard signaturesMatch(oldEntry.signature, fileSignature) else {
+                throw LocalLibraryStoreError.signatureMismatch
+            }
+
+            let rootComponents = resolvedFolder.url.standardizedFileURL.pathComponents
+            let relativePath = fileURL.pathComponents
+                .dropFirst(rootComponents.count)
+                .joined(separator: "/")
+            var updatedEntries = entries
+            updatedEntries[entryIndex].folderID = folder.id
+            updatedEntries[entryIndex].relativePath = relativePath
+            updatedEntries[entryIndex].signature = fileSignature
+            updatedEntries[entryIndex].state = .available
+            try persistence.save(LocalLibrarySnapshot(
+                folders: folders,
+                entries: updatedEntries
+            ))
+            entries = updatedEntries
+            message = nil
+        }
     }
 
     func setWatched(entryID: UUID, value: Bool) {
@@ -171,26 +177,27 @@ final class LocalLibraryStore: ObservableObject {
         }
     }
 
-    private func folderLocation(containing fileURL: URL) -> (
-        folderID: UUID,
-        relativePath: String
-    )? {
+    static func withAuthorizedFolderScope<Result>(
+        folders: [LocalLibraryFolder],
+        containing fileURL: URL,
+        operation: (LocalLibraryFolder, LocalLibraryResolvedFolder) throws -> Result
+    ) throws -> Result {
         for folder in folders {
             guard let resolved = try? LocalLibraryFolderBookmark.resolve(
                 folder.bookmarkData
             ) else { continue }
-            defer { resolved.stopAccessing() }
             let rootURL = resolved.url.standardizedFileURL
             let rootComponents = rootURL.pathComponents
             let fileComponents = fileURL.pathComponents
             guard fileComponents.starts(with: rootComponents),
-                  fileComponents.count > rootComponents.count else { continue }
-            return (
-                folder.id,
-                fileComponents.dropFirst(rootComponents.count).joined(separator: "/")
-            )
+                  fileComponents.count > rootComponents.count else {
+                resolved.stopAccessing()
+                continue
+            }
+            defer { resolved.stopAccessing() }
+            return try operation(folder, resolved)
         }
-        return nil
+        throw LocalLibraryStoreError.fileOutsideAuthorizedFolders
     }
 
     private func signature(for fileURL: URL) throws -> LocalLibraryFileSignature {

@@ -869,6 +869,19 @@ struct CineBarRegressionBehaviorTests {
         try! firstStore.addFolder(url: storeRootURL)
         try! firstStore.addFolder(url: storeRootURL)
         precondition(firstStore.folders.count == 1)
+        var signatureReadWithinFolderScope = false
+        try! LocalLibraryStore.withAuthorizedFolderScope(
+            folders: firstStore.folders,
+            containing: originalURL
+        ) { _, resolvedFolder in
+            precondition(
+                resolvedFolder.url.standardizedFileURL ==
+                    storeRootURL.standardizedFileURL
+            )
+            _ = try originalURL.resourceValues(forKeys: [.fileSizeKey])
+            signatureReadWithinFolderScope = true
+        }
+        precondition(signatureReadWithinFolderScope)
         await firstStore.refresh()
         precondition(firstStore.entries.map(\.relativePath) == ["Original.mkv"])
         let storedEntryID = firstStore.entries[0].id
@@ -887,6 +900,19 @@ struct CineBarRegressionBehaviorTests {
         firstStore.markOpened(entryID: storedEntryID)
         let openedAt = firstStore.entries[0].lastOpenedAt
         precondition(openedAt != nil)
+
+        let mismatchedURL = storeRootURL.appendingPathComponent("Different.mkv")
+        FileManager.default.createFile(
+            atPath: mismatchedURL.path,
+            contents: Data("different".utf8)
+        )
+        let entryBeforeRejectedReattach = firstStore.entries[0]
+        do {
+            try firstStore.reattach(entryID: storedEntryID, url: mismatchedURL)
+            preconditionFailure("A different file must not be reattached.")
+        } catch {}
+        precondition(firstStore.entries[0] == entryBeforeRejectedReattach)
+        try! FileManager.default.removeItem(at: mismatchedURL)
 
         let renamedURL = storeRootURL.appendingPathComponent("Renamed.mkv")
         try! FileManager.default.moveItem(at: originalURL, to: renamedURL)
