@@ -272,4 +272,8 @@ test("keeps only the public share hostname", () => {
   const patterns = config.routes.map((route) => route.pattern);
   assert.deepEqual(patterns, ["share.cinebar.cc"]);
   assert.equal(config.routes[0].custom_domain, true);
+  assert.equal(
+    config.vars.CINEBAR_DOWNLOAD_URL,
+    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
+  );
 });
