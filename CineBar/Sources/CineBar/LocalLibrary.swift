@@ -117,7 +117,7 @@ enum LocalLibraryFilenameParser {
 enum LocalLibraryEntryMerge {
     static func key(folderID: UUID, relativePath: String) -> String {
         let normalizedPath = relativePath
-            .replacingOccurrences(of: "\\\\", with: "/")
+            .replacingOccurrences(of: "\\", with: "/")
             .split(separator: "/")
             .reduce(into: [Substring]()) { components, component in
                 switch component {
