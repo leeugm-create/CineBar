@@ -119,7 +119,7 @@ const sharePage = (url, movieID) => {
   <main>
     <header>
       <img class="logo" src="${logoURL}" alt="CineBar Logo">
-      <div><div class="brand">CineBar</div><div class="tagline">今晚看什么？</div></div>
+      <div><div class="brand">CineBar</div><div class="tagline">找到下一部好片</div></div>
     </header>
     <section class="card">
       ${safePoster

@@ -358,6 +358,111 @@ struct CineBarRegressionBehaviorTests {
         precondition(unratedPresentation.officialValue == "未分级")
         precondition(unratedPresentation.cineBarValue == "未分级")
 
+        precondition(CertificationCardMetrics.minWidth < 128)
+        precondition(CertificationCardMetrics.minHeight < 52)
+        precondition(CertificationCardMetrics.width <= 130)
+        precondition(CertificationCardMetrics.height <= 44)
+
+        let calendarDetails = CalendarReleaseEventComposer.make(
+            title: "奥德赛",
+            dateText: "2026-08-14",
+            region: "CN",
+            language: .zhCN
+        )
+        precondition(calendarDetails?.title == "《奥德赛》上映")
+        precondition(calendarDetails?.dateText == "2026-08-14")
+        precondition(calendarDetails?.notes.contains("2026-08-14") == true)
+        precondition(calendarDetails?.notes.contains("CN") == true)
+        precondition(
+            CalendarReleaseEventComposer.shouldOffer(
+                dateText: "2026-08-14",
+                today: "2026-08-14"
+            )
+        )
+        precondition(
+            !CalendarReleaseEventComposer.shouldOffer(
+                dateText: "2026-08-14",
+                today: "2026-08-15"
+            )
+        )
+        precondition(
+            CalendarReleaseEventComposer.make(
+                title: "已上映影片",
+                dateText: "2026-08-14",
+                region: "GLOBAL",
+                language: .zhCN,
+                today: "2026-08-15"
+            ) == nil
+        )
+        precondition(
+            CalendarReleaseEventComposer.make(
+                title: "无效日期",
+                dateText: "2026-02-30",
+                region: "CN",
+                language: .zhCN
+            ) == nil
+        )
+
+        let personImage = PersonImage(
+            filePath: "/actor.jpg",
+            width: 1_000,
+            height: 1_500,
+            voteAverage: 5
+        )
+        precondition(
+            personImage.fullSizeURL?.absoluteString ==
+                "https://image.tmdb.org/t/p/original/actor.jpg"
+        )
+        let movieStill = MovieStill(
+            filePath: "/still.jpg",
+            width: 1_920,
+            height: 1_080,
+            voteAverage: 5,
+            voteCount: 10
+        )
+        precondition(
+            movieStill.fullSizeURL?.absoluteString ==
+                "https://image.tmdb.org/t/p/original/still.jpg"
+        )
+        precondition(
+            PhotoLightboxNavigation.adjacentIndex(
+                currentIndex: 1,
+                offset: -1,
+                count: 3
+            ) == 0
+        )
+        precondition(
+            PhotoLightboxNavigation.adjacentIndex(
+                currentIndex: 1,
+                offset: 1,
+                count: 3
+            ) == 2
+        )
+        precondition(
+            PhotoDownloadFilename.suggestedName(
+                for: URL(string: "https://image.tmdb.org/t/p/original/actor.jpg")!
+            ) == "CineBar-actor.jpg"
+        )
+        precondition(
+            PhotoDownloadFilename.suggestedName(
+                for: URL(string: "https://image.tmdb.org/t/p/original/still")!
+            ) == "CineBar-still.jpg"
+        )
+        precondition(
+            PhotoLightboxNavigation.adjacentIndex(
+                currentIndex: 0,
+                offset: -1,
+                count: 3
+            ) == nil
+        )
+        precondition(
+            PhotoLightboxNavigation.adjacentIndex(
+                currentIndex: 2,
+                offset: 1,
+                count: 3
+            ) == nil
+        )
+
         precondition(GlassBackgroundOpacity.normalized(nil) == 0.85)
         precondition(GlassBackgroundOpacity.normalized(0.2) == 0.5)
         precondition(GlassBackgroundOpacity.normalized(0.73) == 0.73)
@@ -388,19 +493,19 @@ struct CineBarRegressionBehaviorTests {
             UpcomingReleasePresentation.make(
                 rawValue: "2026-07-31",
                 language: .zhCN
-            ) == .dated("2026年7月31日")
+            ) == .dated("2026年7月31日（周五）")
         )
         precondition(
             UpcomingReleasePresentation.make(
                 rawValue: "2026-07-31",
                 language: .zhTW
-            ) == .dated("2026年7月31日")
+            ) == .dated("2026年7月31日（週五）")
         )
         precondition(
             UpcomingReleasePresentation.make(
                 rawValue: "2026-07-31",
                 language: .enUS
-            ) == .dated("Jul 31, 2026")
+            ) == .dated("Fri, Jul 31, 2026")
         )
         precondition(
             UpcomingReleasePresentation.make(
@@ -437,7 +542,7 @@ struct CineBarRegressionBehaviorTests {
                 section: .upcoming,
                 rawValue: "2026-07-31",
                 language: .zhCN
-            ) == .dated("2026年7月31日")
+            ) == .dated("2026年7月31日（周五）")
         )
         precondition(
             MovieRowPresentation.upcomingRelease(
@@ -445,6 +550,88 @@ struct CineBarRegressionBehaviorTests {
                 rawValue: "2026-07-31",
                 language: .zhCN
             ) == nil
+        )
+
+        let releaseEvents = [
+            MovieReleaseEvent(
+                type: 3,
+                releaseDate: "2024-07-30T00:00:00.000Z",
+                certification: nil,
+                note: "首映"
+            ),
+            MovieReleaseEvent(
+                type: 3,
+                releaseDate: "2026-08-14T00:00:00.000Z",
+                certification: nil,
+                note: "中国大陆重映"
+            )
+        ]
+        precondition(
+            MovieReleaseDatePolicy.preferredDate(
+                from: releaseEvents,
+                today: "2026-08-02"
+            ) == "2026-08-14"
+        )
+        precondition(
+            MovieReleaseDatePolicy.preferredDate(
+                from: releaseEvents,
+                today: "2026-08-20"
+            ) == "2026-08-14"
+        )
+
+        let earlierUpcomingMovie = Movie(
+            id: 1,
+            title: "Earlier",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2026-07-30",
+            localizedReleaseDate: "2026-08-14",
+            voteAverage: 7,
+            voteCount: 1
+        )
+        let laterUpcomingMovie = Movie(
+            id: 2,
+            title: "Later",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2026-08-20",
+            localizedReleaseDate: "2026-08-20",
+            voteAverage: 7,
+            voteCount: 1
+        )
+        precondition(
+            UpcomingMovieSorting.sorted([
+                laterUpcomingMovie,
+                earlierUpcomingMovie
+            ]).map(\.id) == [1, 2]
+        )
+        let undatedUpcomingMovie = Movie(
+            id: 3,
+            title: "Undated",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2026-07-01",
+            localizedReleaseDate: nil,
+            voteAverage: 10,
+            voteCount: 1
+        )
+        precondition(
+            UpcomingMovieSorting.sorted([
+                undatedUpcomingMovie,
+                laterUpcomingMovie
+            ]).map(\.id) == [2, 3]
+        )
+
+        precondition(
+            MainlandTrailerPlatform.bilibili.url(for: "奥德赛 预告")?.host
+                == "search.bilibili.com"
+        )
+        precondition(
+            MainlandTrailerPlatform.tencentVideo.url(for: "奥德赛 预告")?.host
+                == "v.qq.com"
         )
 
         let moviePayload = SharePayload(
@@ -1016,12 +1203,14 @@ struct CineBarRegressionBehaviorTests {
                     : "/Applications/VLC.app")
             },
             openWithApplication: { _, applicationURL in
+                await Task.yield()
                 attemptedPlayers.append(applicationURL.lastPathComponent)
                 return applicationURL.lastPathComponent == "VLC.app"
             },
             openSystem: { _ in false }
         )
-        precondition(fallbackLauncher.open(fileURL: encodedFileURL))
+        let didFallback = await fallbackLauncher.open(fileURL: encodedFileURL)
+        precondition(didFallback)
         precondition(attemptedPlayers == ["IINA.app", "VLC.app"])
 
         let exactMovie = Movie(

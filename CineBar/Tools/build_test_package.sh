@@ -35,6 +35,7 @@ xcrun swiftc \
   -target arm64-apple-macosx13.0 \
   -F "$sparkle_dir" \
   -framework Sparkle \
+  -framework EventKit \
   -Xlinker -rpath \
   -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \
@@ -47,6 +48,7 @@ xcrun swiftc \
   -target x86_64-apple-macosx13.0 \
   -F "$sparkle_dir" \
   -framework Sparkle \
+  -framework EventKit \
   -Xlinker -rpath \
   -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \
@@ -90,6 +92,9 @@ codesign --verify --deep --strict "$app_bundle"
 
 cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
+if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
+  cp -R "$app_source_dir/ReleaseNotes" "$delivery_dir/"
+fi
 
 mkdir -p "$dist_dir"
 rm -f "$output_zip"

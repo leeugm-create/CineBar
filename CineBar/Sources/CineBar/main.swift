@@ -1,9 +1,11 @@
 import AppKit
 import Combine
+import EventKit
 import Foundation
 import ServiceManagement
 import SwiftUI
 import UserNotifications
+import UniformTypeIdentifiers
 import WebKit
 
 private func copyToPasteboard(_ text: String) {
@@ -67,6 +69,61 @@ private func providerSearchURL(
     return components.url
 }
 
+enum MainlandTrailerPlatform: String, CaseIterable, Identifiable {
+    case bilibili
+    case tencentVideo
+    case youku
+    case iqiyi
+
+    var id: String { rawValue }
+
+    func title(language: AppLanguage) -> String {
+        switch (self, language) {
+        case (.bilibili, _): return "哔哩哔哩"
+        case (.tencentVideo, .zhCN): return "腾讯视频"
+        case (.tencentVideo, .zhHK), (.tencentVideo, .zhTW): return "騰訊視頻"
+        case (.tencentVideo, .enUS): return "Tencent Video"
+        case (.tencentVideo, .jaJP): return "Tencent Video"
+        case (.tencentVideo, .koKR): return "Tencent Video"
+        case (.youku, .zhCN): return "优酷"
+        case (.youku, .zhHK), (.youku, .zhTW): return "優酷"
+        case (.youku, _): return "Youku"
+        case (.iqiyi, .zhCN): return "爱奇艺"
+        case (.iqiyi, .zhHK), (.iqiyi, .zhTW): return "愛奇藝"
+        case (.iqiyi, _): return "iQIYI"
+        }
+    }
+
+    func url(for title: String) -> URL? {
+        let query = title.localizedCaseInsensitiveContains("预告") ||
+            title.localizedCaseInsensitiveContains("trailer")
+            ? title
+            : "\(title) 预告"
+        switch self {
+        case .bilibili:
+            return providerSearchURL(
+                providerName: "bilibili",
+                title: query
+            )
+        case .tencentVideo:
+            return providerSearchURL(
+                providerName: "腾讯视频",
+                title: query
+            )
+        case .youku:
+            return providerSearchURL(
+                providerName: "优酷",
+                title: query
+            )
+        case .iqiyi:
+            return providerSearchURL(
+                providerName: "爱奇艺",
+                title: query
+            )
+        }
+    }
+}
+
 struct Movie: Codable, Identifiable, Hashable {
     let id: Int
     let title: String
@@ -74,6 +131,8 @@ struct Movie: Codable, Identifiable, Hashable {
     let overview: String
     let posterPath: String?
     let releaseDate: String?
+    var localizedReleaseDate: String? = nil
+    var localizedReleaseNote: String? = nil
     let voteAverage: Double
     let voteCount: Int
 
@@ -82,6 +141,8 @@ struct Movie: Codable, Identifiable, Hashable {
         case originalTitle = "original_title"
         case posterPath = "poster_path"
         case releaseDate = "release_date"
+        case localizedReleaseDate = "cinebar_localized_release_date"
+        case localizedReleaseNote = "cinebar_localized_release_note"
         case voteAverage = "vote_average"
         case voteCount = "vote_count"
     }
@@ -144,6 +205,46 @@ struct MoviePageResult {
     let movies: [Movie]
     let page: Int
     let totalPages: Int
+}
+
+enum UpcomingMovieSorting {
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
+        return formatter
+    }()
+
+    static func sorted(_ movies: [Movie]) -> [Movie] {
+        movies.sorted { lhs, rhs in
+            let leftDate = dateFormatter.date(
+                from: MovieReleaseDatePolicy.normalizedDate(
+                    lhs.localizedReleaseDate ?? ""
+                ) ?? ""
+            )
+            let rightDate = dateFormatter.date(
+                from: MovieReleaseDatePolicy.normalizedDate(
+                    rhs.localizedReleaseDate ?? ""
+                ) ?? ""
+            )
+            switch (leftDate, rightDate) {
+            case let (left?, right?) where left != right:
+                return left < right
+            case (_?, nil):
+                return true
+            case (nil, _?):
+                return false
+            default:
+                if lhs.voteAverage != rhs.voteAverage {
+                    return lhs.voteAverage > rhs.voteAverage
+                }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            }
+        }
+    }
 }
 
 enum CatalogSortMode: String, CaseIterable, Identifiable {
@@ -879,6 +980,52 @@ struct PersonImage: Codable, Identifiable, Hashable {
     var imageURL: URL? {
         URL(string: "https://image.tmdb.org/t/p/w342\(filePath)")
     }
+
+    var fullSizeURL: URL? {
+        URL(string: "https://image.tmdb.org/t/p/original\(filePath)")
+    }
+}
+
+enum PhotoLightboxNavigation {
+    static func adjacentIndex(
+        currentIndex: Int,
+        offset: Int,
+        count: Int
+    ) -> Int? {
+        guard count > 0 else { return nil }
+        let nextIndex = currentIndex + offset
+        guard (0..<count).contains(nextIndex) else { return nil }
+        return nextIndex
+    }
+}
+
+enum PhotoDownloadFilename {
+    static func suggestedName(for url: URL) -> String {
+        let candidate = url.lastPathComponent
+        guard !candidate.isEmpty, candidate != "/" else {
+            return "CineBar-photo.jpg"
+        }
+
+        let extensionName = (candidate as NSString).pathExtension
+        if extensionName.isEmpty {
+            return "CineBar-\(candidate).jpg"
+        }
+        return "CineBar-\(candidate)"
+    }
+}
+
+enum PersonPhotoNavigation {
+    static func adjacentIndex(
+        currentIndex: Int,
+        offset: Int,
+        count: Int
+    ) -> Int? {
+        PhotoLightboxNavigation.adjacentIndex(
+            currentIndex: currentIndex,
+            offset: offset,
+            count: count
+        )
+    }
 }
 
 struct PersonImagesResponse: Codable {
@@ -1077,10 +1224,12 @@ struct MovieReleaseEvent: Codable {
     let type: Int
     let releaseDate: String
     let certification: String?
+    let note: String?
 
     enum CodingKeys: String, CodingKey {
         case type, certification
         case releaseDate = "release_date"
+        case note
     }
 }
 
@@ -1098,11 +1247,213 @@ struct MovieReleaseDatesResponse: Codable {
     let results: [CountryReleaseDates]
 }
 
+enum MovieReleaseDatePolicy {
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.isLenient = false
+        return formatter
+    }()
+
+    static func normalizedDate(_ rawValue: String) -> String? {
+        let value = String(rawValue.prefix(10))
+        guard value.count == 10,
+              let date = dateFormatter.date(from: value),
+              dateFormatter.string(from: date) == value
+        else { return nil }
+        return value
+    }
+
+    static func todayString(_ date: Date = Date()) -> String {
+        dateFormatter.string(from: date)
+    }
+
+    static func preferredDate(
+        from events: [MovieReleaseEvent],
+        today: String? = nil
+    ) -> String? {
+        let dates = events
+            .filter { (1...3).contains($0.type) }
+            .compactMap { normalizedDate($0.releaseDate) }
+        return preferredDate(from: dates, today: today)
+    }
+
+    static func preferredDate(
+        from dates: [String],
+        today: String? = nil
+    ) -> String? {
+        let sorted = Set(dates.compactMap(normalizedDate)).sorted()
+        guard !sorted.isEmpty else { return nil }
+        let reference = today ?? todayString()
+        return sorted.first(where: { $0 >= reference }) ?? sorted.last
+    }
+}
+
 struct MovieReleaseSummary {
     let globalPremiere: String?
     let localizedRelease: String?
+    let localizedReleaseDates: [String]
     let localizedRegion: String
     let contentRating: ContentRatingSummary?
+}
+
+struct CalendarReleaseEventDetails: Equatable {
+    let title: String
+    let dateText: String
+    let region: String
+    let notes: String
+    let alarmOffset: TimeInterval
+}
+
+enum CalendarReleaseEventComposer {
+    static func shouldOffer(
+        dateText: String,
+        today: String? = nil
+    ) -> Bool {
+        guard let normalizedDate = MovieReleaseDatePolicy.normalizedDate(
+            dateText
+        ) else { return false }
+        let reference = MovieReleaseDatePolicy.normalizedDate(
+            today ?? MovieReleaseDatePolicy.todayString()
+        )
+        guard let reference else { return false }
+        return normalizedDate >= reference
+    }
+
+    static func make(
+        title: String,
+        dateText: String,
+        region: String,
+        language: AppLanguage,
+        today: String? = nil
+    ) -> CalendarReleaseEventDetails? {
+        guard let normalizedDate = MovieReleaseDatePolicy.normalizedDate(
+            dateText
+        ), shouldOffer(dateText: normalizedDate, today: today) else {
+            return nil
+        }
+
+        let eventTitle: String
+        let notes: String
+        switch language {
+        case .zhCN:
+            eventTitle = "《\(title)》上映"
+            notes = "CineBar 上映提醒\n地区：\(region)\n上映日期：\(normalizedDate)"
+        case .zhHK, .zhTW:
+            eventTitle = "《\(title)》上映"
+            notes = "CineBar 上映提醒\n地區：\(region)\n上映日期：\(normalizedDate)"
+        case .enUS:
+            eventTitle = "\(title) release"
+            notes = "CineBar release reminder\nRegion: \(region)\nRelease date: \(normalizedDate)"
+        case .jaJP:
+            eventTitle = "\(title) 公開"
+            notes = "CineBar 公開リマインダー\n地域：\(region)\n公開日：\(normalizedDate)"
+        case .koKR:
+            eventTitle = "\(title) 개봉"
+            notes = "CineBar 개봉 알림\n지역: \(region)\n개봉일: \(normalizedDate)"
+        }
+
+        return CalendarReleaseEventDetails(
+            title: eventTitle,
+            dateText: normalizedDate,
+            region: region,
+            notes: notes,
+            alarmOffset: -86_400
+        )
+    }
+}
+
+enum CalendarReleaseEventError: LocalizedError {
+    case accessDenied
+    case noCalendar
+    case invalidDate
+
+    var errorDescription: String? {
+        switch self {
+        case .accessDenied:
+            return "没有获得日历访问权限，请在系统设置中允许 CineBar 访问日历。"
+        case .noCalendar:
+            return "没有可写入的日历，请先在日历 App 中添加一个日历。"
+        case .invalidDate:
+            return "上映日期格式无效，无法创建日历事件。"
+        }
+    }
+}
+
+@MainActor
+final class CalendarReleaseEventService {
+    static let shared = CalendarReleaseEventService()
+
+    private init() {}
+
+    func add(_ details: CalendarReleaseEventDetails) async throws {
+        let eventStore = EKEventStore()
+        let granted: Bool
+        if #available(macOS 14.0, *) {
+            granted = try await eventStore.requestFullAccessToEvents()
+        } else {
+            granted = try await requestLegacyAccess(eventStore)
+        }
+        guard granted else { throw CalendarReleaseEventError.accessDenied }
+        guard let calendar = eventStore.defaultCalendarForNewEvents else {
+            throw CalendarReleaseEventError.noCalendar
+        }
+
+        let calendarSystem = Calendar(identifier: .gregorian)
+        let components = details.dateText.split(separator: "-").compactMap {
+            Int($0)
+        }
+        guard components.count == 3,
+              let startDate = calendarSystem.date(
+                  from: DateComponents(
+                      calendar: calendarSystem,
+                      timeZone: .current,
+                      year: components[0],
+                      month: components[1],
+                      day: components[2]
+                  )
+              ),
+              let endDate = calendarSystem.date(
+                  byAdding: .day,
+                  value: 1,
+                  to: startDate
+              ) else {
+            throw CalendarReleaseEventError.invalidDate
+        }
+
+        let event = EKEvent(eventStore: eventStore)
+        event.calendar = calendar
+        event.title = details.title
+        event.notes = details.notes
+        event.startDate = startDate
+        event.endDate = endDate
+        event.isAllDay = true
+        event.addAlarm(EKAlarm(relativeOffset: details.alarmOffset))
+        try eventStore.save(event, span: .thisEvent)
+
+        let calendarURL = URL(fileURLWithPath: "/System/Applications/Calendar.app")
+        if !NSWorkspace.shared.open(calendarURL) {
+            _ = NSWorkspace.shared.open(
+                URL(fileURLWithPath: "/Applications/Calendar.app")
+            )
+        }
+    }
+
+    @available(macOS, deprecated: 14.0)
+    private func requestLegacyAccess(_ eventStore: EKEventStore) async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            eventStore.requestAccess(to: .event) { granted, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume(returning: granted)
+                }
+            }
+        }
+    }
 }
 
 struct MovieStill: Codable, Identifiable, Hashable {
@@ -1123,6 +1474,10 @@ struct MovieStill: Codable, Identifiable, Hashable {
 
     var imageURL: URL? {
         URL(string: "https://image.tmdb.org/t/p/w780\(filePath)")
+    }
+
+    var fullSizeURL: URL? {
+        URL(string: "https://image.tmdb.org/t/p/original\(filePath)")
     }
 }
 
@@ -1567,11 +1922,70 @@ struct TMDBClient {
                 URLQueryItem(name: "page", value: String(page))
             ]
         )
+        let movies = await enrichUpcomingReleaseDates(
+            response.results,
+            region: region
+        )
         return MoviePageResult(
-            movies: response.results,
+            movies: movies,
             page: response.page ?? page,
             totalPages: response.totalPages ?? page
         )
+    }
+
+    private func enrichUpcomingReleaseDates(
+        _ movies: [Movie],
+        region: String
+    ) async -> [Movie] {
+        guard !movies.isEmpty, !region.isEmpty else {
+            return UpcomingMovieSorting.sorted(movies)
+        }
+
+        var enriched = movies
+        let batchSize = 6
+        var start = 0
+        while start < movies.count {
+            let end = min(start + batchSize, movies.count)
+            let batch = Array(movies[start..<end])
+            await withTaskGroup(of: (Int, String?, String?).self) { group in
+                for movie in batch {
+                    group.addTask {
+                        guard movie.id > 0 else {
+                            return (movie.id, nil, nil)
+                        }
+                        do {
+                            let response = try await self.releaseDates(
+                                movieID: movie.id
+                            )
+                            let events = response.results
+                                .first { $0.isoCode == region }?
+                                .releaseDates ?? []
+                            let date = MovieReleaseDatePolicy.preferredDate(
+                                from: events
+                            )
+                            let note = events.first {
+                                MovieReleaseDatePolicy.normalizedDate(
+                                    $0.releaseDate
+                                ) == date &&
+                                    (1...3).contains($0.type)
+                            }?.note
+                            return (movie.id, date, note)
+                        } catch {
+                            return (movie.id, nil, nil)
+                        }
+                    }
+                }
+
+                for await (id, date, note) in group {
+                    guard let index = enriched.firstIndex(where: { $0.id == id })
+                    else { continue }
+                    enriched[index].localizedReleaseDate = date
+                    enriched[index].localizedReleaseNote = note
+                }
+            }
+            start = end
+        }
+        return UpcomingMovieSorting.sorted(enriched)
     }
 
     func search(_ text: String) async throws -> [Movie] {
@@ -1745,6 +2159,13 @@ struct TMDBClient {
         return response.results
     }
 
+    func releaseDates(movieID: Int) async throws -> MovieReleaseDatesResponse {
+        try await request(
+            path: "/movie/\(movieID)/release_dates",
+            query: []
+        )
+    }
+
     func credits(movieID: Int) async throws -> CreditsResponse {
         try await request(
             path: "/movie/\(movieID)/credits",
@@ -1901,23 +2322,20 @@ struct TMDBClient {
         certificationRegion: String? = nil,
         originRegions: [String] = []
     ) async throws -> MovieReleaseSummary {
-        let response: MovieReleaseDatesResponse = try await request(
-            path: "/movie/\(movieID)/release_dates",
-            query: []
-        )
+        let response = try await releaseDates(movieID: movieID)
         let theatricalTypes = 1...3
         let globalDates = response.results.flatMap(\.releaseDates)
             .filter { theatricalTypes.contains($0.type) }
-            .map { String($0.releaseDate.prefix(10)) }
-            .filter { !$0.isEmpty }
+            .compactMap { MovieReleaseDatePolicy.normalizedDate($0.releaseDate) }
             .sorted()
-        let localDates = response.results
+        let localEvents = response.results
             .first { $0.isoCode == localizedRegion }?
             .releaseDates
             .filter { theatricalTypes.contains($0.type) }
-            .map { String($0.releaseDate.prefix(10)) }
-            .filter { !$0.isEmpty }
-            .sorted() ?? []
+            ?? []
+        let localDates = localEvents.compactMap {
+            MovieReleaseDatePolicy.normalizedDate($0.releaseDate)
+        }.sorted()
         let preferredRegions = [
             certificationRegion ?? localizedRegion
         ] + originRegions + ["US"]
@@ -1930,7 +2348,10 @@ struct TMDBClient {
         }.first
         return MovieReleaseSummary(
             globalPremiere: globalDates.first,
-            localizedRelease: localDates.first,
+            localizedRelease: MovieReleaseDatePolicy.preferredDate(
+                from: localEvents
+            ),
+            localizedReleaseDates: localDates,
             localizedRegion: localizedRegion,
             contentRating: selectedCertification.map {
                 ContentRatingSummary(
@@ -2951,7 +3372,10 @@ final class MovieStore: ObservableObject {
 
     func toggleReleaseReminder(for movie: Movie) {
         let detailDate = selectedMovie?.id == movie.id
-            ? financials?.releaseDate
+            ? (
+                releaseSummary?.localizedRelease ??
+                    financials?.releaseDate
+            )
             : nil
         toggleReleaseReminder(
             ReleaseReminder(
@@ -2959,7 +3383,7 @@ final class MovieStore: ObservableObject {
                 mediaID: movie.id,
                 title: movie.title,
                 knownReleaseDate: normalizedFutureDate(
-                    detailDate ?? movie.releaseDate
+                    detailDate ?? movie.localizedReleaseDate ?? movie.releaseDate
                 )
             )
         )
@@ -3545,6 +3969,9 @@ final class MovieStore: ObservableObject {
                 movies.append(contentsOf: result.movies.filter {
                     seen.insert($0.id).inserted
                 })
+                if section == .upcoming {
+                    movies = UpcomingMovieSorting.sorted(movies)
+                }
                 movieBrowseNextPage = result.page + 1
                 canLoadMoreMovieBrowse = result.page < result.totalPages
                 message = "\(section.title) · 已载入 \(movies.count) 部"
@@ -4686,45 +5113,65 @@ enum UpcomingReleasePresentation: Equatable {
         rawValue: String?,
         language: AppLanguage
     ) -> UpcomingReleasePresentation {
-        guard let rawValue, rawValue.count == 10 else {
-            return .undated
-        }
-        guard rawValue.utf8.enumerated().allSatisfy({ index, value in
-            switch index {
-            case 4, 7:
-                return value == 45
-            default:
-                return value >= 48 && value <= 57
-            }
-        }) else {
-            return .undated
-        }
-        let input = DateFormatter()
-        input.calendar = Calendar(identifier: .gregorian)
-        input.locale = Locale(identifier: "en_US_POSIX")
-        input.dateFormat = "yyyy-MM-dd"
-        input.isLenient = false
-        guard let date = input.date(from: rawValue) else {
+        guard let rawValue,
+              let normalized = MovieReleaseDatePolicy.normalizedDate(rawValue)
+        else {
             return .undated
         }
 
+        let input = DateFormatter()
+        input.calendar = Calendar(identifier: .gregorian)
+        input.locale = Locale(identifier: "en_US_POSIX")
+        input.timeZone = TimeZone(secondsFromGMT: 0)
+        input.dateFormat = "yyyy-MM-dd"
+        input.isLenient = false
+        guard let date = input.date(from: normalized) else {
+            return .undated
+        }
+        let weekday = Calendar(identifier: .gregorian).component(
+            .weekday,
+            from: date
+        )
+
         let output = DateFormatter()
         output.calendar = Calendar(identifier: .gregorian)
+        output.timeZone = TimeZone(secondsFromGMT: 0)
+        let weekdayText: String
         switch language {
-        case .zhCN, .zhHK, .zhTW:
+        case .zhCN:
             output.locale = Locale(identifier: language.localeIdentifier)
             output.dateFormat = "yyyy年M月d日"
+            weekdayText = ["", "周日", "周一", "周二", "周三", "周四", "周五", "周六"][weekday]
+        case .zhHK, .zhTW:
+            output.locale = Locale(identifier: language.localeIdentifier)
+            output.dateFormat = "yyyy年M月d日"
+            weekdayText = ["", "週日", "週一", "週二", "週三", "週四", "週五", "週六"][weekday]
         case .enUS:
             output.locale = Locale(identifier: "en_US")
             output.dateFormat = "MMM d, yyyy"
+            weekdayText = ["", "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][weekday]
         case .jaJP:
             output.locale = Locale(identifier: "ja_JP")
             output.dateFormat = "yyyy年M月d日"
+            weekdayText = ["", "日", "月", "火", "水", "木", "金", "土"][weekday]
         case .koKR:
             output.locale = Locale(identifier: "ko_KR")
             output.dateFormat = "yyyy년 M월 d일"
+            weekdayText = ["", "일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"][weekday]
         }
-        return .dated(output.string(from: date))
+        let dateText = output.string(from: date)
+        switch language {
+        case .zhCN:
+            return .dated("\(dateText)（\(weekdayText)）")
+        case .zhHK, .zhTW:
+            return .dated("\(dateText)（\(weekdayText)）")
+        case .enUS:
+            return .dated("\(weekdayText), \(dateText)")
+        case .jaJP:
+            return .dated("\(dateText)（\(weekdayText)）")
+        case .koKR:
+            return .dated("\(dateText)（\(weekdayText)）")
+        }
     }
 }
 
@@ -4917,10 +5364,6 @@ struct CommunityRatingPanel: View {
                 HStack {
                     Label("我的评分", systemImage: "person.crop.circle.badge.checkmark")
                         .font(.headline)
-                    Spacer()
-                    Text(String(format: "%.1f", store.communityRatingDraft))
-                        .font(.title2.bold().monospacedDigit())
-                        .foregroundStyle(.orange)
                 }
                 Label(
                     "每部影片只能评分一次，提交后不可修改或删除，请谨慎评分。",
@@ -4932,14 +5375,16 @@ struct CommunityRatingPanel: View {
                     .frame(height: 38)
                     .disabled(store.isLoadingCommunityRating)
                 HStack {
-                    Text("0")
+                    Text("当前评分")
+                        .font(.callout.bold())
+                    Text(String(format: "%.1f", store.communityRatingDraft))
+                        .font(.title2.bold().monospacedDigit())
+                        .foregroundStyle(.orange)
                     Spacer()
-                    Text("每 0.5 分一档")
-                    Spacer()
-                    Text("10")
+                    Text("0–10")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
                 }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
                 HStack {
                     Spacer()
                     Button("保存评分") {
@@ -4983,6 +5428,16 @@ struct CommunityRatingPanel: View {
                 .controlSize(.small)
         }
     }
+}
+
+struct CertificationCardMetrics {
+    static let width: CGFloat = 112
+    static let height: CGFloat = 38
+    static let minWidth: CGFloat = width
+    static let minHeight: CGFloat = height
+    static let horizontalPadding: CGFloat = 6
+    static let verticalPadding: CGFloat = 4
+    static let cornerRadius: CGFloat = 8
 }
 
 struct ContentRatingBadge: View {
@@ -5032,15 +5487,22 @@ private struct CertificationCard: View {
             }
             Spacer(minLength: 0)
         }
-        .frame(minWidth: 128, maxWidth: .infinity, minHeight: 52)
-        .padding(.horizontal, 11)
-        .padding(.vertical, 9)
+        .frame(
+            width: CertificationCardMetrics.width,
+            height: CertificationCardMetrics.height
+        )
+        .padding(.horizontal, CertificationCardMetrics.horizontalPadding)
+        .padding(.vertical, CertificationCardMetrics.verticalPadding)
         .background(
             accent.opacity(0.08),
-            in: RoundedRectangle(cornerRadius: 12)
+            in: RoundedRectangle(
+                cornerRadius: CertificationCardMetrics.cornerRadius
+            )
         )
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(
+                cornerRadius: CertificationCardMetrics.cornerRadius
+            )
                 .stroke(accent.opacity(0.22), lineWidth: 1)
         }
     }
@@ -5146,6 +5608,19 @@ struct MovieFactsView: View {
     let directors: [CrewMember]
     let isLoading: Bool
     let language: AppLanguage
+    let movieTitle: String
+
+    private var globalRawDate: String? {
+        MovieReleaseDatePolicy.normalizedDate(
+            releaseSummary?.globalPremiere ?? financials?.releaseDate ?? ""
+        )
+    }
+
+    private var localizedRawDate: String? {
+        MovieReleaseDatePolicy.normalizedDate(
+            releaseSummary?.localizedRelease ?? ""
+        )
+    }
 
     private var globalDate: String {
         formatDate(
@@ -5216,8 +5691,36 @@ struct MovieFactsView: View {
                     ProgressView().controlSize(.small)
                 }
             }
-            FactRow(label: "全球首映", value: globalDate)
-            FactRow(label: localizedReleaseLabel, value: localizedDate)
+            if let globalRawDate,
+               CalendarReleaseEventComposer.shouldOffer(
+                   dateText: globalRawDate
+               ) {
+                ReleaseDateFactRow(
+                    label: "全球首映",
+                    value: globalDate,
+                    rawDate: globalRawDate,
+                    title: movieTitle,
+                    region: "GLOBAL",
+                    language: language
+                )
+            } else {
+                FactRow(label: "全球首映", value: globalDate)
+            }
+            if let localizedRawDate,
+               CalendarReleaseEventComposer.shouldOffer(
+                   dateText: localizedRawDate
+               ) {
+                ReleaseDateFactRow(
+                    label: localizedReleaseLabel,
+                    value: localizedDate,
+                    rawDate: localizedRawDate,
+                    title: movieTitle,
+                    region: releaseSummary?.localizedRegion ?? language.releaseRegion,
+                    language: language
+                )
+            } else {
+                FactRow(label: localizedReleaseLabel, value: localizedDate)
+            }
             FactRow(label: "影片时长", value: runtimeText)
             FactRow(label: "制片国家/地区", value: countriesText)
             FactRow(
@@ -5283,9 +5786,141 @@ struct FactRow: View {
     }
 }
 
+struct CalendarReleaseEventButton: View {
+    let title: String
+    let dateText: String
+    let displayText: String?
+    let region: String
+    let language: AppLanguage
+
+    @State private var isSaving = false
+    @State private var alertMessage: String?
+
+    init(
+        title: String,
+        dateText: String,
+        displayText: String? = nil,
+        region: String,
+        language: AppLanguage
+    ) {
+        self.title = title
+        self.dateText = dateText
+        self.displayText = displayText
+        self.region = region
+        self.language = language
+    }
+
+    var body: some View {
+        Button {
+            addReleaseEvent()
+        } label: {
+            if isSaving {
+                ProgressView()
+                    .controlSize(.small)
+            } else if let displayText {
+                HStack(spacing: 4) {
+                    Text(displayText)
+                        .underline()
+                    Image(systemName: "calendar.badge.plus")
+                }
+            } else {
+                Image(systemName: "calendar.badge.plus")
+            }
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.blue)
+        .disabled(isSaving)
+        .help(calendarHelp)
+        .alert(
+            "日历提醒",
+            isPresented: Binding(
+                get: { alertMessage != nil },
+                set: { isPresented in
+                    if !isPresented { alertMessage = nil }
+                }
+            )
+        ) {
+            Button("好", role: .cancel) {}
+        } message: {
+            Text(alertMessage ?? "")
+        }
+    }
+
+    private var calendarHelp: String {
+        switch language {
+        case .zhCN: return "加入 macOS 日历并提前一天提醒"
+        case .zhHK, .zhTW: return "加入 macOS 行事曆並提前一天提醒"
+        case .enUS: return "Add to macOS Calendar with a one-day reminder"
+        case .jaJP: return "macOSカレンダーに追加して1日前に通知"
+        case .koKR: return "macOS 캘린더에 추가하고 하루 전에 알림"
+        }
+    }
+
+    @MainActor
+    private func addReleaseEvent() {
+        guard let details = CalendarReleaseEventComposer.make(
+            title: title,
+            dateText: dateText,
+            region: region,
+            language: language
+        ) else {
+            alertMessage = CalendarReleaseEventError.invalidDate.localizedDescription
+            return
+        }
+
+        isSaving = true
+        Task { @MainActor in
+            defer { isSaving = false }
+            do {
+                try await CalendarReleaseEventService.shared.add(details)
+                alertMessage = successMessage
+            } catch {
+                alertMessage = error.localizedDescription
+            }
+        }
+    }
+
+    private var successMessage: String {
+        switch language {
+        case .zhCN: return "已添加到 macOS 日历，并设置提前一天提醒。"
+        case .zhHK, .zhTW: return "已加入 macOS 行事曆，並設定提前一天提醒。"
+        case .enUS: return "Added to macOS Calendar with a one-day reminder."
+        case .jaJP: return "macOSカレンダーに追加し、1日前の通知を設定しました。"
+        case .koKR: return "macOS 캘린더에 추가하고 하루 전 알림을 설정했습니다."
+        }
+    }
+}
+
+struct ReleaseDateFactRow: View {
+    let label: String
+    let value: String
+    let rawDate: String
+    let title: String
+    let region: String
+    let language: AppLanguage
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(LocalizedStringKey(label))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 12)
+            CalendarReleaseEventButton(
+                title: title,
+                dateText: rawDate,
+                displayText: value,
+                region: region,
+                language: language
+            )
+            .font(.caption)
+        }
+    }
+}
+
 struct MovieStillsView: View {
     @ObservedObject var store: MovieStore
     let movie: Movie
+    @State private var selectedStill: MovieStill?
     private let columns = [
         GridItem(.flexible(), spacing: 10),
         GridItem(.flexible(), spacing: 10)
@@ -5336,31 +5971,47 @@ struct MovieStillsView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(store.movieStills) { still in
-                            AsyncImage(url: still.imageURL) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
-                                case .failure:
-                                    ZStack {
-                                        Color.secondary.opacity(0.10)
-                                        Image(systemName: "photo")
-                                            .foregroundStyle(.secondary)
-                                    }
-                                default:
-                                    ZStack {
-                                        Color.secondary.opacity(0.08)
-                                        ProgressView().controlSize(.small)
+                            Button {
+                                selectedStill = still
+                            } label: {
+                                AsyncImage(url: still.imageURL) { phase in
+                                    switch phase {
+                                    case .success(let image):
+                                        image.resizable().scaledToFill()
+                                    case .failure:
+                                        ZStack {
+                                            Color.secondary.opacity(0.10)
+                                            Image(systemName: "photo")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    default:
+                                        ZStack {
+                                            Color.secondary.opacity(0.08)
+                                            ProgressView().controlSize(.small)
+                                        }
                                     }
                                 }
+                                .frame(height: 128)
+                                .clipShape(
+                                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                )
                             }
-                            .frame(height: 128)
-                            .clipShape(
-                                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            )
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("查看影片剧照大图")
                         }
                     }
                     .padding()
                 }
+            }
+        }
+        .overlay {
+            if let selectedStill {
+                PhotoLightboxOverlay(
+                    photo: selectedStill,
+                    photos: store.movieStills,
+                    imageURL: { $0.fullSizeURL },
+                    onClose: { self.selectedStill = nil }
+                )
             }
         }
     }
@@ -5459,6 +6110,71 @@ struct YouTubePlayerView: NSViewRepresentable {
         webView.loadHTMLString(
             html,
             baseURL: URL(string: "\(clientOrigin)/")
+        )
+    }
+}
+
+struct MainlandTrailerFallbackView: View {
+    let title: String
+    let language: AppLanguage
+    @Environment(\.openURL) private var openURL
+
+    private var heading: String {
+        switch language {
+        case .zhCN: return "YouTube 无法播放？"
+        case .zhHK, .zhTW: return "YouTube 無法播放？"
+        case .enUS: return "Can't play YouTube?"
+        case .jaJP: return "YouTubeを再生できませんか？"
+        case .koKR: return "YouTube를 재생할 수 없나요?"
+        }
+    }
+
+    private var detail: String {
+        switch language {
+        case .zhCN:
+            return "可在以下平台搜索官方预告。CineBar 不抓取或托管视频，实际结果以平台为准。"
+        case .zhHK, .zhTW:
+            return "可在以下平台搜尋官方預告。CineBar 不抓取或託管影片，實際結果以平台為準。"
+        case .enUS:
+            return "Search for an official trailer on these platforms. CineBar does not scrape or host videos."
+        case .jaJP:
+            return "以下のプラットフォームで公式予告を検索できます。CineBarは動画を取得・ホストしません。"
+        case .koKR:
+            return "다음 플랫폼에서 공식 예고편을 검색할 수 있습니다. CineBar는 동영상을 수집하거나 호스팅하지 않습니다."
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(heading)
+                .font(.caption.bold())
+            Text(detail)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            FlowLayout(spacing: 6) {
+                ForEach(MainlandTrailerPlatform.allCases) { platform in
+                    if let url = platform.url(for: title) {
+                        Button {
+                            openURL(url)
+                        } label: {
+                            Label(
+                                platform.title(language: language),
+                                systemImage: "arrow.up.right.square"
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 5)
+                        .background(.blue.opacity(0.12), in: Capsule())
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(
+            Color.secondary.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
     }
 }
@@ -5704,6 +6420,14 @@ struct MovieDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var inlineTrailerKey: String?
     @State private var inlineTrailerTitle = ""
+    @State private var selectedMovieStill: MovieStill?
+
+    private var detailReleaseDate: String? {
+        store.releaseSummary?.localizedRelease ??
+            store.financials?.releaseDate ??
+            movie.localizedReleaseDate ??
+            movie.releaseDate
+    }
 
     private var sharePayload: SharePayload? {
         guard let url = store.brandedShareURL(for: movie) else {
@@ -5770,8 +6494,7 @@ struct MovieDetailView: View {
                                 .buttonStyle(.plain)
                                 .foregroundStyle(.orange)
                                 .help(
-                                    (store.financials?.releaseDate ??
-                                        movie.releaseDate) == nil
+                                    detailReleaseDate == nil
                                         ? "设置定档提醒"
                                         : "设置上映提醒"
                                 )
@@ -5844,7 +6567,8 @@ struct MovieDetailView: View {
                         directors: store.directors,
                         isLoading: store.isLoadingFinancials ||
                             store.isLoadingReleaseDates,
-                        language: store.appLanguage
+                        language: store.appLanguage,
+                        movieTitle: movie.title
                     )
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -5878,21 +6602,27 @@ struct MovieDetailView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(spacing: 10) {
                                     ForEach(store.movieStills.prefix(16)) { still in
-                                        AsyncImage(url: still.imageURL) { phase in
-                                            switch phase {
-                                            case .success(let image):
-                                                image.resizable().scaledToFill()
-                                            case .failure:
-                                                Color.secondary.opacity(0.12)
-                                            default:
-                                                ProgressView()
+                                        Button {
+                                            selectedMovieStill = still
+                                        } label: {
+                                            AsyncImage(url: still.imageURL) { phase in
+                                                switch phase {
+                                                case .success(let image):
+                                                    image.resizable().scaledToFill()
+                                                case .failure:
+                                                    Color.secondary.opacity(0.12)
+                                                default:
+                                                    ProgressView()
+                                                }
                                             }
+                                            .frame(width: 250, height: 141)
+                                            .background(Color.secondary.opacity(0.08))
+                                            .clipShape(
+                                                RoundedRectangle(cornerRadius: 9)
+                                            )
                                         }
-                                        .frame(width: 250, height: 141)
-                                        .background(Color.secondary.opacity(0.08))
-                                        .clipShape(
-                                            RoundedRectangle(cornerRadius: 9)
-                                        )
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("查看影片剧照大图")
                                     }
                                 }
                             }
@@ -6017,6 +6747,10 @@ struct MovieDetailView: View {
                                 }
                             }
                         }
+                        MainlandTrailerFallbackView(
+                            title: movie.title,
+                            language: store.appLanguage
+                        )
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -6122,6 +6856,16 @@ struct MovieDetailView: View {
             NotificationCenter.default.publisher(for: .cineBarPanelWillHide)
         ) { _ in
             stopInlineTrailer()
+        }
+        .overlay {
+            if let selectedMovieStill {
+                PhotoLightboxOverlay(
+                    photo: selectedMovieStill,
+                    photos: Array(store.movieStills.prefix(16)),
+                    imageURL: { $0.fullSizeURL },
+                    onClose: { self.selectedMovieStill = nil }
+                )
+            }
         }
     }
 
@@ -6777,6 +7521,10 @@ struct TVDetailView: View {
                                 )
                             }
                         }
+                        MainlandTrailerFallbackView(
+                            title: show.name,
+                            language: store.appLanguage
+                        )
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -7045,6 +7793,7 @@ struct PersonDetailView: View {
     @ObservedObject var store: MovieStore
     let person: CastMember
     @Environment(\.openURL) private var openURL
+    @State private var selectedPersonPhoto: PersonImage?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -7174,21 +7923,27 @@ struct PersonDetailView: View {
                             ScrollView(.horizontal, showsIndicators: false) {
                                 LazyHStack(spacing: 10) {
                                     ForEach(store.personImages.prefix(18)) { photo in
-                                        AsyncImage(url: photo.imageURL) { phase in
-                                            switch phase {
-                                            case .success(let image):
-                                                image.resizable().scaledToFill()
-                                            case .failure:
-                                                actorPlaceholder
-                                            default:
-                                                ProgressView()
+                                        Button {
+                                            selectedPersonPhoto = photo
+                                        } label: {
+                                            AsyncImage(url: photo.imageURL) { phase in
+                                                switch phase {
+                                                case .success(let image):
+                                                    image.resizable().scaledToFill()
+                                                case .failure:
+                                                    actorPlaceholder
+                                                default:
+                                                    ProgressView()
+                                                }
                                             }
+                                            .frame(width: 126, height: 178)
+                                            .background(Color.secondary.opacity(0.08))
+                                            .clipShape(
+                                                RoundedRectangle(cornerRadius: 10)
+                                            )
                                         }
-                                        .frame(width: 126, height: 178)
-                                        .background(Color.secondary.opacity(0.08))
-                                        .clipShape(
-                                            RoundedRectangle(cornerRadius: 10)
-                                        )
+                                        .buttonStyle(.plain)
+                                        .accessibilityLabel("查看演员照片大图")
                                     }
                                 }
                             }
@@ -7290,6 +8045,16 @@ struct PersonDetailView: View {
                 .padding()
             }
         }
+        .overlay {
+            if let selectedPersonPhoto {
+                PhotoLightboxOverlay(
+                    photo: selectedPersonPhoto,
+                    photos: Array(store.personImages.prefix(18)),
+                    imageURL: { $0.fullSizeURL },
+                    onClose: { self.selectedPersonPhoto = nil }
+                )
+            }
+        }
     }
 
     private var actorPlaceholder: some View {
@@ -7335,6 +8100,196 @@ struct PersonDetailView: View {
         return components?.url
     }
 
+}
+
+@MainActor
+final class PhotoDownloadCoordinator: ObservableObject {
+    @Published private(set) var isSaving = false
+    @Published private(set) var message: String?
+
+    func save(sourceURL: URL) {
+        let panel = NSSavePanel()
+        panel.title = "保存图片"
+        panel.nameFieldStringValue = PhotoDownloadFilename.suggestedName(
+            for: sourceURL
+        )
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [.image]
+
+        panel.begin { [weak self, panel] response in
+            guard response == .OK, let destination = panel.url else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.isSaving = true
+                self.message = nil
+                defer { self.isSaving = false }
+
+                do {
+                    var request = URLRequest(url: sourceURL)
+                    request.cachePolicy = .reloadIgnoringLocalCacheData
+                    let (data, response) = try await URLSession.shared.data(
+                        for: request
+                    )
+                    guard let httpResponse = response as? HTTPURLResponse,
+                          (200..<300).contains(httpResponse.statusCode)
+                    else {
+                        throw URLError(.badServerResponse)
+                    }
+                    try data.write(to: destination, options: .atomic)
+                    self.message = "已保存：\(destination.lastPathComponent)"
+                } catch {
+                    self.message = "保存失败：\(error.localizedDescription)"
+                }
+            }
+        }
+    }
+}
+
+struct PhotoLightboxOverlay<Photo: Hashable>: View {
+    let photos: [Photo]
+    let imageURL: (Photo) -> URL?
+    let onClose: () -> Void
+    @State private var currentIndex: Int
+    @StateObject private var downloadCoordinator = PhotoDownloadCoordinator()
+
+    init(
+        photo: Photo,
+        photos: [Photo],
+        imageURL: @escaping (Photo) -> URL?,
+        onClose: @escaping () -> Void
+    ) {
+        self.photos = photos
+        self.imageURL = imageURL
+        self.onClose = onClose
+        _currentIndex = State(initialValue: photos.firstIndex(of: photo) ?? 0)
+    }
+
+    private var photo: Photo? {
+        guard photos.indices.contains(currentIndex) else { return nil }
+        return photos[currentIndex]
+    }
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.96)
+
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    Text("\(min(currentIndex + 1, photos.count)) / \(photos.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.82))
+                    Spacer()
+                    Button {
+                        guard let photo, let sourceURL = imageURL(photo) else {
+                            return
+                        }
+                        downloadCoordinator.save(sourceURL: sourceURL)
+                    } label: {
+                        Label(
+                            downloadCoordinator.isSaving ? "保存中" : "下载",
+                            systemImage: downloadCoordinator.isSaving
+                                ? "hourglass"
+                                : "arrow.down.circle"
+                        )
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.94))
+                        .padding(.horizontal, 9)
+                        .padding(.vertical, 6)
+                        .background(
+                            Color.white.opacity(0.14),
+                            in: Capsule()
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(photo == nil || downloadCoordinator.isSaving)
+                    .accessibilityLabel("下载图片")
+                    .help("保存当前图片")
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 25))
+                            .foregroundStyle(.white.opacity(0.92))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("关闭图片")
+                    .help("关闭图片")
+                }
+
+                ZStack {
+                    if let photo {
+                        AsyncImage(url: imageURL(photo)) { phase in
+                            switch phase {
+                            case .success(let image):
+                                image.resizable().scaledToFit()
+                            case .failure:
+                                Image(systemName: "photo")
+                                    .font(.system(size: 54))
+                                    .foregroundStyle(.white.opacity(0.65))
+                            default:
+                                ProgressView()
+                                    .controlSize(.large)
+                                    .tint(.white)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+
+                    HStack {
+                        if PhotoLightboxNavigation.adjacentIndex(
+                            currentIndex: currentIndex,
+                            offset: -1,
+                            count: photos.count
+                        ) != nil {
+                            Button { move(by: -1) } label: {
+                                Image(systemName: "chevron.left.circle.fill")
+                                    .font(.system(size: 34))
+                                    .foregroundStyle(.white.opacity(0.90))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("上一张照片")
+                        }
+                        Spacer()
+                        if PhotoLightboxNavigation.adjacentIndex(
+                            currentIndex: currentIndex,
+                            offset: 1,
+                            count: photos.count
+                        ) != nil {
+                            Button { move(by: 1) } label: {
+                                Image(systemName: "chevron.right.circle.fill")
+                                    .font(.system(size: 34))
+                                    .foregroundStyle(.white.opacity(0.90))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("下一张照片")
+                        }
+                    }
+                    .padding(.horizontal, 8)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.black.opacity(0.90))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                if let message = downloadCoordinator.message {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.86))
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .zIndex(1000)
+    }
+
+    private func move(by offset: Int) {
+        guard let nextIndex = PhotoLightboxNavigation.adjacentIndex(
+            currentIndex: currentIndex,
+            offset: offset,
+            count: photos.count
+        ) else { return }
+        currentIndex = nextIndex
+    }
 }
 
 struct FlowLayout: Layout {
@@ -7801,18 +8756,18 @@ struct SettingsRootView: View {
         settingsCard {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("CineBar 0.8.2").font(.title3.bold())
-                    Text("Build 15 · 2026 年 7 月 27 日")
+                    Text("CineBar 0.8.3-test.6").font(.title3.bold())
+                    Text("Build 22 · 2026 年 8 月 2 日")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
             }
             Divider()
-            featureRow("用户无需申请或填写 TMDB Token")
-            featureRow("OMDb 多重评分改用 CineBar 后台代理")
-            featureRow("数据来源页面改为内置服务状态")
-            featureRow("继续保留 IMDb、烂番茄和 Metacritic 评分")
+            featureRow("图片预览新增下载按钮，可保存演员照片和影片剧照")
+            featureRow("演员照片和影片剧照支持大图、关闭和左右浏览")
+            featureRow("支持 CineBar 按钮已接入 PayPal 一次性支持页面")
+            featureRow("B21 用户可直接在 CineBar 内更新到 Build 22")
         }
     }
 
@@ -8524,7 +9479,7 @@ struct ContentView: View {
 
                     VStack(alignment: .leading, spacing: 1) {
                         Text("CineBar").font(.title2.bold())
-                        Text("今晚看什么？")
+                        Text("找到下一部好片")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -8863,30 +9818,42 @@ struct ContentView: View {
                                         movie: movie,
                                         upcomingRelease: MovieRowPresentation.upcomingRelease(
                                             section: store.movieBrowseSection,
-                                            rawValue: movie.releaseDate,
+                                            rawValue: movie.localizedReleaseDate,
                                             language: store.appLanguage
                                         )
                                     )
                                 }
                                 .buttonStyle(.plain)
                                 if store.movieBrowseSection == .upcoming,
-                                   movie.releaseDate != nil {
-                                    Button {
-                                        store.toggleReleaseReminder(for: movie)
-                                    } label: {
-                                        Image(
-                                            systemName:
-                                                store.hasReleaseReminder(
-                                                    mediaType: .movie,
-                                                    mediaID: movie.id
-                                                )
-                                                ? "bell.fill"
-                                                : "bell"
+                                   let releaseDate = movie.localizedReleaseDate,
+                                   CalendarReleaseEventComposer.shouldOffer(
+                                       dateText: releaseDate
+                                   ) {
+                                    VStack(spacing: 7) {
+                                        Button {
+                                            store.toggleReleaseReminder(for: movie)
+                                        } label: {
+                                            Image(
+                                                systemName:
+                                                    store.hasReleaseReminder(
+                                                        mediaType: .movie,
+                                                        mediaID: movie.id
+                                                    )
+                                                    ? "bell.fill"
+                                                    : "bell"
+                                            )
+                                            .foregroundStyle(.orange)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .help("设置上映提醒")
+
+                                        CalendarReleaseEventButton(
+                                            title: movie.title,
+                                            dateText: releaseDate,
+                                            region: store.region,
+                                            language: store.appLanguage
                                         )
-                                        .foregroundStyle(.orange)
                                     }
-                                    .buttonStyle(.plain)
-                                    .help("设置上映提醒")
                                 }
                                 Button {
                                     store.toggleWatchlist(movie)
@@ -9068,7 +10035,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             image?.size = NSSize(width: 18, height: 18)
             image?.isTemplate = true
             button.image = image
-            button.toolTip = "CineBar · 今晚看什么？"
+            button.toolTip = "CineBar · 找到下一部好片"
             button.target = self
             button.action = #selector(togglePanel)
         }

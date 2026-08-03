@@ -45,7 +45,7 @@
     <key>CineBarDataBackupURLs</key>
     <array/>
     <key>CineBarSupportURL</key>
-    <string></string>
+    <string>https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=VVVZUSU9QUJBW&amp;currency_code=USD</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
@@ -55,6 +55,10 @@
         <key>NSAllowsArbitraryLoads</key>
         <false/>
     </dict>
+    <key>NSCalendarsUsageDescription</key>
+    <string>用于将影片上映日期添加到 macOS 日历并设置提醒。</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>用于将影片上映日期添加到 macOS 日历并设置提醒。</string>
     <key>SUFeedURL</key>
     <string>https://cinebar.cc/appcast.xml</string>
     <key>SUPublicEDKey</key>
