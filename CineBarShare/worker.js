@@ -45,7 +45,7 @@ const healthResponse = (service) =>
     JSON.stringify({
       ok: true,
       service,
-      version: "0.8.3-test.8",
+      version: "0.8.3-test.9",
       utc: new Date().toISOString(),
     }),
     {
@@ -256,15 +256,15 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.3-test.8",
-        build: 24,
+        version: "0.8.3-test.9",
+        build: 25,
         published_at: "2026-08-03",
-        download_url: "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
+        download_url: "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip",
         notes: [
-          "修复片库刷新覆盖并发状态，并改善授权续期与文件重新定位",
-          "播放器失败会显示原因和完整路径，且只在成功启动后记录最近打开",
-          "TMDB 候选显示海报、评分和本地化类型；本地文件不上传，也不提供盗版或下载资源",
-          "Build 24 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
+          "修复繁体中文（香港/台湾）本地片库候选的类型字形",
+          "新增简体、繁体、英语、日语和韩语类型回归覆盖",
+          "本地文件不上传，也不提供盗版或下载资源",
+          "Build 25 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
         ],
       }), {
         headers: {

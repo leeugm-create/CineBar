@@ -1,5 +1,5 @@
-CineBar 0.8.3-test.8 测试版安装说明
-测试编号：0.8.3-test.8（Build 24）
+CineBar 0.8.3-test.9 测试版安装说明
+测试编号：0.8.3-test.9（Build 25）
 适用于：macOS 13 Ventura 及以上
 
 重要提示
@@ -27,9 +27,9 @@ Mac App Store。请只使用开发者直接提供的完整 CineBar 测试 ZIP。
 “仍要打开”，验证 Mac 密码或 Touch ID。不要关闭整个 macOS 安全保护功能。
 
 四、更新
-1. Build 24 已发布独立签名的 appcast 与不可变归档，可在 CineBar 的“设置”→“更新”
+1. Build 25 已发布独立签名的 appcast 与不可变归档，可在 CineBar 的“设置”→“更新”
    中检查、下载并安装；也可直接下载：
-   https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip
+   https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip
 2. Build 16 用户需要先从
    GitHub Releases 手动安装一次 Sparkle 版本（Build 17 或更新版本）：
    https://github.com/leeugm-create/CineBar/releases

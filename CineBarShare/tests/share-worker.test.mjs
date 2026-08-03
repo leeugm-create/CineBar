@@ -210,7 +210,7 @@ test("reports share service health", async () => {
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
   assert.equal(body.service, "cinebar-share");
-  assert.equal(body.version, "0.8.3-test.8");
+  assert.equal(body.version, "0.8.3-test.9");
   assert.match(body.utc, /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
@@ -231,7 +231,7 @@ test("redirects plain HTTP requests to the same HTTPS URL", async () => {
   );
 });
 
-test("publishes the signed Build 24 manifest consistent with the app", async () => {
+test("publishes the signed Build 25 manifest consistent with the app", async () => {
   const response = await fetchPage("/updates/latest.json");
   const body = await response.json();
   const infoPlist = readFileSync(
@@ -241,17 +241,17 @@ test("publishes the signed Build 24 manifest consistent with the app", async () 
   const plistValue = (key) =>
     infoPlist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`))?.[1];
   assert.equal(response.status, 200);
-  assert.equal(body.version, "0.8.3-test.8");
-  assert.equal(body.build, 24);
+  assert.equal(body.version, "0.8.3-test.9");
+  assert.equal(body.build, 25);
   assert.equal(body.published_at, "2026-08-03");
   assert.equal(
     body.download_url,
-    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
+    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip",
   );
   assert.equal(String(body.build), plistValue("CFBundleVersion"));
   assert.ok(
     body.notes.includes(
-      "Build 24 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
+      "Build 25 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
     ),
   );
 });
@@ -274,6 +274,6 @@ test("keeps only the public share hostname", () => {
   assert.equal(config.routes[0].custom_domain, true);
   assert.equal(
     config.vars.CINEBAR_DOWNLOAD_URL,
-    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
+    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip",
   );
 });

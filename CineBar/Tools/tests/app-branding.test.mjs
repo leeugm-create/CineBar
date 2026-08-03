@@ -114,19 +114,19 @@ test("routes Local Library runtime labels through the selected app language", as
   assert.doesNotMatch(source, /String\(localized:/);
 });
 
-test("keeps in-app release metadata on Build 24", async () => {
+test("keeps in-app release metadata on Build 25", async () => {
   const source = await readFile(sourcePath, "utf8");
-  assert.match(source, /CineBar 0\.8\.3-test\.8/);
-  assert.match(source, /Build 24 · 2026 年 8 月 3 日/);
-  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.6/);
+  assert.match(source, /CineBar 0\.8\.3-test\.9/);
+  assert.match(source, /Build 25 · 2026 年 8 月 3 日/);
+  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.8/);
   assert.doesNotMatch(source, /CineBar 0\.8\.0（Build 12）/);
 });
 
 test("documents Local Library setup and local-only playback in English", async () => {
   const guide = await readFile(installGuidePath, "utf8");
   for (const phrase of [
-    "0.8.3-test.8",
-    "Build 24",
+    "0.8.3-test.9",
+    "Build 25",
     "Add Folder",
     "Refresh",
     "Confirm Match",

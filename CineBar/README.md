@@ -2,7 +2,7 @@
 
 一个直接分发的 macOS 菜单栏影片发现原型。
 
-当前测试分支构建为 **0.8.3-test.8（Build 24）**，不代表正式发布版本。
+当前测试分支构建为 **0.8.3-test.9（Build 25）**，不代表正式发布版本。
 测试安装包必须同时包含 `请先阅读-测试版安装说明.html` 和纯文本备用说明。
 
 ## 功能
@@ -89,8 +89,8 @@
 
 ## 更新
 
-Build 24 已发布独立签名的 appcast 和不可变下载归档，可在 CineBar 的“设置”→“更新”中
-检查、下载并安装，也可从 [Build 24 直接下载地址](https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip)
+Build 25 已发布独立签名的 appcast 和不可变下载归档，可在 CineBar 的“设置”→“更新”中
+检查、下载并安装，也可从 [Build 25 直接下载地址](https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip)
 手动安装。
 Build 16 需要先通过
 [GitHub Releases](https://github.com/leeugm-create/CineBar/releases) 手动安装一次

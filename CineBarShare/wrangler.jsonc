@@ -7,6 +7,6 @@
     { "pattern": "share.cinebar.cc", "custom_domain": true }
   ],
   "vars": {
-    "CINEBAR_DOWNLOAD_URL": "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip"
+    "CINEBAR_DOWNLOAD_URL": "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip"
   }
 }
