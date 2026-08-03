@@ -44,7 +44,7 @@ final class LocalLibraryStore: ObservableObject {
 
     func refresh(folderID: UUID) async {
         guard folders.contains(where: { $0.id == folderID }) else {
-            message = "The selected folder is no longer in the library."
+            message = String(localized: "所选文件夹已不在片库中。")
             return
         }
         await refresh(folderIDs: [folderID])
@@ -137,10 +137,10 @@ final class LocalLibraryStore: ObservableObject {
             ))
             entries = mergedEntries
             if result.wasCancelled {
-                message = "Library refresh was cancelled."
+                message = String(localized: "片库刷新已取消。")
             }
         } catch {
-            message = "Unable to save the local library: \(error.localizedDescription)"
+            message = String(localized: "无法保存本地片库。")
         }
         isScanning = false
     }
@@ -150,7 +150,7 @@ final class LocalLibraryStore: ObservableObject {
         mutation: (inout LocalLibraryEntry) -> Void
     ) {
         guard let index = entries.firstIndex(where: { $0.id == entryID }) else {
-            message = "The selected library item no longer exists."
+            message = String(localized: "所选片库项目已不存在。")
             return
         }
         var updatedEntries = entries
@@ -163,7 +163,7 @@ final class LocalLibraryStore: ObservableObject {
             entries = updatedEntries
             message = nil
         } catch {
-            message = "Unable to save the local library: \(error.localizedDescription)"
+            message = String(localized: "无法保存本地片库。")
         }
     }
 
@@ -244,13 +244,13 @@ private enum LocalLibraryStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .entryNotFound:
-            return "The library item no longer exists."
+            return String(localized: "片库项目已不存在。")
         case .signatureMismatch:
-            return "The selected file does not match the library item."
+            return String(localized: "所选文件与片库项目不匹配。")
         case .fileOutsideAuthorizedFolders:
-            return "The selected file is outside authorized folders."
+            return String(localized: "所选文件不在已授权的文件夹中。")
         case .notAFile:
-            return "The selected URL is not a file."
+            return String(localized: "所选项目不是文件。")
         }
     }
 }

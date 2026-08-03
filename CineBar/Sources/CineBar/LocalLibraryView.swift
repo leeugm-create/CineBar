@@ -164,7 +164,7 @@ struct LocalLibraryView: View {
             do {
                 try store.addFolder(url: url)
             } catch {
-                actionMessage = error.localizedDescription
+                actionMessage = String(localized: "无法添加文件夹。")
             }
         }
     }
@@ -190,7 +190,7 @@ struct LocalLibraryView: View {
                     actionMessage = String(format: String(localized: "无法启动播放器打开 %@。"), entry.signature.fileName)
                 }
             } catch {
-                actionMessage = error.localizedDescription
+                actionMessage = String(localized: "无法播放本地文件。")
             }
         }
     }
@@ -210,7 +210,7 @@ struct LocalLibraryView: View {
                     candidates: try await service.search(for: entry)
                 )
             } catch {
-                actionMessage = String(format: String(localized: "匹配失败：%@"), error.localizedDescription)
+                actionMessage = String(localized: "匹配影片失败。")
             }
         }
     }
@@ -226,7 +226,7 @@ struct LocalLibraryView: View {
         do {
             try store.reattach(entryID: entry.id, url: url)
         } catch {
-            actionMessage = error.localizedDescription
+            actionMessage = String(localized: "无法重新定位文件。")
         }
     }
 }

@@ -15,6 +15,8 @@
   entry would be unsafe. The share manifest now tracks Build 23 independently.
 - LocalLibraryView now uses explicit localized keys and format strings for every
   user-visible Local Library label, status, prompt, error, and match-sheet action.
+- Store failures and View catch paths use localized messages rather than raw
+  underlying error descriptions.
 
 ## Verification
 
