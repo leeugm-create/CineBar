@@ -41,4 +41,4 @@ npx wrangler deploy --name cinebar-share-test
 重新部署。不要填写临时路径或不存在的安装包地址。
 
 发布新版时，请同步修改 `worker.js` 中 `/updates/latest.json` 返回的
-`version`、`build`、`published_at`、`download_url` 和 `notes`，再重新部署。
+`version`、`build`、`published_at`、`download_url` 和 `notes`，再重新部署。当前测试版已同步到 Build 26。

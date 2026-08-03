@@ -45,7 +45,7 @@ const healthResponse = (service) =>
     JSON.stringify({
       ok: true,
       service,
-      version: "0.8.3-test.9",
+      version: "0.8.3-test.10",
       utc: new Date().toISOString(),
     }),
     {
@@ -256,20 +256,21 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.3-test.9",
-        build: 25,
+        version: "0.8.3-test.10",
+        build: 26,
         published_at: "2026-08-03",
-        download_url: "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip",
+        download_url: "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-26-universal.zip",
         notes: [
-          "修复繁体中文（香港/台湾）本地片库候选的类型字形",
-          "新增简体、繁体、英语、日语和韩语类型回归覆盖",
+          "本地片库新增电影、电视剧和其他视频分类，自拍与屏幕录制不会自动误匹配",
+          "支持手动输入片名搜索，并由用户确认影片或电视剧匹配",
+          "每天最多发送一次匿名安装统计，服务端只保存 HMAC 哈希和聚合字段",
           "本地文件不上传，也不提供盗版或下载资源",
-          "Build 25 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
+          "Build 26 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
         ],
       }), {
         headers: {
           "content-type": "application/json; charset=utf-8",
-          "cache-control": "public, max-age=300",
+          "cache-control": "no-store",
         },
       });
     }
