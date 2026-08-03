@@ -13,3 +13,7 @@
 `xcrun swiftc -parse-as-library -D CINEBAR_TEST CineBar/Sources/CineBar/*.swift CineBar/Tests/RegressionBehaviorTests.swift -o /tmp/cinebar-tests/CineBarRegressionTests && /tmp/cinebar-tests/CineBarRegressionTests` completed successfully.
 
 The requested non-test `swiftc -typecheck` is blocked by the pre-existing dependency error in `UpdaterService.swift`: `no such module 'Sparkle'`.
+
+## Poster URL follow-up
+
+Confirmed match metadata now stores the full TMDB poster URL. The renderer uses full URLs as-is and remains compatible with earlier stored TMDB path formats, preventing an image path from being prefixed twice. The CINEBAR_TEST regression suite asserts both the persisted value and rendered URL.

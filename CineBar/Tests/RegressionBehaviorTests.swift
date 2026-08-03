@@ -1046,6 +1046,11 @@ struct CineBarRegressionBehaviorTests {
         precondition(exactCandidate.year == "2014")
         precondition(exactCandidate.posterURL?.absoluteString ==
             "https://image.tmdb.org/t/p/w342/poster.jpg")
+        precondition(exactCandidate.metadata.posterPath ==
+            "https://image.tmdb.org/t/p/w342/poster.jpg")
+        precondition(LocalLibraryPosterURL.resolve(
+            exactCandidate.metadata.posterPath
+        )?.absoluteString == "https://image.tmdb.org/t/p/w342/poster.jpg")
         precondition(exactCandidate.voteAverage == 8.5)
         precondition(exactCandidate.confidence == 1)
         precondition(

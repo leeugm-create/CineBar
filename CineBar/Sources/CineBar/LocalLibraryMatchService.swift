@@ -42,7 +42,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             kind: kind,
             title: title,
             year: year,
-            posterPath: posterURL?.path,
+            posterPath: posterURL?.absoluteString,
             overview: overview,
             voteAverage: voteAverage
         )

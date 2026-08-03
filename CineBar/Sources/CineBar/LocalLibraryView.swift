@@ -317,8 +317,7 @@ private struct LocalLibraryEntryRow: View {
 
     @ViewBuilder
     private var poster: some View {
-        if let path = entry.metadata?.posterPath,
-           let url = URL(string: "https://image.tmdb.org/t/p/w154\(path)") {
+        if let url = LocalLibraryPosterURL.resolve(entry.metadata?.posterPath) {
             AsyncImage(url: url) { image in
                 image.resizable().scaledToFill()
             } placeholder: {
@@ -359,6 +358,22 @@ private struct LocalLibraryEntryRow: View {
         case .suggested: return "有建议"
         case .confirmed: return "已匹配"
         }
+    }
+}
+
+enum LocalLibraryPosterURL {
+    static func resolve(_ storedValue: String?) -> URL? {
+        guard let storedValue,
+              !storedValue.isEmpty
+        else { return nil }
+
+        if let url = URL(string: storedValue), url.scheme != nil {
+            return url
+        }
+        if storedValue.hasPrefix("/t/p/") {
+            return URL(string: "https://image.tmdb.org\(storedValue)")
+        }
+        return URL(string: "https://image.tmdb.org/t/p/w154\(storedValue)")
     }
 }
 
