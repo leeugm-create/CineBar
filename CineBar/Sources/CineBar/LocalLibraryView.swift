@@ -28,9 +28,9 @@ struct LocalLibraryView: View {
                 LazyVStack(spacing: 8) {
                     if filteredEntries.isEmpty {
                         ContentUnavailableView(
-                            "本地片库为空",
+                            String(localized: "本地片库为空"),
                             systemImage: "externaldrive.badge.plus",
-                            description: Text("添加包含视频文件的文件夹后，使用刷新扫描目录。")
+                            description: Text(String(localized: "添加包含视频文件的文件夹后，使用刷新扫描目录。"))
                         )
                         .padding(.top, 48)
                     } else {
@@ -75,26 +75,26 @@ struct LocalLibraryView: View {
         VStack(spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label("本地片库", systemImage: "externaldrive.fill")
+                    Label(String(localized: "本地片库"), systemImage: "externaldrive.fill")
                         .font(.title3.bold())
-                    Text("已添加 \(store.folders.count) 个目录 · \(store.entries.count) 个视频")
+                    Text(String(format: String(localized: "已添加 %lld 个目录 · %lld 个视频"), store.folders.count, store.entries.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("添加文件夹", systemImage: "folder.badge.plus") {
+                Button(String(localized: "添加文件夹"), systemImage: "folder.badge.plus") {
                     chooseFolders()
                 }
                 Button {
                     Task { await store.refresh() }
                 } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label(String(localized: "刷新"), systemImage: "arrow.clockwise")
                 }
                 .disabled(store.isScanning || store.folders.isEmpty)
             }
 
             Picker(
-                "内容类型",
+                String(localized: "内容类型"),
                 selection: Binding(
                     get: { movieStore.mainBrowseSection },
                     set: { movieStore.setMainBrowseSection($0) }
@@ -124,7 +124,7 @@ struct LocalLibraryView: View {
         HStack(spacing: 8) {
             TextField(String(localized: "搜索本地视频"), text: $searchText)
                 .textFieldStyle(.roundedBorder)
-            Picker("筛选", selection: $filter) {
+            Picker(String(localized: "筛选"), selection: $filter) {
                 ForEach(LocalLibraryFilter.allCases) { option in
                     Text(option.title).tag(option)
                 }
@@ -138,7 +138,7 @@ struct LocalLibraryView: View {
 
     private var scanDescription: String {
         guard let progress = store.scanProgress else { return String(localized: "正在扫描…") }
-        return "正在扫描 \(progress.displayName) · \(progress.mediaFilesFound) 个视频"
+        return String(format: String(localized: "正在扫描 %@ · %lld 个视频"), progress.displayName, progress.mediaFilesFound)
     }
 
     private var filteredEntries: [LocalLibraryEntry] {
@@ -158,7 +158,7 @@ struct LocalLibraryView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.prompt = "添加"
+        panel.prompt = String(localized: "添加")
         guard panel.runModal() == .OK else { return }
         for url in panel.urls {
             do {
@@ -173,7 +173,7 @@ struct LocalLibraryView: View {
         guard entry.state == .available,
               let folder = store.folders.first(where: { $0.id == entry.folderID })
         else {
-            actionMessage = "文件当前不可用。请重新定位文件后再播放。"
+            actionMessage = String(localized: "文件当前不可用。请重新定位文件后再播放。")
             return
         }
         Task {
@@ -182,12 +182,12 @@ struct LocalLibraryView: View {
                 defer { resolved.stopAccessing() }
                 let fileURL = resolved.url.appendingPathComponent(entry.relativePath)
                 guard FileManager.default.fileExists(atPath: fileURL.path) else {
-                    actionMessage = "找不到文件。请重新定位文件。"
+                    actionMessage = String(localized: "找不到文件。请重新定位文件。")
                     return
                 }
                 store.markOpened(entryID: entry.id)
                 if !(await ExternalPlayerLauncher().open(fileURL: fileURL)) {
-                    actionMessage = "无法启动播放器打开 \(entry.signature.fileName)。"
+                    actionMessage = String(format: String(localized: "无法启动播放器打开 %@。"), entry.signature.fileName)
                 }
             } catch {
                 actionMessage = error.localizedDescription
@@ -210,7 +210,7 @@ struct LocalLibraryView: View {
                     candidates: try await service.search(for: entry)
                 )
             } catch {
-                actionMessage = "匹配失败：\(error.localizedDescription)"
+                actionMessage = String(format: String(localized: "匹配失败：%@"), error.localizedDescription)
             }
         }
     }
@@ -221,7 +221,7 @@ struct LocalLibraryView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.movie]
-        panel.prompt = "重新定位"
+        panel.prompt = String(localized: "重新定位")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try store.reattach(entryID: entry.id, url: url)
@@ -284,8 +284,8 @@ private struct LocalLibraryEntryRow: View {
                 HStack(spacing: 6) {
                     Label(fileStateTitle, systemImage: fileStateIcon)
                     Label(matchStateTitle, systemImage: "sparkles")
-                    if entry.isWatched { Label("已看", systemImage: "checkmark.circle") }
-                    if entry.isInWatchlist { Label("片单", systemImage: "bookmark.fill") }
+                    if entry.isWatched { Label(String(localized: "已看"), systemImage: "checkmark.circle") }
+                    if entry.isInWatchlist { Label(String(localized: "片单"), systemImage: "bookmark.fill") }
                 }
                 .font(.caption2)
                 .foregroundStyle(
@@ -294,18 +294,18 @@ private struct LocalLibraryEntryRow: View {
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 5) {
-                Button("播放", systemImage: "play.fill", action: onPlay)
+                Button(String(localized: "播放"), systemImage: "play.fill", action: onPlay)
                     .buttonStyle(.borderedProminent)
                     .disabled(entry.state != .available)
                 HStack(spacing: 4) {
-                    Button(entry.isWatched ? "未看" : "已看", action: onToggleWatched)
-                    Button(entry.isInWatchlist ? "移除片单" : "加入片单", action: onToggleWatchlist)
+                    Button(entry.isWatched ? String(localized: "未看") : String(localized: "已看"), action: onToggleWatched)
+                    Button(entry.isInWatchlist ? String(localized: "移除片单") : String(localized: "加入片单"), action: onToggleWatchlist)
                 }
                 .buttonStyle(.borderless)
                 HStack(spacing: 4) {
-                    Button("匹配", action: onMatch).buttonStyle(.borderless)
+                    Button(String(localized: "匹配"), action: onMatch).buttonStyle(.borderless)
                     if entry.state != .available {
-                        Button("重新定位文件", action: onRelocate).buttonStyle(.borderless)
+                        Button(String(localized: "重新定位文件"), action: onRelocate).buttonStyle(.borderless)
                     }
                 }
             }
@@ -386,12 +386,12 @@ private struct LocalLibraryMatchSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("确认影片匹配").font(.title3.bold())
-            Text("选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。")
+            Text(String(localized: "确认影片匹配")).font(.title3.bold())
+            Text(String(localized: "选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if session.candidates.isEmpty {
-                ContentUnavailableView("没有找到候选项", systemImage: "magnifyingglass")
+                ContentUnavailableView(String(localized: "没有找到候选项"), systemImage: "magnifyingglass")
             } else {
                 List(session.candidates) { candidate in
                     HStack {
@@ -399,19 +399,19 @@ private struct LocalLibraryMatchSheet: View {
                             Text(candidate.title).font(.headline)
                             Text(
                                 candidate.year + " · " +
-                                    (candidate.kind == .movie ? "电影" : "电视剧")
+                                    (candidate.kind == .movie ? String(localized: "电影") : String(localized: "电视剧"))
                             )
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button("确认匹配") { onConfirm(candidate) }
+                        Button(String(localized: "确认匹配")) { onConfirm(candidate) }
                     }
                 }
             }
             HStack {
                 Spacer()
-                Button("跳过", action: onDismiss)
+                Button(String(localized: "跳过"), action: onDismiss)
             }
         }
         .padding()

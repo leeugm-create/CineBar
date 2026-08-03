@@ -13,6 +13,8 @@
   a manual GitHub Releases download until a signed appcast/archive is published. No Build 23 archive,
   length, or EdDSA signature was available, so publishing a fabricated appcast
   entry would be unsafe. The share manifest now tracks Build 23 independently.
+- LocalLibraryView now uses explicit localized keys and format strings for every
+  user-visible Local Library label, status, prompt, error, and match-sheet action.
 
 ## Verification
 
