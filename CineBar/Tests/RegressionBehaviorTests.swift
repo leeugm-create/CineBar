@@ -65,6 +65,13 @@ struct CineBarRegressionBehaviorTests {
         precondition(localLibraryNavigationStore.searchText.isEmpty)
         precondition(!localLibraryNavigationStore.showCatalog)
         precondition(!localLibraryNavigationStore.showTVCatalog)
+        precondition(
+            LocalLibraryEmptyState.library.systemImage ==
+                "externaldrive.badge.plus"
+        )
+        precondition(
+            LocalLibraryEmptyState.match.systemImage == "magnifyingglass"
+        )
 
         precondition(
             UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"

@@ -27,11 +27,7 @@ struct LocalLibraryView: View {
             ScrollView {
                 LazyVStack(spacing: 8) {
                     if filteredEntries.isEmpty {
-                        ContentUnavailableView(
-                            String(localized: "本地片库为空"),
-                            systemImage: "externaldrive.badge.plus",
-                            description: Text(String(localized: "添加包含视频文件的文件夹后，使用刷新扫描目录。"))
-                        )
+                        LocalLibraryEmptyState(state: LocalLibraryEmptyState.library)
                         .padding(.top, 48)
                     } else {
                         ForEach(filteredEntries) { entry in
@@ -379,6 +375,46 @@ enum LocalLibraryPosterURL {
     }
 }
 
+struct LocalLibraryEmptyState: View {
+    struct Descriptor: Equatable {
+        let title: String
+        let description: String?
+        let systemImage: String
+    }
+
+    static let library = Descriptor(
+        title: String(localized: "本地片库为空"),
+        description: String(localized: "添加包含视频文件的文件夹后，使用刷新扫描目录。"),
+        systemImage: "externaldrive.badge.plus"
+    )
+    static let match = Descriptor(
+        title: String(localized: "没有找到候选项"),
+        description: nil,
+        systemImage: "magnifyingglass"
+    )
+
+    let state: Descriptor
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: state.systemImage)
+                .font(.system(size: 32))
+                .foregroundStyle(.secondary)
+            Text(state.title)
+                .font(.headline)
+            if let description = state.description {
+                Text(description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 24)
+    }
+}
+
 private struct LocalLibraryMatchSheet: View {
     let session: LocalLibraryMatchSession
     let onConfirm: (LocalLibraryMatchCandidate) -> Void
@@ -391,7 +427,7 @@ private struct LocalLibraryMatchSheet: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if session.candidates.isEmpty {
-                ContentUnavailableView(String(localized: "没有找到候选项"), systemImage: "magnifyingglass")
+                LocalLibraryEmptyState(state: LocalLibraryEmptyState.match)
             } else {
                 List(session.candidates) { candidate in
                     HStack {

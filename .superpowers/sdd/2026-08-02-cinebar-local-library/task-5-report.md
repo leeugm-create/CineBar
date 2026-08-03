@@ -17,3 +17,7 @@ The requested non-test `swiftc -typecheck` is blocked by the pre-existing depend
 ## Poster URL follow-up
 
 Confirmed match metadata now stores the full TMDB poster URL. The renderer uses full URLs as-is and remains compatible with earlier stored TMDB path formats, preventing an image path from being prefixed twice. The CINEBAR_TEST regression suite asserts both the persisted value and rendered URL.
+
+## macOS 13 compatibility follow-up
+
+Replaced both macOS 14 `ContentUnavailableView` usages with a local VStack-based empty-state view. It preserves the localized titles, description, system icons, and spacing while compiling for macOS 13. The exact CINEBAR_TEST compile/regression passed, and `CineBar/Tools/build_test_package.sh` produced `dist/CineBar-0.8.3-test-build-23-universal.zip` successfully.
