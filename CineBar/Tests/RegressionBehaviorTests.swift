@@ -505,6 +505,70 @@ struct CineBarRegressionBehaviorTests {
         precondition(clampedPanel.height == 884)
         precondition(clampedPanel.origin.y == 16)
         precondition(clampedPanel.origin.x == 460)
+
+        let parsed = LocalLibraryFilenameParser.parse(
+            "Interstellar (2014) 2160p.mkv"
+        )
+        precondition(parsed.title == "Interstellar")
+        precondition(parsed.year == "2014")
+        precondition(parsed.fileExtension == "mkv")
+
+        let emptyFilename = LocalLibraryFilenameParser.parse("")
+        precondition(emptyFilename.title == "")
+        precondition(emptyFilename.year == nil)
+        precondition(emptyFilename.fileExtension == "")
+
+        let uppercaseExtension = LocalLibraryFilenameParser.parse(
+            "Arrival (2016).MKV"
+        )
+        precondition(uppercaseExtension.title == "Arrival")
+        precondition(uppercaseExtension.year == "2016")
+        precondition(uppercaseExtension.fileExtension == "mkv")
+
+        let taggedFilename = LocalLibraryFilenameParser.parse(
+            "Dune.Part.Two.2024.2160p.WEB-DL.H265.Atmos.CHS-ENG.mkv"
+        )
+        precondition(taggedFilename.title == "Dune Part Two")
+        precondition(taggedFilename.year == "2024")
+
+        let noYearFilename = LocalLibraryFilenameParser.parse(
+            "The Grand Budapest Hotel 1080p BluRay x264.mp4"
+        )
+        precondition(noYearFilename.title == "The Grand Budapest Hotel")
+        precondition(noYearFilename.year == nil)
+
+        let chineseFilename = LocalLibraryFilenameParser.parse(
+            "流浪地球2 (2023) 4K 中文字幕.mkv"
+        )
+        precondition(chineseFilename.title == "流浪地球2")
+        precondition(chineseFilename.year == "2023")
+
+        let duplicateFolderID = UUID(
+            uuidString: "00000000-0000-0000-0000-000000000001"
+        )!
+        let duplicateKeyA = LocalLibraryEntryMerge.key(
+            folderID: duplicateFolderID,
+            relativePath: "Movies/A.mkv"
+        )
+        let duplicateKeyB = LocalLibraryEntryMerge.key(
+            folderID: duplicateFolderID,
+            relativePath: "Movies/A.mkv"
+        )
+        precondition(duplicateKeyA == duplicateKeyB)
+
+        let persistenceDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("CineBarPersistenceTests-\(UUID().uuidString)")
+        let persistenceURL = persistenceDirectory.appendingPathComponent(
+            "LocalLibrary.json"
+        )
+        let persistence = LocalLibraryPersistence(fileURL: persistenceURL)
+        let firstSnapshot = LocalLibrarySnapshot(schemaVersion: 1)
+        let secondSnapshot = LocalLibrarySnapshot(schemaVersion: 2)
+        try! persistence.save(firstSnapshot)
+        try! persistence.save(secondSnapshot)
+        try! Data("corrupt".utf8).write(to: persistenceURL)
+        precondition(persistence.load() == firstSnapshot)
+        try? FileManager.default.removeItem(at: persistenceDirectory)
     }
 }
 #endif
