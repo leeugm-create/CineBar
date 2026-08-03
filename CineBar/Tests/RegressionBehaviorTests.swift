@@ -853,6 +853,70 @@ struct CineBarRegressionBehaviorTests {
             ).first?.state == .available
         )
         try? FileManager.default.removeItem(at: cancellationDirectory)
+
+        let storeDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarStore-\(UUID().uuidString)")
+        let storeStateURL = storeDirectory.appendingPathComponent("Library.json")
+        let storeRootURL = storeDirectory.appendingPathComponent("Library")
+        try! FileManager.default.createDirectory(
+            at: storeRootURL,
+            withIntermediateDirectories: true
+        )
+        let originalURL = storeRootURL.appendingPathComponent("Original.mkv")
+        FileManager.default.createFile(atPath: originalURL.path, contents: Data("movie".utf8))
+
+        let firstStore = LocalLibraryStore(fileURL: storeStateURL)
+        try! firstStore.addFolder(url: storeRootURL)
+        try! firstStore.addFolder(url: storeRootURL)
+        precondition(firstStore.folders.count == 1)
+        await firstStore.refresh()
+        precondition(firstStore.entries.map(\.relativePath) == ["Original.mkv"])
+        let storedEntryID = firstStore.entries[0].id
+        let confirmedMetadata = LocalLibraryMetadata(
+            id: 99,
+            kind: .movie,
+            title: "Persisted",
+            year: "2026",
+            posterPath: nil,
+            overview: "",
+            voteAverage: 8
+        )
+        firstStore.updateMetadata(entryID: storedEntryID, metadata: confirmedMetadata)
+        firstStore.setWatched(entryID: storedEntryID, value: true)
+        firstStore.toggleWatchlist(entryID: storedEntryID)
+        firstStore.markOpened(entryID: storedEntryID)
+        let openedAt = firstStore.entries[0].lastOpenedAt
+        precondition(openedAt != nil)
+
+        let renamedURL = storeRootURL.appendingPathComponent("Renamed.mkv")
+        try! FileManager.default.moveItem(at: originalURL, to: renamedURL)
+        try! firstStore.reattach(entryID: storedEntryID, url: renamedURL)
+        precondition(firstStore.entries[0].relativePath == "Renamed.mkv")
+        precondition(firstStore.entries[0].metadata == confirmedMetadata)
+        precondition(firstStore.entries[0].isWatched)
+        precondition(firstStore.entries[0].isInWatchlist)
+        precondition(firstStore.entries[0].lastOpenedAt == openedAt)
+
+        let restoredStore = LocalLibraryStore(fileURL: storeStateURL)
+        let restoredEntry = restoredStore.entries.first { $0.id == storedEntryID }
+        precondition(restoredEntry?.relativePath == "Renamed.mkv")
+        precondition(restoredEntry?.metadata == confirmedMetadata)
+        precondition(restoredEntry?.isWatched == true)
+        precondition(restoredEntry?.isInWatchlist == true)
+        precondition(restoredEntry?.lastOpenedAt != nil)
+
+        FileManager.default.createFile(
+            atPath: storeRootURL.appendingPathComponent("Added.mp4").path,
+            contents: Data()
+        )
+        async let firstRefresh: Void = restoredStore.refresh()
+        async let overlappingRefresh: Void = restoredStore.refresh()
+        _ = await (firstRefresh, overlappingRefresh)
+        precondition(Set(restoredStore.entries.map(\.relativePath)) == [
+            "Added.mp4", "Renamed.mkv"
+        ])
+        precondition(!restoredStore.isScanning)
+        try? FileManager.default.removeItem(at: storeDirectory)
     }
 }
 #endif
