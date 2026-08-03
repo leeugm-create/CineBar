@@ -72,6 +72,40 @@ struct CineBarRegressionBehaviorTests {
         precondition(
             LocalLibraryEmptyState.match(language: .enUS).systemImage == "magnifyingglass"
         )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .zhCN) == "冒险"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .zhHK) == "冒險"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .zhTW) == "冒險"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .enUS) == "Adventure"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .jaJP) == "アドベンチャー"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 12, language: .koKR) == "모험"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 10765, language: .zhHK) ==
+                "科幻與奇幻"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 10765, language: .zhTW) ==
+                "科幻與奇幻"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 10770, language: .zhHK) ==
+                "電視電影"
+        )
+        precondition(
+            LocalLibraryGenreLocalization.title(id: 10770, language: .zhTW) ==
+                "電視電影"
+        )
 
         precondition(
             UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"
