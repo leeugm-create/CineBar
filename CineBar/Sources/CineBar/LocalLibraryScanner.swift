@@ -169,6 +169,9 @@ final class LocalLibraryScanner {
                         String(describing: $0)
                     }
                 )
+                let parsedFilename = LocalLibraryFilenameParser.parse(
+                    fileURL.lastPathComponent
+                )
                 let entry = LocalLibraryEntry(
                     id: existingEntry(
                         in: existing,
@@ -179,11 +182,14 @@ final class LocalLibraryScanner {
                     relativePath: relativePath,
                     signature: signature,
                     state: .available,
-                    matchState: .unmatched,
+                    matchState: parsedFilename.isTrustedTitle
+                        ? .suggested
+                        : .unmatched,
                     metadata: nil,
                     isWatched: false,
                     isInWatchlist: false,
-                    lastOpenedAt: nil
+                    lastOpenedAt: nil,
+                    contentCategory: parsedFilename.category
                 )
                 entriesByKey[LocalLibraryEntryMerge.key(
                     folderID: root.folderID,
@@ -282,6 +288,11 @@ enum LocalLibraryRefreshMerger {
                 updatedEntry.relativePath = scannedEntry.relativePath
                 updatedEntry.signature = scannedEntry.signature
                 updatedEntry.state = .available
+                if oldEntry.metadata == nil,
+                   oldEntry.matchState != .confirmed {
+                    updatedEntry.contentCategory = scannedEntry.contentCategory
+                    updatedEntry.matchState = scannedEntry.matchState
+                }
                 mergedByKey[key] = updatedEntry
             } else {
                 mergedByKey[key] = scannedEntry

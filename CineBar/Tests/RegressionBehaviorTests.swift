@@ -972,6 +972,75 @@ struct CineBarRegressionBehaviorTests {
             "Movies/A.mkv", "Shows/B.mp4"
         ])
 
+        let classificationDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarLocalLibraryClassification-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(
+            at: classificationDirectory,
+            withIntermediateDirectories: true
+        )
+        let classificationFiles = [
+            "Interstellar.2014.mkv",
+            "Example.Show.S01E02.mp4",
+            "IMG_20260803_142233.mov"
+        ]
+        for fileName in classificationFiles {
+            FileManager.default.createFile(
+                atPath: classificationDirectory.appendingPathComponent(fileName).path,
+                contents: Data()
+            )
+        }
+        let classificationRoot = LocalLibraryScanRoot(
+            folderID: UUID(),
+            url: classificationDirectory,
+            displayName: "分类测试片库"
+        )
+        let classificationScan = await scanner.scan(
+            roots: [classificationRoot],
+            existing: [],
+            progress: { _ in }
+        )
+        precondition(
+            classificationScan.entries.first(where: {
+                $0.signature.fileName == "Interstellar.2014.mkv"
+            })?.contentCategory == .movie
+        )
+        precondition(
+            classificationScan.entries.first(where: {
+                $0.signature.fileName == "Example.Show.S01E02.mp4"
+            })?.contentCategory == .television
+        )
+        precondition(
+            classificationScan.entries.first(where: {
+                $0.signature.fileName == "IMG_20260803_142233.mov"
+            })?.contentCategory == .other
+        )
+        precondition(
+            classificationScan.entries.first(where: {
+                $0.signature.fileName == "Interstellar.2014.mkv"
+            })?.matchState == .suggested
+        )
+        precondition(
+            classificationScan.entries.first(where: {
+                $0.signature.fileName == "IMG_20260803_142233.mov"
+            })?.matchState == .unmatched
+        )
+        let classificationRefresh = LocalLibraryRefreshMerger.merge(
+            existing: classificationScan.entries,
+            scanned: classificationScan,
+            roots: [classificationRoot]
+        )
+        precondition(
+            classificationRefresh.first(where: {
+                $0.signature.fileName == "Example.Show.S01E02.mp4"
+            })?.contentCategory == .television
+        )
+        precondition(
+            classificationRefresh.first(where: {
+                $0.signature.fileName == "IMG_20260803_142233.mov"
+            })?.contentCategory == .other
+        )
+        try? FileManager.default.removeItem(at: classificationDirectory)
+
         FileManager.default.createFile(
             atPath: moviesDirectory.appendingPathComponent("C.mov").path,
             contents: Data()
