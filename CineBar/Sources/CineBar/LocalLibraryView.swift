@@ -165,7 +165,7 @@ struct LocalLibraryView: View {
                 session: session,
                 language: movieStore.appLanguage,
                 onConfirm: { candidate in
-                    store.updateMetadata(
+                    store.confirmMatch(
                         entryID: session.entry.id,
                         metadata: candidate.metadata
                     )
@@ -179,6 +179,19 @@ struct LocalLibraryView: View {
     private var header: some View {
         VStack(spacing: 10) {
             HStack {
+                Button {
+                    NotificationCenter.default.post(
+                        name: .cineBarPanelWillHide,
+                        object: nil
+                    )
+                    NSApplication.shared.keyWindow?.orderOut(nil)
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .help(localized("关闭片库"))
+
                 VStack(alignment: .leading, spacing: 2) {
                     Label(localized("本地片库"), systemImage: "externaldrive.fill")
                         .font(.title3.bold())
@@ -318,9 +331,21 @@ struct LocalLibraryView: View {
                         language: movieStore.appLanguage.apiCode
                     )
                 )
+                let parsed = LocalLibraryFilenameParser.parse(
+                    entry.signature.fileName
+                )
                 matchSession = LocalLibraryMatchSession(
                     entry: entry,
-                    candidates: try await service.search(for: entry)
+                    candidates: entry.contentCategory == .other
+                        ? []
+                        : try await service.search(for: entry),
+                    initialQuery: parsed.isTrustedTitle ? parsed.title : "",
+                    initialKind: entry.contentCategory == .television
+                        ? .television
+                        : .movie,
+                    search: { query in
+                        try await service.search(query: query)
+                    }
                 )
             } catch {
                 actionMessage = localized("匹配影片失败。")
@@ -399,13 +424,16 @@ struct LocalLibraryView: View {
 }
 
 private enum LocalLibraryFilter: CaseIterable, Identifiable {
-    case all, unwatched, unmatched, unavailable
+    case all, movie, television, other, unwatched, unmatched, unavailable
 
     var id: Self { self }
 
     func title(language: AppLanguage) -> String {
         switch self {
         case .all: return LocalLibraryLocalization.string("全部", language: language)
+        case .movie: return LocalLibraryLocalization.string("电影", language: language)
+        case .television: return LocalLibraryLocalization.string("电视剧", language: language)
+        case .other: return LocalLibraryLocalization.string("其他视频", language: language)
         case .unwatched: return LocalLibraryLocalization.string("未看", language: language)
         case .unmatched: return LocalLibraryLocalization.string("待匹配", language: language)
         case .unavailable: return LocalLibraryLocalization.string("文件不可用", language: language)
@@ -415,6 +443,9 @@ private enum LocalLibraryFilter: CaseIterable, Identifiable {
     func includes(_ entry: LocalLibraryEntry) -> Bool {
         switch self {
         case .all: return true
+        case .movie: return entry.contentCategory == .movie
+        case .television: return entry.contentCategory == .television
+        case .other: return entry.contentCategory == .other
         case .unwatched: return !entry.isWatched
         case .unmatched: return entry.matchState != .confirmed
         case .unavailable: return entry.state != .available
@@ -425,6 +456,9 @@ private enum LocalLibraryFilter: CaseIterable, Identifiable {
 private struct LocalLibraryMatchSession: Identifiable {
     let entry: LocalLibraryEntry
     let candidates: [LocalLibraryMatchCandidate]
+    let initialQuery: String
+    let initialKind: LocalLibraryMediaKind
+    let search: (LocalLibraryMatchQuery) async throws -> [LocalLibraryMatchCandidate]
 
     var id: UUID { entry.id }
 }
@@ -504,9 +538,12 @@ private struct LocalLibraryEntryRow: View {
 
     private var details: String {
         let year = entry.metadata?.year ?? localized("未知年份")
-        let kind = entry.metadata?.kind == .television
-            ? localized("电视剧")
-            : localized("电影")
+        let kind: String
+        switch entry.contentCategory {
+        case .movie: kind = localized("电影")
+        case .television: kind = localized("电视剧")
+        case .other: kind = localized("其他视频")
+        }
         return "\(year) · \(kind) · \(entry.signature.fileName)"
     }
 
@@ -605,18 +642,66 @@ private struct LocalLibraryMatchSheet: View {
     let onConfirm: (LocalLibraryMatchCandidate) -> Void
     let onDismiss: () -> Void
 
+    @State private var queryText: String
+    @State private var kind: LocalLibraryMediaKind
+    @State private var candidates: [LocalLibraryMatchCandidate]
+    @State private var isSearching = false
+    @State private var searchError: String?
+
+    init(
+        session: LocalLibraryMatchSession,
+        language: AppLanguage,
+        onConfirm: @escaping (LocalLibraryMatchCandidate) -> Void,
+        onDismiss: @escaping () -> Void
+    ) {
+        self.session = session
+        self.language = language
+        self.onConfirm = onConfirm
+        self.onDismiss = onDismiss
+        _queryText = State(initialValue: session.initialQuery)
+        _kind = State(initialValue: session.initialKind)
+        _candidates = State(initialValue: session.candidates)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(localized("确认影片匹配")).font(.title3.bold())
             Text(localized("选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            if session.candidates.isEmpty {
+            HStack(spacing: 8) {
+                TextField(localized("搜索片名"), text: $queryText)
+                    .textFieldStyle(.roundedBorder)
+                Picker(localized("内容类型"), selection: $kind) {
+                    Text(localized("电影")).tag(LocalLibraryMediaKind.movie)
+                    Text(localized("电视剧")).tag(LocalLibraryMediaKind.television)
+                }
+                .pickerStyle(.menu)
+                Button {
+                    search()
+                } label: {
+                    if isSearching {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Label(localized("搜索"), systemImage: "magnifyingglass")
+                    }
+                }
+                .disabled(
+                    queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+                        isSearching
+                )
+            }
+            if let searchError {
+                Text(searchError)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+            if candidates.isEmpty {
                 LocalLibraryEmptyState(
                     state: LocalLibraryEmptyState.match(language: language)
                 )
             } else {
-                List(session.candidates) { candidate in
+                List(candidates) { candidate in
                     HStack(spacing: 12) {
                         if let posterURL = candidate.posterURL {
                             AsyncImage(url: posterURL) { image in
@@ -669,7 +754,22 @@ private struct LocalLibraryMatchSheet: View {
             }
         }
         .padding()
-        .frame(width: 460, height: 360)
+        .frame(width: 560, height: 500)
+    }
+
+    private func search() {
+        let query = LocalLibraryMatchQuery(text: queryText, kind: kind)
+        isSearching = true
+        searchError = nil
+        Task {
+            do {
+                candidates = try await session.search(query)
+            } catch {
+                candidates = []
+                searchError = localized("匹配影片失败。")
+            }
+            isSearching = false
+        }
     }
 
     private func localized(_ key: String) -> String {
