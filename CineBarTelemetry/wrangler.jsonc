@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cinebar-telemetry-test",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-03",
+  "routes": [
+    { "pattern": "telemetry.cinebar.cc", "custom_domain": true }
+  ],
+  "vars": {
+    "CINEBAR_RELEASE_VERSION": "0.8.3-test.10"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cinebar-telemetry-test",
+      "database_id": "e2375126-0eef-4d77-af18-9131498be4e1"
+    }
+  ]
+}

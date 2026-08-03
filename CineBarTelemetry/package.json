@@ -1,0 +1,8 @@
+{
+  "name": "cinebar-telemetry",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/telemetry-worker.test.mjs"
+  }
+}
