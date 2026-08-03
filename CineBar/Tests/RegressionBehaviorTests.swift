@@ -66,11 +66,11 @@ struct CineBarRegressionBehaviorTests {
         precondition(!localLibraryNavigationStore.showCatalog)
         precondition(!localLibraryNavigationStore.showTVCatalog)
         precondition(
-            LocalLibraryEmptyState.library.systemImage ==
+            LocalLibraryEmptyState.library(language: .enUS).systemImage ==
                 "externaldrive.badge.plus"
         )
         precondition(
-            LocalLibraryEmptyState.match.systemImage == "magnifyingglass"
+            LocalLibraryEmptyState.match(language: .enUS).systemImage == "magnifyingglass"
         )
 
         precondition(
@@ -793,6 +793,42 @@ struct CineBarRegressionBehaviorTests {
             )
         )
 
+        let signatureDate = Date(timeIntervalSince1970: 12_345)
+        let originalSignature = LocalLibraryFileSignature(
+            fileName: "Film.mkv",
+            fileExtension: "mkv",
+            byteCount: 1_024,
+            modificationDate: signatureDate,
+            resourceIdentifier: "resource-a"
+        )
+        precondition(originalSignature.matchesForReattachment(
+            LocalLibraryFileSignature(
+                fileName: "Film.mkv",
+                fileExtension: "MKV",
+                byteCount: 1_024,
+                modificationDate: signatureDate,
+                resourceIdentifier: "resource-b"
+            )
+        ))
+        precondition(originalSignature.matchesForReattachment(
+            LocalLibraryFileSignature(
+                fileName: "Renamed.mkv",
+                fileExtension: "mkv",
+                byteCount: 1_024,
+                modificationDate: signatureDate,
+                resourceIdentifier: "resource-a"
+            )
+        ))
+        precondition(!originalSignature.matchesForReattachment(
+            LocalLibraryFileSignature(
+                fileName: "Different.mkv",
+                fileExtension: "mkv",
+                byteCount: 1_024,
+                modificationDate: signatureDate,
+                resourceIdentifier: nil
+            )
+        ))
+
         let persistenceDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("CineBarPersistenceTests-\(UUID().uuidString)")
         let persistenceURL = persistenceDirectory.appendingPathComponent(
@@ -934,6 +970,21 @@ struct CineBarRegressionBehaviorTests {
         precondition(cancelledRefresh.first(where: {
             $0.relativePath == "Movies/A.mkv"
         })?.state == .available)
+
+        var concurrentlyReattachedEntry = retainedEntry
+        concurrentlyReattachedEntry.relativePath = "Movies/Renamed-A.mkv"
+        let staleScannedEntry = retainedEntry
+        let reattachedMerge = LocalLibraryRefreshMerger.merge(
+            existing: [concurrentlyReattachedEntry],
+            scanned: LocalLibraryScanResult(
+                entries: [staleScannedEntry],
+                availableFolderIDs: [libraryRoot.folderID],
+                unavailableFolderIDs: [],
+                wasCancelled: false
+            ),
+            roots: [libraryRoot]
+        )
+        precondition(reattachedMerge == [concurrentlyReattachedEntry])
 
         let unavailableRoot = LocalLibraryScanRoot(
             folderID: UUID(),
@@ -1077,8 +1128,10 @@ struct CineBarRegressionBehaviorTests {
 
         let firstStore = LocalLibraryStore(fileURL: storeStateURL)
         try! firstStore.addFolder(url: storeRootURL)
+        let renewedFolderID = firstStore.folders[0].id
         try! firstStore.addFolder(url: storeRootURL)
         precondition(firstStore.folders.count == 1)
+        precondition(firstStore.folders[0].id == renewedFolderID)
         var signatureReadWithinFolderScope = false
         try! LocalLibraryStore.withAuthorizedFolderScope(
             folders: firstStore.folders,
@@ -1152,6 +1205,81 @@ struct CineBarRegressionBehaviorTests {
             "Added.mp4", "Renamed.mkv"
         ])
         precondition(!restoredStore.isScanning)
+
+        let staleStore = LocalLibraryStore(
+            fileURL: storeDirectory.appendingPathComponent("StaleLibrary.json"),
+            scanOperation: { roots, _, _ in
+                LocalLibraryScanResult(
+                    entries: [],
+                    availableFolderIDs: Set(roots.map(\.folderID)),
+                    unavailableFolderIDs: [],
+                    staleFolderIDs: Set(roots.map(\.folderID)),
+                    wasCancelled: false
+                )
+            }
+        )
+        try! staleStore.addFolder(url: storeRootURL)
+        let staleFolderID = staleStore.folders[0].id
+        await staleStore.refresh()
+        precondition(staleStore.message == .folderAuthorizationStale)
+        try! staleStore.addFolder(url: storeRootURL)
+        precondition(staleStore.folders.count == 1)
+        precondition(staleStore.folders[0].id == staleFolderID)
+
+        let refreshGate = LocalLibraryRefreshGate()
+        let concurrentStateURL = storeDirectory.appendingPathComponent(
+            "ConcurrentLibrary.json"
+        )
+        let concurrentStore = LocalLibraryStore(
+            fileURL: concurrentStateURL,
+            scanOperation: { roots, existing, _ in
+                await refreshGate.waitUntilReleased()
+                return LocalLibraryScanResult(
+                    entries: existing,
+                    availableFolderIDs: Set(roots.map(\.folderID)),
+                    unavailableFolderIDs: [],
+                    wasCancelled: false
+                )
+            }
+        )
+        try! concurrentStore.addFolder(url: storeRootURL)
+        var seededEntry = restoredStore.entries[0]
+        seededEntry.folderID = concurrentStore.folders[0].id
+        let seededSnapshot = LocalLibrarySnapshot(
+            folders: concurrentStore.folders,
+            entries: [seededEntry]
+        )
+        try! LocalLibraryPersistence(fileURL: concurrentStateURL).save(
+            seededSnapshot
+        )
+        let mutatingStore = LocalLibraryStore(
+            fileURL: concurrentStateURL,
+            scanOperation: { roots, existing, _ in
+                await refreshGate.waitUntilReleased()
+                return LocalLibraryScanResult(
+                    entries: existing,
+                    availableFolderIDs: Set(roots.map(\.folderID)),
+                    unavailableFolderIDs: [],
+                    wasCancelled: false
+                )
+            }
+        )
+        let mutatingID = mutatingStore.entries[0].id
+        mutatingStore.setWatched(entryID: mutatingID, value: false)
+        if mutatingStore.entries[0].isInWatchlist {
+            mutatingStore.toggleWatchlist(entryID: mutatingID)
+        }
+        async let concurrentRefresh: Void = mutatingStore.refresh()
+        while !mutatingStore.isScanning { await Task.yield() }
+        mutatingStore.setWatched(entryID: mutatingID, value: true)
+        mutatingStore.toggleWatchlist(entryID: mutatingID)
+        mutatingStore.markOpened(entryID: mutatingID)
+        let concurrentOpenedAt = mutatingStore.entries[0].lastOpenedAt
+        await refreshGate.release()
+        await concurrentRefresh
+        precondition(mutatingStore.entries[0].isWatched)
+        precondition(mutatingStore.entries[0].isInWatchlist)
+        precondition(mutatingStore.entries[0].lastOpenedAt == concurrentOpenedAt)
         try? FileManager.default.removeItem(at: storeDirectory)
 
         precondition(
@@ -1175,24 +1303,24 @@ struct CineBarRegressionBehaviorTests {
             applicationURLForBundleID: { _ in nil },
             openWithApplication: { _, _ in
                 playbackProbe.applicationOpenCount += 1
-                return true
+                return .success
             },
             openSystem: { url in
                 playbackProbe.openedURLs.append(url)
-                return true
+                return .success
             }
         )
         let encodedFileURL = URL(string: "file:///tmp/My%20Movie.mkv")!
-        let didOpenEncodedFile = await launcher.open(fileURL: encodedFileURL)
-        precondition(didOpenEncodedFile)
+        let encodedOpenResult = await launcher.open(fileURL: encodedFileURL)
+        precondition(encodedOpenResult == .opened(.system))
         precondition(playbackProbe.openedURLs == [
             URL(fileURLWithPath: "/tmp/My Movie.mkv")
         ])
         precondition(playbackProbe.applicationOpenCount == 0)
-        let didOpenRemoteURL = await launcher.open(
+        let remoteOpenResult = await launcher.open(
             fileURL: URL(string: "https://example.com/movie.mkv")!
         )
-        precondition(!didOpenRemoteURL)
+        precondition(remoteOpenResult == .invalidFileURL)
         precondition(playbackProbe.openedURLs.count == 1)
 
         var attemptedPlayers: [String] = []
@@ -1206,12 +1334,47 @@ struct CineBarRegressionBehaviorTests {
                 await Task.yield()
                 attemptedPlayers.append(applicationURL.lastPathComponent)
                 return applicationURL.lastPathComponent == "VLC.app"
+                    ? .success
+                    : .failure(.launchFailed, "IINA rejected the file")
             },
-            openSystem: { _ in false }
+            openSystem: { _ in .failure(.systemRejected, nil) }
         )
-        let didFallback = await fallbackLauncher.open(fileURL: encodedFileURL)
-        precondition(didFallback)
+        let fallbackResult = await fallbackLauncher.open(fileURL: encodedFileURL)
+        precondition(fallbackResult == .opened(.vlc))
         precondition(attemptedPlayers == ["IINA.app", "VLC.app"])
+
+        let failedLauncher = ExternalPlayerLauncher(
+            applicationURLForBundleID: { bundleID in
+                URL(fileURLWithPath: "/Applications/\(bundleID).app")
+            },
+            openWithApplication: { _, _ in
+                .failure(.launchFailed, "application error")
+            },
+            openSystem: { _ in .failure(.systemRejected, "system error") }
+        )
+        let failedResult = await failedLauncher.open(fileURL: encodedFileURL)
+        guard case let .failed(failures) = failedResult else {
+            preconditionFailure("All provider failures must be returned.")
+        }
+        precondition(failures.map(\.player) == [.iina, .vlc, .system])
+        precondition(failures.map(\.reason) == [
+            .launchFailed, .launchFailed, .systemRejected
+        ])
+        let playbackOpenedBeforeFailure = mutatingStore.entries[0].lastOpenedAt
+        precondition(!mutatingStore.recordPlayback(
+            result: failedResult,
+            entryID: mutatingID
+        ))
+        precondition(
+            mutatingStore.entries[0].lastOpenedAt == playbackOpenedBeforeFailure
+        )
+        precondition(mutatingStore.recordPlayback(
+            result: .opened(.system),
+            entryID: mutatingID
+        ))
+        precondition(
+            mutatingStore.entries[0].lastOpenedAt != playbackOpenedBeforeFailure
+        )
 
         let exactMovie = Movie(
             id: 157336,
@@ -1221,7 +1384,8 @@ struct CineBarRegressionBehaviorTests {
             posterPath: "/poster.jpg",
             releaseDate: "2014-11-05",
             voteAverage: 8.5,
-            voteCount: 10
+            voteCount: 10,
+            genreIDs: [12, 878]
         )
         let partialMovie = Movie(
             id: 2,
@@ -1248,6 +1412,8 @@ struct CineBarRegressionBehaviorTests {
             exactCandidate.metadata.posterPath
         )?.absoluteString == "https://image.tmdb.org/t/p/w342/poster.jpg")
         precondition(exactCandidate.voteAverage == 8.5)
+        precondition(exactCandidate.genreIDs == [12, 878])
+        precondition(exactCandidate.metadata.genreIDs == [12, 878])
         precondition(exactCandidate.confidence == 1)
         precondition(
             exactCandidate.confidence > LocalLibraryMatchCandidate(
@@ -1336,5 +1502,24 @@ private final class LocalLibraryPlaybackProbe {
 private final class LocalLibraryMatchProbe {
     var movieQueries: [String] = []
     var televisionQueries: [String] = []
+}
+
+private actor LocalLibraryRefreshGate {
+    private var isReleased = false
+    private var continuations: [CheckedContinuation<Void, Never>] = []
+
+    func waitUntilReleased() async {
+        guard !isReleased else { return }
+        await withCheckedContinuation { continuation in
+            continuations.append(continuation)
+        }
+    }
+
+    func release() {
+        isReleased = true
+        let pending = continuations
+        continuations.removeAll()
+        pending.forEach { $0.resume() }
+    }
 }
 #endif

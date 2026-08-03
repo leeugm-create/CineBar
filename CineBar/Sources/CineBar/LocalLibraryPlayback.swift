@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 
-enum ExternalPlayerKind: Equatable {
+enum ExternalPlayerKind: Equatable, Hashable {
     case iina
     case vlc
     case system
@@ -13,6 +13,30 @@ enum ExternalPlayerKind: Equatable {
         case .system: return nil
         }
     }
+}
+
+enum ExternalPlayerFailureReason: Equatable, Hashable {
+    case notInstalled
+    case launchFailed
+    case timedOut
+    case systemRejected
+}
+
+struct ExternalPlayerFailure: Equatable, Hashable {
+    let player: ExternalPlayerKind
+    let reason: ExternalPlayerFailureReason
+    let detail: String?
+}
+
+enum ExternalPlayerAttemptResult: Equatable {
+    case success
+    case failure(ExternalPlayerFailureReason, String?)
+}
+
+enum ExternalPlayerLaunchResult: Equatable {
+    case opened(ExternalPlayerKind)
+    case failed([ExternalPlayerFailure])
+    case invalidFileURL
 }
 
 enum ExternalPlayerResolver {
@@ -32,61 +56,73 @@ enum ExternalPlayerResolver {
 
 struct ExternalPlayerLauncher {
     private let applicationURLForBundleID: (String) -> URL?
-    private let openWithApplication: ([URL], URL) async -> Bool
-    private let openSystem: (URL) -> Bool
+    private let openWithApplication: ([URL], URL) async -> ExternalPlayerAttemptResult
+    private let openSystem: (URL) -> ExternalPlayerAttemptResult
 
     init(
         applicationURLForBundleID: @escaping (String) -> URL? = {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
         },
-        openWithApplication: @escaping ([URL], URL) async -> Bool = {
+        openWithApplication: @escaping ([URL], URL) async -> ExternalPlayerAttemptResult = {
             urls, applicationURL in
             await Self.openAndObserve(urls, with: applicationURL)
         },
-        openSystem: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }
+        openSystem: @escaping (URL) -> ExternalPlayerAttemptResult = {
+            NSWorkspace.shared.open($0)
+                ? .success
+                : .failure(.systemRejected, nil)
+        }
     ) {
         self.applicationURLForBundleID = applicationURLForBundleID
         self.openWithApplication = openWithApplication
         self.openSystem = openSystem
     }
 
-    @discardableResult
-    func open(fileURL: URL) async -> Bool {
-        guard fileURL.isFileURL else { return false }
+    func open(fileURL: URL) async -> ExternalPlayerLaunchResult {
+        guard fileURL.isFileURL else { return .invalidFileURL }
         let localFileURL = fileURL.standardizedFileURL
-        let availableBundleIDs: [String] = [
-            ExternalPlayerKind.iina, .vlc
-        ].compactMap {
-            guard let bundleID = $0.bundleID,
-                  applicationURLForBundleID(bundleID) != nil
-            else { return nil }
-            return bundleID
-        }
+        var failures: [ExternalPlayerFailure] = []
 
-        for player in ExternalPlayerResolver.resolve(
-            availableBundleIDs: availableBundleIDs
-        ) {
-            switch player {
-            case .iina, .vlc:
-                guard let bundleID = player.bundleID,
-                      let applicationURL = applicationURLForBundleID(bundleID)
-                else { continue }
-                if await openWithApplication([localFileURL], applicationURL) {
-                    return true
-                }
-            case .system:
-                if openSystem(localFileURL) {
-                    return true
-                }
+        for player in [ExternalPlayerKind.iina, .vlc] {
+            guard let bundleID = player.bundleID,
+                  let applicationURL = applicationURLForBundleID(bundleID)
+            else {
+                failures.append(ExternalPlayerFailure(
+                    player: player,
+                    reason: .notInstalled,
+                    detail: nil
+                ))
+                continue
+            }
+            switch await openWithApplication([localFileURL], applicationURL) {
+            case .success:
+                return .opened(player)
+            case let .failure(reason, detail):
+                failures.append(ExternalPlayerFailure(
+                    player: player,
+                    reason: reason,
+                    detail: detail
+                ))
             }
         }
-        return false
+
+        switch openSystem(localFileURL) {
+        case .success:
+            return .opened(.system)
+        case let .failure(reason, detail):
+            failures.append(ExternalPlayerFailure(
+                player: .system,
+                reason: reason,
+                detail: detail
+            ))
+            return .failed(failures)
+        }
     }
 
     private static func openAndObserve(
         _ fileURLs: [URL],
         with applicationURL: URL
-    ) async -> Bool {
+    ) async -> ExternalPlayerAttemptResult {
         await withCheckedContinuation { continuation in
             let outcome = ExternalPlayerOpenOutcome(continuation: continuation)
             NSWorkspace.shared.open(
@@ -94,10 +130,19 @@ struct ExternalPlayerLauncher {
                 withApplicationAt: applicationURL,
                 configuration: NSWorkspace.OpenConfiguration()
             ) { application, error in
-                outcome.complete(application != nil && error == nil)
+                if let error {
+                    outcome.complete(.failure(
+                        .launchFailed,
+                        error.localizedDescription
+                    ))
+                } else if application != nil {
+                    outcome.complete(.success)
+                } else {
+                    outcome.complete(.failure(.launchFailed, nil))
+                }
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                outcome.complete(false)
+                outcome.complete(.failure(.timedOut, nil))
             }
         }
     }
@@ -105,13 +150,15 @@ struct ExternalPlayerLauncher {
 
 private final class ExternalPlayerOpenOutcome: @unchecked Sendable {
     private let lock = NSLock()
-    private var continuation: CheckedContinuation<Bool, Never>?
+    private var continuation: CheckedContinuation<ExternalPlayerAttemptResult, Never>?
 
-    init(continuation: CheckedContinuation<Bool, Never>) {
+    init(
+        continuation: CheckedContinuation<ExternalPlayerAttemptResult, Never>
+    ) {
         self.continuation = continuation
     }
 
-    func complete(_ result: Bool) {
+    func complete(_ result: ExternalPlayerAttemptResult) {
         lock.lock()
         let pendingContinuation = continuation
         continuation = nil

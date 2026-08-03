@@ -23,6 +23,19 @@ struct LocalLibraryFileSignature: Codable, Hashable {
     let byteCount: Int64
     let modificationDate: Date?
     let resourceIdentifier: String?
+
+    func matchesForReattachment(_ candidate: LocalLibraryFileSignature) -> Bool {
+        if let resourceIdentifier,
+           let candidateIdentifier = candidate.resourceIdentifier,
+           resourceIdentifier == candidateIdentifier {
+            return true
+        }
+        return fileName.precomposedStringWithCanonicalMapping ==
+                candidate.fileName.precomposedStringWithCanonicalMapping &&
+            fileExtension.lowercased() == candidate.fileExtension.lowercased() &&
+            byteCount == candidate.byteCount &&
+            modificationDate == candidate.modificationDate
+    }
 }
 
 struct LocalLibraryMetadata: Codable, Hashable {
@@ -33,6 +46,7 @@ struct LocalLibraryMetadata: Codable, Hashable {
     let posterPath: String?
     let overview: String
     let voteAverage: Double
+    var genreIDs: [Int]? = nil
 }
 
 struct LocalLibraryEntry: Codable, Identifiable, Hashable {

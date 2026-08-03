@@ -135,6 +135,7 @@ struct Movie: Codable, Identifiable, Hashable {
     var localizedReleaseNote: String? = nil
     let voteAverage: Double
     let voteCount: Int
+    var genreIDs: [Int]? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, title, overview
@@ -145,6 +146,7 @@ struct Movie: Codable, Identifiable, Hashable {
         case localizedReleaseNote = "cinebar_localized_release_note"
         case voteAverage = "vote_average"
         case voteCount = "vote_count"
+        case genreIDs = "genre_ids"
     }
 
     var year: String {
@@ -370,6 +372,7 @@ struct TVShow: Codable, Identifiable, Hashable {
     let firstAirDate: String?
     let voteAverage: Double
     let voteCount: Int
+    var genreIDs: [Int]? = nil
 
     enum CodingKeys: String, CodingKey {
         case id, name, overview
@@ -378,6 +381,7 @@ struct TVShow: Codable, Identifiable, Hashable {
         case firstAirDate = "first_air_date"
         case voteAverage = "vote_average"
         case voteCount = "vote_count"
+        case genreIDs = "genre_ids"
     }
 
     var year: String {

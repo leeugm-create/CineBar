@@ -32,7 +32,22 @@ struct LocalLibraryScanResult: Hashable {
     let entries: [LocalLibraryEntry]
     let availableFolderIDs: Set<UUID>
     let unavailableFolderIDs: Set<UUID>
+    let staleFolderIDs: Set<UUID>
     let wasCancelled: Bool
+
+    init(
+        entries: [LocalLibraryEntry],
+        availableFolderIDs: Set<UUID>,
+        unavailableFolderIDs: Set<UUID>,
+        staleFolderIDs: Set<UUID> = [],
+        wasCancelled: Bool
+    ) {
+        self.entries = entries
+        self.availableFolderIDs = availableFolderIDs
+        self.unavailableFolderIDs = unavailableFolderIDs
+        self.staleFolderIDs = staleFolderIDs
+        self.wasCancelled = wasCancelled
+    }
 }
 
 final class LocalLibraryScanner {
@@ -66,6 +81,7 @@ final class LocalLibraryScanner {
         var entriesByKey: [String: LocalLibraryEntry] = [:]
         var availableFolderIDs = Set<UUID>()
         var unavailableFolderIDs = Set<UUID>()
+        var staleFolderIDs = Set<UUID>()
         var wasCancelled = false
         var scopedFolders: [LocalLibraryResolvedFolder] = []
         defer {
@@ -86,6 +102,9 @@ final class LocalLibraryScanner {
                     continue
                 }
                 scopedFolders.append(resolvedFolder)
+                if resolvedFolder.isStale {
+                    staleFolderIDs.insert(root.folderID)
+                }
                 rootURL = resolvedFolder.url.standardizedFileURL
             } else if let url = root.url {
                 rootURL = url.standardizedFileURL
@@ -193,6 +212,7 @@ final class LocalLibraryScanner {
             },
             availableFolderIDs: availableFolderIDs,
             unavailableFolderIDs: unavailableFolderIDs,
+            staleFolderIDs: staleFolderIDs,
             wasCancelled: wasCancelled
         )
     }
@@ -228,6 +248,7 @@ enum LocalLibraryRefreshMerger {
         roots: [LocalLibraryScanRoot]
     ) -> [LocalLibraryEntry] {
         var existingByKey: [String: LocalLibraryEntry] = [:]
+        var existingByID: [UUID: LocalLibraryEntry] = [:]
         for entry in existing {
             let key = LocalLibraryEntryMerge.key(
                 folderID: entry.folderID,
@@ -236,6 +257,7 @@ enum LocalLibraryRefreshMerger {
             if existingByKey[key] == nil {
                 existingByKey[key] = entry
             }
+            existingByID[entry.id] = entry
         }
 
         var mergedByKey: [String: LocalLibraryEntry] = [:]
@@ -244,6 +266,17 @@ enum LocalLibraryRefreshMerger {
                 folderID: scannedEntry.folderID,
                 relativePath: scannedEntry.relativePath
             )
+            if let currentEntry = existingByID[scannedEntry.id] {
+                let currentKey = LocalLibraryEntryMerge.key(
+                    folderID: currentEntry.folderID,
+                    relativePath: currentEntry.relativePath
+                )
+                if currentKey != key {
+                    existingByKey.removeValue(forKey: currentKey)
+                    mergedByKey[currentKey] = currentEntry
+                    continue
+                }
+            }
             if let oldEntry = existingByKey.removeValue(forKey: key) {
                 var updatedEntry = oldEntry
                 updatedEntry.relativePath = scannedEntry.relativePath

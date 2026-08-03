@@ -8,6 +8,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
     let posterURL: URL?
     let overview: String
     let voteAverage: Double
+    let genreIDs: [Int]
     let confidence: Double
 
     init(movie: Movie, query: LocalLibraryParsedFilename) {
@@ -19,6 +20,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             posterURL: movie.posterURL,
             overview: movie.overview,
             voteAverage: movie.voteAverage,
+            genreIDs: movie.genreIDs ?? [],
             confidence: Self.confidence(title: movie.title, year: movie.year, query: query)
         )
     }
@@ -32,6 +34,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             posterURL: show.posterURL,
             overview: show.overview,
             voteAverage: show.voteAverage,
+            genreIDs: show.genreIDs ?? [],
             confidence: Self.confidence(title: show.name, year: show.year, query: query)
         )
     }
@@ -44,7 +47,8 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             year: year,
             posterPath: posterURL?.absoluteString,
             overview: overview,
-            voteAverage: voteAverage
+            voteAverage: voteAverage,
+            genreIDs: genreIDs
         )
     }
 
@@ -56,6 +60,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         posterURL: URL?,
         overview: String,
         voteAverage: Double,
+        genreIDs: [Int],
         confidence: Double
     ) {
         self.id = id
@@ -65,6 +70,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         self.posterURL = posterURL
         self.overview = overview
         self.voteAverage = voteAverage
+        self.genreIDs = genreIDs
         self.confidence = confidence
     }
 

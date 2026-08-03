@@ -129,6 +129,15 @@
 "停止" = "Stop";
 "内容类型" = "Content type";
 "电视剧" = "TV";
+"文件夹权限需要更新。请重新添加同一文件夹。" = "Folder access needs to be renewed. Add the same folder again.";
+"复制路径" = "Copy Path";
+"系统播放器" = "System player";
+"未安装" = "Not installed";
+"启动失败" = "Launch failed";
+"启动超时" = "Launch timed out";
+"系统拒绝打开" = "The system refused to open the file";
+"无法启动播放器。文件路径：%@" = "Unable to start a player. File path: %@";
+"无法启动播放器。%@。文件路径：%@" = "Unable to start a player. %@. File path: %@";
 "所选文件夹已不在片库中。" = "The selected folder is no longer in the library."; "片库刷新已取消。" = "Library refresh was cancelled."; "无法保存本地片库。" = "Unable to save the local library."; "所选片库项目已不存在。" = "The selected library item no longer exists."; "片库项目已不存在。" = "The library item no longer exists."; "所选文件与片库项目不匹配。" = "The selected file does not match the library item."; "所选文件不在已授权的文件夹中。" = "The selected file is outside authorized folders."; "所选项目不是文件。" = "The selected item is not a file."; "无法添加文件夹。" = "Unable to add the folder."; "无法播放本地文件。" = "Unable to play the local file."; "匹配影片失败。" = "Unable to match the title."; "无法重新定位文件。" = "Unable to relocate the file.";
 "本地片库为空" = "Your Local Library is empty";
 "添加包含视频文件的文件夹后，使用刷新扫描目录。" = "Add a folder containing videos, then refresh to scan it.";

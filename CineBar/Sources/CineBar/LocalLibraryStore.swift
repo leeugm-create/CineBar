@@ -1,18 +1,43 @@
 import Combine
 import Foundation
 
+typealias LocalLibraryScanOperation = (
+    [LocalLibraryScanRoot],
+    [LocalLibraryEntry],
+    @escaping @Sendable (LocalLibraryScanProgress) -> Void
+) async -> LocalLibraryScanResult
+
+enum LocalLibraryStoreMessage: Hashable {
+    case selectedFolderRemoved
+    case folderAuthorizationStale
+    case refreshCancelled
+    case saveFailed
+    case selectedEntryRemoved
+}
+
 @MainActor
 final class LocalLibraryStore: ObservableObject {
     @Published private(set) var folders: [LocalLibraryFolder]
     @Published private(set) var entries: [LocalLibraryEntry]
     @Published private(set) var isScanning = false
     @Published private(set) var scanProgress: LocalLibraryScanProgress?
-    @Published private(set) var message: String?
+    @Published private(set) var message: LocalLibraryStoreMessage?
 
     private let persistence: LocalLibraryPersistence
+    private let scanOperation: LocalLibraryScanOperation
 
-    init(fileURL: URL? = nil) {
+    init(
+        fileURL: URL? = nil,
+        scanOperation: @escaping LocalLibraryScanOperation = { roots, existing, progress in
+            await LocalLibraryScanner().scan(
+                roots: roots,
+                existing: existing,
+                progress: progress
+            )
+        }
+    ) {
         persistence = LocalLibraryPersistence(fileURL: fileURL)
+        self.scanOperation = scanOperation
         let snapshot = persistence.load()
         folders = snapshot.folders
         entries = snapshot.entries
@@ -20,9 +45,20 @@ final class LocalLibraryStore: ObservableObject {
 
     func addFolder(url: URL) throws {
         let standardizedURL = url.standardizedFileURL
-        guard !containsFolder(at: standardizedURL) else { return }
-
         let bookmark = try LocalLibraryFolderBookmark.make(from: standardizedURL)
+        if let existingIndex = matchingFolderIndex(at: standardizedURL) {
+            var updatedFolders = folders
+            updatedFolders[existingIndex].displayName = standardizedURL.lastPathComponent
+            updatedFolders[existingIndex].pathHint = bookmark.pathHint
+            updatedFolders[existingIndex].bookmarkData = bookmark.bookmarkData
+            try persistence.save(LocalLibrarySnapshot(
+                folders: updatedFolders,
+                entries: entries
+            ))
+            folders = updatedFolders
+            message = nil
+            return
+        }
         let folder = LocalLibraryFolder(
             id: UUID(),
             displayName: standardizedURL.lastPathComponent,
@@ -44,7 +80,7 @@ final class LocalLibraryStore: ObservableObject {
 
     func refresh(folderID: UUID) async {
         guard folders.contains(where: { $0.id == folderID }) else {
-            message = String(localized: "所选文件夹已不在片库中。")
+            message = .selectedFolderRemoved
             return
         }
         await refresh(folderIDs: [folderID])
@@ -61,7 +97,7 @@ final class LocalLibraryStore: ObservableObject {
             containing: fileURL
         ) { folder, resolvedFolder in
             let fileSignature = try signature(for: fileURL)
-            guard signaturesMatch(oldEntry.signature, fileSignature) else {
+            guard oldEntry.signature.matchesForReattachment(fileSignature) else {
                 throw LocalLibraryStoreError.signatureMismatch
             }
 
@@ -95,6 +131,16 @@ final class LocalLibraryStore: ObservableObject {
         mutateEntry(entryID) { $0.lastOpenedAt = Date() }
     }
 
+    @discardableResult
+    func recordPlayback(
+        result: ExternalPlayerLaunchResult,
+        entryID: UUID
+    ) -> Bool {
+        guard case .opened = result else { return false }
+        markOpened(entryID: entryID)
+        return true
+    }
+
     func updateMetadata(entryID: UUID, metadata: LocalLibraryMetadata?) {
         mutateEntry(entryID) {
             $0.metadata = metadata
@@ -118,15 +164,15 @@ final class LocalLibraryStore: ObservableObject {
         scanProgress = nil
         message = nil
         let existingEntries = entries
-        let result = await LocalLibraryScanner().scan(
-            roots: roots,
-            existing: existingEntries,
-            progress: { [weak self] progress in
+        let result = await scanOperation(
+            roots,
+            existingEntries,
+            { [weak self] progress in
                 Task { @MainActor in self?.scanProgress = progress }
             }
         )
         let mergedEntries = LocalLibraryRefreshMerger.merge(
-            existing: existingEntries,
+            existing: entries,
             scanned: result,
             roots: roots
         )
@@ -136,11 +182,13 @@ final class LocalLibraryStore: ObservableObject {
                 entries: mergedEntries
             ))
             entries = mergedEntries
-            if result.wasCancelled {
-                message = String(localized: "片库刷新已取消。")
+            if !result.staleFolderIDs.isEmpty {
+                message = .folderAuthorizationStale
+            } else if result.wasCancelled {
+                message = .refreshCancelled
             }
         } catch {
-            message = String(localized: "无法保存本地片库。")
+            message = .saveFailed
         }
         isScanning = false
     }
@@ -150,7 +198,7 @@ final class LocalLibraryStore: ObservableObject {
         mutation: (inout LocalLibraryEntry) -> Void
     ) {
         guard let index = entries.firstIndex(where: { $0.id == entryID }) else {
-            message = String(localized: "所选片库项目已不存在。")
+            message = .selectedEntryRemoved
             return
         }
         var updatedEntries = entries
@@ -163,12 +211,12 @@ final class LocalLibraryStore: ObservableObject {
             entries = updatedEntries
             message = nil
         } catch {
-            message = String(localized: "无法保存本地片库。")
+            message = .saveFailed
         }
     }
 
-    private func containsFolder(at url: URL) -> Bool {
-        folders.contains { folder in
+    private func matchingFolderIndex(at url: URL) -> Int? {
+        folders.firstIndex { folder in
             guard let resolved = try? LocalLibraryFolderBookmark.resolve(
                 folder.bookmarkData
             ) else { return false }
@@ -222,35 +270,11 @@ final class LocalLibraryStore: ObservableObject {
         )
     }
 
-    private func signaturesMatch(
-        _ original: LocalLibraryFileSignature,
-        _ candidate: LocalLibraryFileSignature
-    ) -> Bool {
-        if let originalID = original.resourceIdentifier,
-           let candidateID = candidate.resourceIdentifier {
-            return originalID == candidateID
-        }
-        return original.byteCount == candidate.byteCount &&
-            original.modificationDate == candidate.modificationDate
-    }
 }
 
-private enum LocalLibraryStoreError: LocalizedError {
+enum LocalLibraryStoreError: Error, Equatable {
     case entryNotFound
     case signatureMismatch
     case fileOutsideAuthorizedFolders
     case notAFile
-
-    var errorDescription: String? {
-        switch self {
-        case .entryNotFound:
-            return String(localized: "片库项目已不存在。")
-        case .signatureMismatch:
-            return String(localized: "所选文件与片库项目不匹配。")
-        case .fileOutsideAuthorizedFolders:
-            return String(localized: "所选文件不在已授权的文件夹中。")
-        case .notAFile:
-            return String(localized: "所选项目不是文件。")
-        }
-    }
 }

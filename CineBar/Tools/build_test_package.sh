@@ -7,11 +7,24 @@ repo_root=$(cd "$app_source_dir/.." && pwd)
 source_dir="$app_source_dir/Sources/CineBar"
 swift_sources=("$source_dir"/*.swift)
 info_plist="$app_source_dir/Info.plist"
-"$script_dir/fetch_sparkle.sh"
-sparkle_dir="$app_source_dir/.vendor/Sparkle-2.9.2"
 version=$(/usr/libexec/PlistBuddy \
   -c "Print :CFBundleShortVersionString" "$info_plist")
 build=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$info_plist")
+build_manifest=$("$script_dir/check_build_provenance.sh" \
+  "$repo_root" "$version" "$build" \
+  CineBar/Sources/CineBar \
+  CineBar/Info.plist \
+  CineBar/PkgInfo \
+  CineBar/Assets \
+  CineBar/ReleaseNotes \
+  CineBar/INSTALL.md \
+  CineBar/README.md \
+  CineBar/请先阅读-测试版安装说明.html \
+  CineBar/请先阅读-测试版安装说明.txt \
+  CineBar/Tools/build_test_package.sh \
+  CineBar/Tools/check_build_provenance.sh)
+"$script_dir/fetch_sparkle.sh"
+sparkle_dir="$app_source_dir/.vendor/Sparkle-2.9.2"
 package_name="CineBar-$version-test-build-$build"
 dist_dir="$repo_root/dist"
 output_zip="$dist_dir/$package_name-universal.zip"
@@ -64,6 +77,9 @@ chmod 755 "$contents_dir/MacOS/CineBar"
 
 cp "$info_plist" "$contents_dir/Info.plist"
 cp "$app_source_dir/PkgInfo" "$contents_dir/PkgInfo"
+printf '%s\n' "$build_manifest" \
+  > "$contents_dir/Resources/BuildManifest.json"
+printf '%s\n' "$build_manifest" > "$delivery_dir/BuildManifest.json"
 cp "$app_source_dir/Assets/CineBar.icns" \
   "$contents_dir/Resources/CineBar.icns"
 cp "$app_source_dir/Assets/MenuBarIcon-template.png" \

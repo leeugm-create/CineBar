@@ -2,6 +2,88 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
+enum LocalLibraryLocalization {
+    static func string(_ key: String, language: AppLanguage) -> String {
+        let resourceName: String
+        switch language {
+        case .zhCN: resourceName = "zh-Hans"
+        case .zhHK, .zhTW: resourceName = "zh-Hant"
+        case .enUS: resourceName = "en"
+        case .jaJP: resourceName = "ja"
+        case .koKR: resourceName = "ko"
+        }
+        guard let path = Bundle.main.path(
+            forResource: resourceName,
+            ofType: "lproj"
+        ), let bundle = Bundle(path: path) else {
+            return key
+        }
+        return bundle.localizedString(forKey: key, value: key, table: nil)
+    }
+
+    static func message(
+        _ message: LocalLibraryStoreMessage,
+        language: AppLanguage
+    ) -> String {
+        let key: String
+        switch message {
+        case .selectedFolderRemoved:
+            key = "所选文件夹已不在片库中。"
+        case .folderAuthorizationStale:
+            key = "文件夹权限需要更新。请重新添加同一文件夹。"
+        case .refreshCancelled:
+            key = "片库刷新已取消。"
+        case .saveFailed:
+            key = "无法保存本地片库。"
+        case .selectedEntryRemoved:
+            key = "所选片库项目已不存在。"
+        }
+        return string(key, language: language)
+    }
+}
+
+enum LocalLibraryGenreLocalization {
+    private static let names: [Int: [String]] = [
+        12: ["冒险", "Adventure", "アドベンチャー", "모험"],
+        14: ["奇幻", "Fantasy", "ファンタジー", "판타지"],
+        16: ["动画", "Animation", "アニメーション", "애니메이션"],
+        18: ["剧情", "Drama", "ドラマ", "드라마"],
+        27: ["恐怖", "Horror", "ホラー", "공포"],
+        28: ["动作", "Action", "アクション", "액션"],
+        35: ["喜剧", "Comedy", "コメディ", "코미디"],
+        36: ["历史", "History", "歴史", "역사"],
+        37: ["西部", "Western", "西部劇", "서부"],
+        53: ["惊悚", "Thriller", "スリラー", "스릴러"],
+        80: ["犯罪", "Crime", "犯罪", "범죄"],
+        99: ["纪录片", "Documentary", "ドキュメンタリー", "다큐멘터리"],
+        878: ["科幻", "Science Fiction", "SF", "SF"],
+        9648: ["悬疑", "Mystery", "ミステリー", "미스터리"],
+        10402: ["音乐", "Music", "音楽", "음악"],
+        10749: ["爱情", "Romance", "ロマンス", "로맨스"],
+        10751: ["家庭", "Family", "ファミリー", "가족"],
+        10752: ["战争", "War", "戦争", "전쟁"],
+        10759: ["动作与冒险", "Action & Adventure", "アクション＆アドベンチャー", "액션 & 어드벤처"],
+        10762: ["儿童", "Kids", "キッズ", "키즈"],
+        10763: ["新闻", "News", "ニュース", "뉴스"],
+        10764: ["真人秀", "Reality", "リアリティ", "리얼리티"],
+        10765: ["科幻与奇幻", "Sci-Fi & Fantasy", "SF＆ファンタジー", "SF & 판타지"],
+        10766: ["肥皂剧", "Soap", "ソープ", "연속극"],
+        10767: ["脱口秀", "Talk", "トーク", "토크"],
+        10768: ["战争与政治", "War & Politics", "戦争＆政治", "전쟁 & 정치"],
+        10770: ["电视电影", "TV Movie", "テレビ映画", "TV 영화"]
+    ]
+
+    static func title(id: Int, language: AppLanguage) -> String {
+        guard let values = names[id] else { return String(id) }
+        switch language {
+        case .zhCN, .zhHK, .zhTW: return values[0]
+        case .enUS: return values[1]
+        case .jaJP: return values[2]
+        case .koKR: return values[3]
+        }
+    }
+}
+
 struct LocalLibraryView: View {
     @ObservedObject var store: LocalLibraryStore
     @ObservedObject var movieStore: MovieStore
@@ -9,6 +91,7 @@ struct LocalLibraryView: View {
     @State private var searchText = ""
     @State private var filter = LocalLibraryFilter.all
     @State private var actionMessage: String?
+    @State private var failedPlaybackPath: String?
     @State private var matchSession: LocalLibraryMatchSession?
 
     var body: some View {
@@ -16,23 +99,47 @@ struct LocalLibraryView: View {
             header
             Divider()
             filterBar
-            if let message = actionMessage ?? store.message {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
-                    .padding(.bottom, 6)
+            if let message = actionMessage ?? store.message.map({
+                LocalLibraryLocalization.message(
+                    $0,
+                    language: movieStore.appLanguage
+                )
+            }) {
+                HStack(alignment: .top, spacing: 8) {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    if let failedPlaybackPath {
+                        Button(localized("复制路径")) {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(
+                                failedPlaybackPath,
+                                forType: .string
+                            )
+                        }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 6)
             }
             ScrollView {
                 LazyVStack(spacing: 8) {
                     if filteredEntries.isEmpty {
-                        LocalLibraryEmptyState(state: LocalLibraryEmptyState.library)
+                        LocalLibraryEmptyState(
+                            state: LocalLibraryEmptyState.library(
+                                language: movieStore.appLanguage
+                            )
+                        )
                         .padding(.top, 48)
                     } else {
                         ForEach(filteredEntries) { entry in
                             LocalLibraryEntryRow(
                                 entry: entry,
+                                language: movieStore.appLanguage,
                                 onPlay: { play(entry) },
                                 onToggleWatched: {
                                     store.setWatched(
@@ -55,6 +162,7 @@ struct LocalLibraryView: View {
         .sheet(item: $matchSession) { session in
             LocalLibraryMatchSheet(
                 session: session,
+                language: movieStore.appLanguage,
                 onConfirm: { candidate in
                     store.updateMetadata(
                         entryID: session.entry.id,
@@ -71,26 +179,26 @@ struct LocalLibraryView: View {
         VStack(spacing: 10) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Label(String(localized: "本地片库"), systemImage: "externaldrive.fill")
+                    Label(localized("本地片库"), systemImage: "externaldrive.fill")
                         .font(.title3.bold())
-                    Text(String(format: String(localized: "已添加 %lld 个目录 · %lld 个视频"), store.folders.count, store.entries.count))
+                    Text(String(format: localized("已添加 %lld 个目录 · %lld 个视频"), store.folders.count, store.entries.count))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button(String(localized: "添加文件夹"), systemImage: "folder.badge.plus") {
+                Button(localized("添加文件夹"), systemImage: "folder.badge.plus") {
                     chooseFolders()
                 }
                 Button {
                     Task { await store.refresh() }
                 } label: {
-                    Label(String(localized: "刷新"), systemImage: "arrow.clockwise")
+                    Label(localized("刷新"), systemImage: "arrow.clockwise")
                 }
                 .disabled(store.isScanning || store.folders.isEmpty)
             }
 
             Picker(
-                String(localized: "内容类型"),
+                localized("内容类型"),
                 selection: Binding(
                     get: { movieStore.mainBrowseSection },
                     set: { movieStore.setMainBrowseSection($0) }
@@ -118,11 +226,11 @@ struct LocalLibraryView: View {
 
     private var filterBar: some View {
         HStack(spacing: 8) {
-            TextField(String(localized: "搜索本地视频"), text: $searchText)
+            TextField(localized("搜索本地视频"), text: $searchText)
                 .textFieldStyle(.roundedBorder)
-            Picker(String(localized: "筛选"), selection: $filter) {
+            Picker(localized("筛选"), selection: $filter) {
                 ForEach(LocalLibraryFilter.allCases) { option in
-                    Text(option.title).tag(option)
+                    Text(option.title(language: movieStore.appLanguage)).tag(option)
                 }
             }
             .pickerStyle(.menu)
@@ -133,8 +241,8 @@ struct LocalLibraryView: View {
     }
 
     private var scanDescription: String {
-        guard let progress = store.scanProgress else { return String(localized: "正在扫描…") }
-        return String(format: String(localized: "正在扫描 %@ · %lld 个视频"), progress.displayName, progress.mediaFilesFound)
+        guard let progress = store.scanProgress else { return localized("正在扫描…") }
+        return String(format: localized("正在扫描 %@ · %lld 个视频"), progress.displayName, progress.mediaFilesFound)
     }
 
     private var filteredEntries: [LocalLibraryEntry] {
@@ -154,13 +262,13 @@ struct LocalLibraryView: View {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.prompt = String(localized: "添加")
+        panel.prompt = localized("添加")
         guard panel.runModal() == .OK else { return }
         for url in panel.urls {
             do {
                 try store.addFolder(url: url)
             } catch {
-                actionMessage = String(localized: "无法添加文件夹。")
+                actionMessage = localized("无法添加文件夹。")
             }
         }
     }
@@ -169,7 +277,7 @@ struct LocalLibraryView: View {
         guard entry.state == .available,
               let folder = store.folders.first(where: { $0.id == entry.folderID })
         else {
-            actionMessage = String(localized: "文件当前不可用。请重新定位文件后再播放。")
+            actionMessage = localized("文件当前不可用。请重新定位文件后再播放。")
             return
         }
         Task {
@@ -178,15 +286,23 @@ struct LocalLibraryView: View {
                 defer { resolved.stopAccessing() }
                 let fileURL = resolved.url.appendingPathComponent(entry.relativePath)
                 guard FileManager.default.fileExists(atPath: fileURL.path) else {
-                    actionMessage = String(localized: "找不到文件。请重新定位文件。")
+                    actionMessage = localized("找不到文件。请重新定位文件。")
                     return
                 }
-                store.markOpened(entryID: entry.id)
-                if !(await ExternalPlayerLauncher().open(fileURL: fileURL)) {
-                    actionMessage = String(format: String(localized: "无法启动播放器打开 %@。"), entry.signature.fileName)
+                let result = await ExternalPlayerLauncher().open(fileURL: fileURL)
+                if store.recordPlayback(result: result, entryID: entry.id) {
+                    failedPlaybackPath = nil
+                    actionMessage = nil
+                } else {
+                    failedPlaybackPath = fileURL.path
+                    actionMessage = playbackFailureMessage(
+                        result: result,
+                        path: fileURL.path
+                    )
                 }
             } catch {
-                actionMessage = String(localized: "无法播放本地文件。")
+                failedPlaybackPath = nil
+                actionMessage = localized("无法播放本地文件。")
             }
         }
     }
@@ -206,7 +322,7 @@ struct LocalLibraryView: View {
                     candidates: try await service.search(for: entry)
                 )
             } catch {
-                actionMessage = String(localized: "匹配影片失败。")
+                actionMessage = localized("匹配影片失败。")
             }
         }
     }
@@ -217,12 +333,66 @@ struct LocalLibraryView: View {
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         panel.allowedContentTypes = [.movie]
-        panel.prompt = String(localized: "重新定位")
+        panel.prompt = localized("重新定位")
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
             try store.reattach(entryID: entry.id, url: url)
         } catch {
-            actionMessage = String(localized: "无法重新定位文件。")
+            actionMessage = localLibraryErrorMessage(error)
+        }
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalLibraryLocalization.string(key, language: movieStore.appLanguage)
+    }
+
+    private func playbackFailureMessage(
+        result: ExternalPlayerLaunchResult,
+        path: String
+    ) -> String {
+        guard case let .failed(failures) = result else {
+            return String(format: localized("无法启动播放器。文件路径：%@"), path)
+        }
+        let reasons = failures.map { failure in
+            let player: String
+            switch failure.player {
+            case .iina: player = "IINA"
+            case .vlc: player = "VLC"
+            case .system: player = localized("系统播放器")
+            }
+            let reasonKey: String
+            switch failure.reason {
+            case .notInstalled: reasonKey = "未安装"
+            case .launchFailed: reasonKey = "启动失败"
+            case .timedOut: reasonKey = "启动超时"
+            case .systemRejected: reasonKey = "系统拒绝打开"
+            }
+            let reason = localized(reasonKey)
+            if let detail = failure.detail, !detail.isEmpty {
+                return "\(player)：\(reason)（\(detail)）"
+            }
+            return "\(player)：\(reason)"
+        }.joined(separator: " · ")
+        return String(
+            format: localized("无法启动播放器。%@。文件路径：%@"),
+            reasons,
+            path
+        )
+    }
+
+    private func localLibraryErrorMessage(_ error: Error) -> String {
+        guard let storeError = error as? LocalLibraryStoreError else {
+            return localized("无法重新定位文件。")
+        }
+        switch storeError {
+        case .entryNotFound:
+            return localized("片库项目已不存在。")
+        case .signatureMismatch:
+            return localized("所选文件与片库项目不匹配。")
+        case .fileOutsideAuthorizedFolders:
+            return localized("所选文件不在已授权的文件夹中。")
+        case .notAFile:
+            return localized("所选项目不是文件。")
         }
     }
 }
@@ -232,12 +402,12 @@ private enum LocalLibraryFilter: CaseIterable, Identifiable {
 
     var id: Self { self }
 
-    var title: String {
+    func title(language: AppLanguage) -> String {
         switch self {
-        case .all: return String(localized: "全部")
-        case .unwatched: return String(localized: "未看")
-        case .unmatched: return String(localized: "待匹配")
-        case .unavailable: return String(localized: "文件不可用")
+        case .all: return LocalLibraryLocalization.string("全部", language: language)
+        case .unwatched: return LocalLibraryLocalization.string("未看", language: language)
+        case .unmatched: return LocalLibraryLocalization.string("待匹配", language: language)
+        case .unavailable: return LocalLibraryLocalization.string("文件不可用", language: language)
         }
     }
 
@@ -260,6 +430,7 @@ private struct LocalLibraryMatchSession: Identifiable {
 
 private struct LocalLibraryEntryRow: View {
     let entry: LocalLibraryEntry
+    let language: AppLanguage
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
     let onToggleWatchlist: () -> Void
@@ -280,8 +451,8 @@ private struct LocalLibraryEntryRow: View {
                 HStack(spacing: 6) {
                     Label(fileStateTitle, systemImage: fileStateIcon)
                     Label(matchStateTitle, systemImage: "sparkles")
-                    if entry.isWatched { Label(String(localized: "已看"), systemImage: "checkmark.circle") }
-                    if entry.isInWatchlist { Label(String(localized: "片单"), systemImage: "bookmark.fill") }
+                    if entry.isWatched { Label(localized("已看"), systemImage: "checkmark.circle") }
+                    if entry.isInWatchlist { Label(localized("片单"), systemImage: "bookmark.fill") }
                 }
                 .font(.caption2)
                 .foregroundStyle(
@@ -290,18 +461,18 @@ private struct LocalLibraryEntryRow: View {
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 5) {
-                Button(String(localized: "播放"), systemImage: "play.fill", action: onPlay)
+                Button(localized("播放"), systemImage: "play.fill", action: onPlay)
                     .buttonStyle(.borderedProminent)
                     .disabled(entry.state != .available)
                 HStack(spacing: 4) {
-                    Button(entry.isWatched ? String(localized: "未看") : String(localized: "已看"), action: onToggleWatched)
-                    Button(entry.isInWatchlist ? String(localized: "移除片单") : String(localized: "加入片单"), action: onToggleWatchlist)
+                    Button(entry.isWatched ? localized("未看") : localized("已看"), action: onToggleWatched)
+                    Button(entry.isInWatchlist ? localized("移除片单") : localized("加入片单"), action: onToggleWatchlist)
                 }
                 .buttonStyle(.borderless)
                 HStack(spacing: 4) {
-                    Button(String(localized: "匹配"), action: onMatch).buttonStyle(.borderless)
+                    Button(localized("匹配"), action: onMatch).buttonStyle(.borderless)
                     if entry.state != .available {
-                        Button(String(localized: "重新定位文件"), action: onRelocate).buttonStyle(.borderless)
+                        Button(localized("重新定位文件"), action: onRelocate).buttonStyle(.borderless)
                     }
                 }
             }
@@ -331,18 +502,18 @@ private struct LocalLibraryEntryRow: View {
     }
 
     private var details: String {
-        let year = entry.metadata?.year ?? String(localized: "未知年份")
+        let year = entry.metadata?.year ?? localized("未知年份")
         let kind = entry.metadata?.kind == .television
-            ? String(localized: "电视剧")
-            : String(localized: "电影")
+            ? localized("电视剧")
+            : localized("电影")
         return "\(year) · \(kind) · \(entry.signature.fileName)"
     }
 
     private var fileStateTitle: String {
         switch entry.state {
-        case .available: return String(localized: "文件可用")
-        case .missing: return String(localized: "重新定位文件")
-        case .volumeUnavailable: return String(localized: "存储卷未连接")
+        case .available: return localized("文件可用")
+        case .missing: return localized("重新定位文件")
+        case .volumeUnavailable: return localized("存储卷未连接")
         }
     }
 
@@ -352,10 +523,14 @@ private struct LocalLibraryEntryRow: View {
 
     private var matchStateTitle: String {
         switch entry.matchState {
-        case .unmatched: return String(localized: "待匹配")
-        case .suggested: return String(localized: "有建议")
-        case .confirmed: return String(localized: "已匹配")
+        case .unmatched: return localized("待匹配")
+        case .suggested: return localized("有建议")
+        case .confirmed: return localized("已匹配")
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalLibraryLocalization.string(key, language: language)
     }
 }
 
@@ -382,16 +557,24 @@ struct LocalLibraryEmptyState: View {
         let systemImage: String
     }
 
-    static let library = Descriptor(
-        title: String(localized: "本地片库为空"),
-        description: String(localized: "添加包含视频文件的文件夹后，使用刷新扫描目录。"),
-        systemImage: "externaldrive.badge.plus"
-    )
-    static let match = Descriptor(
-        title: String(localized: "没有找到候选项"),
-        description: nil,
-        systemImage: "magnifyingglass"
-    )
+    static func library(language: AppLanguage) -> Descriptor {
+        Descriptor(
+            title: LocalLibraryLocalization.string("本地片库为空", language: language),
+            description: LocalLibraryLocalization.string(
+                "添加包含视频文件的文件夹后，使用刷新扫描目录。",
+                language: language
+            ),
+            systemImage: "externaldrive.badge.plus"
+        )
+    }
+
+    static func match(language: AppLanguage) -> Descriptor {
+        Descriptor(
+            title: LocalLibraryLocalization.string("没有找到候选项", language: language),
+            description: nil,
+            systemImage: "magnifyingglass"
+        )
+    }
 
     let state: Descriptor
 
@@ -417,40 +600,78 @@ struct LocalLibraryEmptyState: View {
 
 private struct LocalLibraryMatchSheet: View {
     let session: LocalLibraryMatchSession
+    let language: AppLanguage
     let onConfirm: (LocalLibraryMatchCandidate) -> Void
     let onDismiss: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(String(localized: "确认影片匹配")).font(.title3.bold())
-            Text(String(localized: "选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。"))
+            Text(localized("确认影片匹配")).font(.title3.bold())
+            Text(localized("选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             if session.candidates.isEmpty {
-                LocalLibraryEmptyState(state: LocalLibraryEmptyState.match)
+                LocalLibraryEmptyState(
+                    state: LocalLibraryEmptyState.match(language: language)
+                )
             } else {
                 List(session.candidates) { candidate in
-                    HStack {
-                        VStack(alignment: .leading) {
+                    HStack(spacing: 12) {
+                        if let posterURL = candidate.posterURL {
+                            AsyncImage(url: posterURL) { image in
+                                image.resizable().scaledToFill()
+                            } placeholder: {
+                                Image(systemName: "film")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(width: 46, height: 68)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                        } else {
+                            Image(systemName: "film")
+                                .foregroundStyle(.secondary)
+                                .frame(width: 46, height: 68)
+                        }
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(candidate.title).font(.headline)
                             Text(
                                 candidate.year + " · " +
-                                    (candidate.kind == .movie ? String(localized: "电影") : String(localized: "电视剧"))
+                                    (candidate.kind == .movie ? localized("电影") : localized("电视剧"))
                             )
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            if !candidate.genreIDs.isEmpty {
+                                Text(candidate.genreIDs.map {
+                                    LocalLibraryGenreLocalization.title(
+                                        id: $0,
+                                        language: language
+                                    )
+                                }.joined(separator: " · "))
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Label(
+                                String(format: "%.1f / 10", candidate.voteAverage),
+                                systemImage: "star.fill"
+                            )
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
                         }
                         Spacer()
-                        Button(String(localized: "确认匹配")) { onConfirm(candidate) }
+                        Button(localized("确认匹配")) { onConfirm(candidate) }
                     }
                 }
             }
             HStack {
                 Spacer()
-                Button(String(localized: "跳过"), action: onDismiss)
+                Button(localized("跳过"), action: onDismiss)
             }
         }
         .padding()
         .frame(width: 460, height: 360)
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalLibraryLocalization.string(key, language: language)
     }
 }

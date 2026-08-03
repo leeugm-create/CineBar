@@ -72,6 +72,15 @@ test("localizes every Local Library label and error across supported locales", a
     "无法播放本地文件。",
     "匹配影片失败。",
     "无法重新定位文件。",
+    "文件夹权限需要更新。请重新添加同一文件夹。",
+    "复制路径",
+    "系统播放器",
+    "未安装",
+    "启动失败",
+    "启动超时",
+    "系统拒绝打开",
+    "无法启动播放器。文件路径：%@",
+    "无法启动播放器。%@。文件路径：%@",
   ];
   const locales = [
     "en.lproj",
@@ -99,23 +108,10 @@ test("keeps the Local Library navigation title available for each app language",
   }
 });
 
-test("uses localized keys for Local Library runtime labels", async () => {
+test("routes Local Library runtime labels through the selected app language", async () => {
   const source = await readFile(localLibraryViewPath, "utf8");
-  for (const key of [
-    "全部",
-    "搜索本地视频",
-    "文件可用",
-    "已匹配",
-    "未知年份",
-    "电影",
-    "电视剧",
-  ]) {
-    assert.match(
-      source,
-      new RegExp(`String\\(localized: "${key}"\\)`),
-      `LocalLibraryView must localize ${key}`,
-    );
-  }
+  assert.match(source, /LocalLibraryLocalization\.string\(key, language:/);
+  assert.doesNotMatch(source, /String\(localized:/);
 });
 
 test("documents Local Library setup and local-only playback in English", async () => {
