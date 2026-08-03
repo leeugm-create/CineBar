@@ -46,6 +46,22 @@ private actor RecordingServiceLoader: ServiceDataLoading {
     }
 }
 
+private actor TelemetryRequestRecorder {
+    private(set) var requests: [URLRequest] = []
+
+    func record(_ request: URLRequest) {
+        requests.append(request)
+    }
+
+    func count() -> Int {
+        requests.count
+    }
+
+    func first() -> URLRequest? {
+        requests.first
+    }
+}
+
 @main
 struct CineBarRegressionBehaviorTests {
     @MainActor
@@ -124,6 +140,63 @@ struct CineBarRegressionBehaviorTests {
         )
         precondition(televisionFilename.category == .television)
         precondition(televisionFilename.isTrustedTitle)
+
+        let telemetryDefaultsName = "CineBarTelemetryRegressionTests-\(UUID().uuidString)"
+        let telemetryDefaults = UserDefaults(suiteName: telemetryDefaultsName)!
+        let fixedTelemetryDate = Date(timeIntervalSince1970: 1_754_214_400)
+        let telemetryRecorder = TelemetryRequestRecorder()
+        let telemetryClient = CineBarTelemetryClient(
+            endpoint: URL(string: "https://telemetry.example.test/v1/telemetry/install")!,
+            defaults: telemetryDefaults,
+            now: { fixedTelemetryDate },
+            send: { request in
+                await telemetryRecorder.record(request)
+            }
+        )
+        await telemetryClient.reportIfNeeded(
+            appVersion: "0.8.3-test.10",
+            build: 26,
+            language: "zh-Hant-HK"
+        )
+        let firstTelemetryCount = await telemetryRecorder.count()
+        precondition(firstTelemetryCount == 1)
+        let telemetryRequest = await telemetryRecorder.first()!
+        precondition(telemetryRequest.httpMethod == "POST")
+        precondition(
+            telemetryRequest.value(forHTTPHeaderField: "Content-Type") ==
+                "application/json"
+        )
+        let telemetryPayload = try! JSONDecoder().decode(
+            CineBarTelemetryPayload.self,
+            from: telemetryRequest.httpBody!
+        )
+        precondition(UUID(uuidString: telemetryPayload.installID) != nil)
+        precondition(telemetryPayload.language == "zh-Hant")
+        precondition(telemetryPayload.platform == "macOS")
+        precondition(telemetryPayload.build == 26)
+        await telemetryClient.reportIfNeeded(
+            appVersion: "0.8.3-test.10",
+            build: 26,
+            language: "zh-Hant-HK"
+        )
+        let sameDayTelemetryCount = await telemetryRecorder.count()
+        precondition(sameDayTelemetryCount == 1)
+        let nextDayClient = CineBarTelemetryClient(
+            endpoint: URL(string: "https://telemetry.example.test/v1/telemetry/install")!,
+            defaults: telemetryDefaults,
+            now: { fixedTelemetryDate.addingTimeInterval(86_400) },
+            send: { request in
+                await telemetryRecorder.record(request)
+            }
+        )
+        await nextDayClient.reportIfNeeded(
+            appVersion: "0.8.3-test.10",
+            build: 26,
+            language: "zh-Hant-HK"
+        )
+        let nextDayTelemetryCount = await telemetryRecorder.count()
+        precondition(nextDayTelemetryCount == 2)
+        telemetryDefaults.removePersistentDomain(forName: telemetryDefaultsName)
 
         precondition(
             UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"

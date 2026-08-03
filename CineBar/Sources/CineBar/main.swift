@@ -8692,6 +8692,11 @@ struct SettingsRootView: View {
             Text("电视剧下一集播出时间由 TVMaze 补充，无需用户申请账号或 API Key。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text(LocalizedStringKey(
+                "匿名安装统计：每天最多上报一次版本、构建号、macOS 主版本、芯片架构和界面语言。安装编号仅用于去重并在服务端转换为不可逆哈希；不会上传影片、文件路径、账号或原始安装编号。测试版不提供关闭开关。"
+            ))
+                .font(.caption)
+                .foregroundStyle(.secondary)
             if let diagnostic = store.latestServiceDiagnostic {
                 Divider()
                 Label("最近一次服务异常", systemImage: "exclamationmark.triangle")
@@ -10020,6 +10025,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         _ = updaterService
         NSApplication.shared.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
+        let telemetryLanguage: String = {
+            switch store.appLanguage {
+            case .zhCN: return "zh-Hans"
+            case .zhHK, .zhTW: return "zh-Hant"
+            case .enUS: return "en"
+            case .jaJP: return "ja"
+            case .koKR: return "ko"
+            }
+        }()
+        Task {
+            await CineBarTelemetryClient().reportIfNeeded(language: telemetryLanguage)
+        }
 
         let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
         if let button = statusItem.button {

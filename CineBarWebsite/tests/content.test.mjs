@@ -152,6 +152,7 @@ test("keeps the Sites Vite plugin in a tracked source path", async () => {
 test("exposes an uncached website health response", async () => {
   const route = await read("app/health/route.ts");
   assert.match(route, /service:\s*["']cinebar-website["']/);
+  assert.match(route, /0\.8\.3-test\.10-build-26/);
   assert.match(route, /cache-control/);
   assert.match(route, /no-store/);
 });

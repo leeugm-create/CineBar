@@ -44,6 +44,8 @@
     <string>https://api.cinebar.cc</string>
     <key>CineBarDataBackupURLs</key>
     <array/>
+    <key>CineBarTelemetryURL</key>
+    <string>https://telemetry.cinebar.cc/v1/telemetry/install</string>
     <key>CineBarSupportURL</key>
     <string>https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=VVVZUSU9QUJBW&amp;currency_code=USD</string>
     <key>LSMinimumSystemVersion</key>

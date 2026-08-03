@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 type Bucket = { value: string | number; installs: number };
 
 type TelemetrySummary = {
@@ -67,9 +69,9 @@ export default async function AnalyticsPage() {
             只显示汇总数量，不显示安装编号、IP、文件名或用户账号。
           </p>
         </div>
-        <a className="button secondary" href="/">
+        <Link className="button secondary" href="/">
           返回官网
-        </a>
+        </Link>
       </header>
       {!summary ? (
         <section className="analytics-card analytics-empty">

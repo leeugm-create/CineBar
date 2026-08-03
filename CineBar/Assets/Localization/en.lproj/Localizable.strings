@@ -133,6 +133,7 @@
 "停止" = "Stop";
 "内容类型" = "Content type";
 "电视剧" = "TV";
+"匿名安装统计：每天最多上报一次版本、构建号、macOS 主版本、芯片架构和界面语言。安装编号仅用于去重并在服务端转换为不可逆哈希；不会上传影片、文件路径、账号或原始安装编号。测试版不提供关闭开关。" = "Anonymous installation statistics are sent at most once per day with the app version, build, macOS major version, chip architecture, and interface language. The installation identifier is used only for deduplication and converted to a one-way hash on the server; movie data, file paths, accounts, and the original identifier are never uploaded. The test build has no opt-out switch.";
 "片库刷新会保留并发更新的已看、片单、最近打开和重新定位状态" = "Library refresh preserves concurrent watched, watchlist, recent-open, and relocated-file changes";
 "文件夹授权可续期，播放器失败会显示原因和完整路径" = "Folder authorization can be renewed; player failures show the reason and full path";
 "匹配候选新增海报、评分和本地化类型" = "Match candidates now include posters, ratings, and localized genres";

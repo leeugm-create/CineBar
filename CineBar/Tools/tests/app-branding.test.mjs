@@ -126,6 +126,15 @@ test("keeps in-app release metadata on Build 26", async () => {
   assert.doesNotMatch(source, /CineBar 0\.8\.0（Build 12）/);
 });
 
+test("documents the always-on anonymous installation telemetry contract", async () => {
+  const source = await readFile(sourcePath, "utf8");
+  const info = await readFile(new URL("../../Info.plist", import.meta.url), "utf8");
+  assert.match(source, /每天最多上报一次/);
+  assert.match(source, /CineBarTelemetryClient\(\)\.reportIfNeeded/);
+  assert.match(info, /<key>CineBarTelemetryURL<\/key>/);
+  assert.match(info, /https:\/\/telemetry\.cinebar\.cc\/v1\/telemetry\/install/);
+});
+
 test("documents Local Library setup and local-only playback in English", async () => {
   const guide = await readFile(installGuidePath, "utf8");
   for (const phrase of [
