@@ -119,10 +119,21 @@ enum LocalLibraryEntryMerge {
         let normalizedPath = relativePath
             .replacingOccurrences(of: "\\\\", with: "/")
             .split(separator: "/")
-            .filter { !$0.isEmpty && $0 != "." }
+            .reduce(into: [Substring]()) { components, component in
+                switch component {
+                case ".":
+                    break
+                case "..":
+                    if !components.isEmpty {
+                        components.removeLast()
+                    }
+                default:
+                    components.append(component)
+                }
+            }
+            .map(String.init)
             .joined(separator: "/")
             .precomposedStringWithCanonicalMapping
-            .lowercased()
         return "\(folderID.uuidString.lowercased())/\(normalizedPath)"
     }
 }

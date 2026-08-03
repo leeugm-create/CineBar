@@ -555,6 +555,24 @@ struct CineBarRegressionBehaviorTests {
             relativePath: "Movies/A.mkv"
         )
         precondition(duplicateKeyA == duplicateKeyB)
+        precondition(
+            LocalLibraryEntryMerge.key(
+                folderID: duplicateFolderID,
+                relativePath: "Movies/../A.mkv"
+            ) == LocalLibraryEntryMerge.key(
+                folderID: duplicateFolderID,
+                relativePath: "A.mkv"
+            )
+        )
+        precondition(
+            LocalLibraryEntryMerge.key(
+                folderID: duplicateFolderID,
+                relativePath: "A.mkv"
+            ) != LocalLibraryEntryMerge.key(
+                folderID: duplicateFolderID,
+                relativePath: "a.mkv"
+            )
+        )
 
         let persistenceDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("CineBarPersistenceTests-\(UUID().uuidString)")
