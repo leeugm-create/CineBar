@@ -973,14 +973,16 @@ struct CineBarRegressionBehaviorTests {
             }
         )
         let encodedFileURL = URL(string: "file:///tmp/My%20Movie.mkv")!
-        precondition(launcher.open(fileURL: encodedFileURL))
+        let didOpenEncodedFile = await launcher.open(fileURL: encodedFileURL)
+        precondition(didOpenEncodedFile)
         precondition(playbackProbe.openedURLs == [
             URL(fileURLWithPath: "/tmp/My Movie.mkv")
         ])
         precondition(playbackProbe.applicationOpenCount == 0)
-        precondition(
-            !launcher.open(fileURL: URL(string: "https://example.com/movie.mkv")!)
+        let didOpenRemoteURL = await launcher.open(
+            fileURL: URL(string: "https://example.com/movie.mkv")!
         )
+        precondition(!didOpenRemoteURL)
         precondition(playbackProbe.openedURLs.count == 1)
 
         var attemptedPlayers: [String] = []

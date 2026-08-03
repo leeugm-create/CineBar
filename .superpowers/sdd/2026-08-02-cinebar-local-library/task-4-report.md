@@ -23,3 +23,10 @@ xcrun swiftc -parse-as-library -D CINEBAR_TEST \
 Both commands exited with status 0. The non-test `-typecheck` command remains
 blocked by the workspace's unavailable Sparkle framework, which predates and is
 outside this task's scope.
+
+## Round 1 Fix
+
+- Player launches now wait for the `NSWorkspace` completion handler and only
+  count as successful when it reports an application and no error.
+- A five-second callback timeout is treated as failure, so the next provider
+  can be attempted rather than reporting an unverified launch as successful.

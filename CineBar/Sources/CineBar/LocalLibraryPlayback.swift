@@ -32,20 +32,16 @@ enum ExternalPlayerResolver {
 
 struct ExternalPlayerLauncher {
     private let applicationURLForBundleID: (String) -> URL?
-    private let openWithApplication: ([URL], URL) -> Bool
+    private let openWithApplication: ([URL], URL) async -> Bool
     private let openSystem: (URL) -> Bool
 
     init(
         applicationURLForBundleID: @escaping (String) -> URL? = {
             NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
         },
-        openWithApplication: @escaping ([URL], URL) -> Bool = { urls, applicationURL in
-            NSWorkspace.shared.open(
-                urls,
-                withApplicationAt: applicationURL,
-                configuration: NSWorkspace.OpenConfiguration()
-            )
-            return true
+        openWithApplication: @escaping ([URL], URL) async -> Bool = {
+            urls, applicationURL in
+            await Self.openAndObserve(urls, with: applicationURL)
         },
         openSystem: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }
     ) {
@@ -55,7 +51,7 @@ struct ExternalPlayerLauncher {
     }
 
     @discardableResult
-    func open(fileURL: URL) -> Bool {
+    func open(fileURL: URL) async -> Bool {
         guard fileURL.isFileURL else { return false }
         let localFileURL = fileURL.standardizedFileURL
         let availableBundleIDs: [String] = [
@@ -75,7 +71,7 @@ struct ExternalPlayerLauncher {
                 guard let bundleID = player.bundleID,
                       let applicationURL = applicationURLForBundleID(bundleID)
                 else { continue }
-                if openWithApplication([localFileURL], applicationURL) {
+                if await openWithApplication([localFileURL], applicationURL) {
                     return true
                 }
             case .system:
@@ -85,5 +81,41 @@ struct ExternalPlayerLauncher {
             }
         }
         return false
+    }
+
+    private static func openAndObserve(
+        _ fileURLs: [URL],
+        with applicationURL: URL
+    ) async -> Bool {
+        await withCheckedContinuation { continuation in
+            let outcome = ExternalPlayerOpenOutcome(continuation: continuation)
+            NSWorkspace.shared.open(
+                fileURLs,
+                withApplicationAt: applicationURL,
+                configuration: NSWorkspace.OpenConfiguration()
+            ) { application, error in
+                outcome.complete(application != nil && error == nil)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                outcome.complete(false)
+            }
+        }
+    }
+}
+
+private final class ExternalPlayerOpenOutcome: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    init(continuation: CheckedContinuation<Bool, Never>) {
+        self.continuation = continuation
+    }
+
+    func complete(_ result: Bool) {
+        lock.lock()
+        let pendingContinuation = continuation
+        continuation = nil
+        lock.unlock()
+        pendingContinuation?.resume(returning: result)
     }
 }
