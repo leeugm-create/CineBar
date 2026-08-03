@@ -1,4 +1,6 @@
-const releaseURL = "https://github.com/leeugm-create/CineBar/releases";
+const releaseURL =
+  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip";
+const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 const features = [
   ["发现", "本周热门、每日推荐、即将上映与今日播出。"],
@@ -34,7 +36,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">CineBar for macOS · 0.8.3-test.7（Build 23）测试版</p>
+          <p className="eyebrow">CineBar for macOS · 0.8.3-test.8（Build 24）测试版</p>
           <h1>找到下一部好片</h1>
           <p className="lede">
             macOS 菜单栏里的电影与电视剧发现工具。更快找到想看的作品，
@@ -52,7 +54,8 @@ export default function Home() {
             支持 Apple 芯片与 Intel Mac · 免费 · 无广告 · 无订阅
           </p>
           <p className="compatibility">
-            当前测试包不是正式稳定版，请从 GitHub Releases 手动安装；已签名 appcast 发布后才支持应用内更新。
+            当前测试包不是正式稳定版。Build 24 已发布签名 appcast，可在 CineBar
+            应用内检查、下载并安装，也可使用上方不可变地址直接下载。
           </p>
         </div>
         <div className="product-card" aria-label="CineBar 产品界面示意">
@@ -91,7 +94,7 @@ export default function Home() {
           <h2>三步开始使用</h2>
         </div>
         <ol>
-          <li>从 CineBar GitHub Releases 下载最新测试包并解压。</li>
+          <li>从上方 Build 24 不可变下载地址取得测试包并解压。</li>
           <li>将 CineBar.app 移入“应用程序”文件夹。</li>
           <li>首次启动时右键 CineBar，选择“打开”并确认。</li>
         </ol>
@@ -140,7 +143,7 @@ export default function Home() {
 
       <footer>
         <span>© 2026 CineBar</span>
-        <a href={releaseURL}>GitHub Releases</a>
+        <a href={releasesURL}>GitHub Releases</a>
         <a href="https://share.cinebar.cc/health">服务状态</a>
       </footer>
     </main>

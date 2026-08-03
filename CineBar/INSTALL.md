@@ -1,4 +1,4 @@
-# CineBar 0.8.3-test.7 (Build 23) installation guide
+# CineBar 0.8.3-test.8 (Build 24) installation guide
 
 This is a test build for macOS 13 Ventura or later. It is not notarized and is
 not a stable release. Download only the complete CineBar test ZIP supplied by
@@ -24,9 +24,10 @@ again, and use **Relocate File** when needed.
 
 ## Updating and troubleshooting
 
-Build 23 is currently downloaded and installed manually from GitHub Releases.
-In-app updating becomes available only after the signed Build 23 appcast and
-archive are published. The update package is independently signature-checked,
-which is separate from Apple notarization. If CineBar reports no local videos,
-verify the selected folder's permission and use **Refresh**. If a player does
-not launch, install IINA or VLC, or set a compatible macOS default player.
+Build 24 has a signed appcast and immutable archive, so CineBar can check,
+download, and install it as an in-app update. A direct download remains available
+at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip`.
+The update package is independently signature-checked, which is separate from
+Apple notarization. If CineBar reports no local videos, verify the selected
+folder's permission and use **Refresh**. If a player does not launch, install
+IINA or VLC, or set a compatible macOS default player.

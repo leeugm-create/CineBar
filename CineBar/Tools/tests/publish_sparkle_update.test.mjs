@@ -153,4 +153,14 @@ test("rejects lower and equal builds atomically but accepts a higher build", (t)
     ),
     "18",
   );
+  assert.equal(
+    fixture.xpath('count(//*[local-name()="channel"]/*[local-name()="item"])'),
+    "2",
+  );
+  assert.equal(
+    fixture.xpath(
+      'string((//*[local-name()="item"])[2]/*[local-name()="enclosure"]/@*[local-name()="version"])',
+    ),
+    "17",
+  );
 });

@@ -64,13 +64,14 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(page, /VVVZUSU9QUJBW/);
 });
 
-test("discloses the current Build 23 test update, Local Library, and anonymous community-rating limit", async () => {
+test("discloses the current Build 24 signed update, Local Library, and anonymous community-rating limit", async () => {
   const page = await read("app/page.tsx");
 
-  assert.match(page, /0\.8\.3-test\.7（Build 23）/);
+  assert.match(page, /0\.8\.3-test\.8（Build 24）/);
   assert.match(page, /本地片库/);
-  assert.match(page, /GitHub Releases 手动安装/);
-  assert.match(page, /已签名 appcast 发布后才支持应用内更新/);
+  assert.match(page, /应用内检查、下载并安装/);
+  assert.match(page, /CineBar-0\.8\.3-test-build-24-universal\.zip/);
+  assert.doesNotMatch(page, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(page, /匿名设备标识/);
   assert.match(page, /每个作品仅可评分一次/);
   assert.match(page, /不是正式稳定版/);

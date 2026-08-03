@@ -45,7 +45,7 @@ const healthResponse = (service) =>
     JSON.stringify({
       ok: true,
       service,
-      version: "0.8.3-test.7",
+      version: "0.8.3-test.8",
       utc: new Date().toISOString(),
     }),
     {
@@ -256,15 +256,15 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.3-test.7",
-        build: 23,
+        version: "0.8.3-test.8",
+        build: 24,
         published_at: "2026-08-03",
-        download_url: "https://github.com/leeugm-create/CineBar/releases",
+        download_url: "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
         notes: [
-          "新增本地片库：选择文件夹后可刷新扫描，新影片自动加入",
-          "本地播放依次尝试 IINA、VLC 和 macOS 系统默认播放器",
-          "TMDB 匹配需要确认；本地文件不上传，也不提供盗版或下载资源",
-          "Build 23 当前请从 GitHub Releases 手动安装；已签名 appcast 发布后才支持应用内更新",
+          "修复片库刷新覆盖并发状态，并改善授权续期与文件重新定位",
+          "播放器失败会显示原因和完整路径，且只在成功启动后记录最近打开",
+          "TMDB 候选显示海报、评分和本地化类型；本地文件不上传，也不提供盗版或下载资源",
+          "Build 24 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
         ],
       }), {
         headers: {

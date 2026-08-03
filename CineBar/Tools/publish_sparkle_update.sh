@@ -67,6 +67,7 @@ rfc822_published_at=$(format_rfc822_date) || {
   exit 65
 }
 
+existing_items=""
 if [[ -f "$output" ]] && xmllint --noout "$output" 2>/dev/null; then
   existing_build=$(xmllint --xpath \
     'string(//*[local-name()="enclosure"]/@*[local-name()="version"])' \
@@ -76,6 +77,9 @@ if [[ -f "$output" ]] && xmllint --noout "$output" 2>/dev/null; then
     echo "Build must be greater than existing appcast Build $existing_build" >&2
     exit 65
   fi
+  existing_items=$(xmllint --xpath \
+    '/*[local-name()="rss"]/*[local-name()="channel"]/*[local-name()="item"]' \
+    "$output" 2>/dev/null || true)
 fi
 
 xml_escape() {
@@ -155,6 +159,9 @@ trap cleanup EXIT
   printf '%s\n' '        type="application/octet-stream"'
   printf '        sparkle:edSignature="%s"/>\n' "$escaped_ed_signature"
   printf '%s\n' '    </item>'
+  if [[ -n "$existing_items" ]]; then
+    printf '%s\n' "$existing_items"
+  fi
   printf '%s\n' '  </channel>'
   printf '%s\n' '</rss>'
 } > "$temporary_output"

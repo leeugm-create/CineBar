@@ -129,6 +129,10 @@
 "停止" = "Stop";
 "内容类型" = "Content type";
 "电视剧" = "TV";
+"片库刷新会保留并发更新的已看、片单、最近打开和重新定位状态" = "Library refresh preserves concurrent watched, watchlist, recent-open, and relocated-file changes";
+"文件夹授权可续期，播放器失败会显示原因和完整路径" = "Folder authorization can be renewed; player failures show the reason and full path";
+"匹配候选新增海报、评分和本地化类型" = "Match candidates now include posters, ratings, and localized genres";
+"Build 24 已发布签名 appcast，可直接在 CineBar 内更新" = "Build 24 has a signed appcast and can be updated directly in CineBar";
 "文件夹权限需要更新。请重新添加同一文件夹。" = "Folder access needs to be renewed. Add the same folder again.";
 "复制路径" = "Copy Path";
 "系统播放器" = "System player";

@@ -8760,18 +8760,18 @@ struct SettingsRootView: View {
         settingsCard {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("CineBar 0.8.3-test.6").font(.title3.bold())
-                    Text("Build 22 · 2026 年 8 月 2 日")
+                    Text("CineBar 0.8.3-test.8").font(.title3.bold())
+                    Text("Build 24 · 2026 年 8 月 3 日")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
             }
             Divider()
-            featureRow("图片预览新增下载按钮，可保存演员照片和影片剧照")
-            featureRow("演员照片和影片剧照支持大图、关闭和左右浏览")
-            featureRow("支持 CineBar 按钮已接入 PayPal 一次性支持页面")
-            featureRow("B21 用户可直接在 CineBar 内更新到 Build 22")
+            featureRow("片库刷新会保留并发更新的已看、片单、最近打开和重新定位状态")
+            featureRow("文件夹授权可续期，播放器失败会显示原因和完整路径")
+            featureRow("匹配候选新增海报、评分和本地化类型")
+            featureRow("Build 24 已发布签名 appcast，可直接在 CineBar 内更新")
         }
     }
 
@@ -8800,7 +8800,7 @@ struct SettingsRootView: View {
 
     private var about: some View {
         settingsCard {
-            Text("CineBar 0.8.0（Build 12）").font(.headline)
+            Text("CineBar 0.8.3-test.8（Build 24）").font(.headline)
             Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
             Text("OMDb 内容按非商业许可使用；观看平台信息由 JustWatch 提供。")
             Link(

@@ -210,7 +210,7 @@ test("reports share service health", async () => {
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
   assert.equal(body.service, "cinebar-share");
-  assert.equal(body.version, "0.8.3-test.7");
+  assert.equal(body.version, "0.8.3-test.8");
   assert.match(body.utc, /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
@@ -231,7 +231,7 @@ test("redirects plain HTTP requests to the same HTTPS URL", async () => {
   );
 });
 
-test("publishes the Build 23 GitHub Releases migration manifest consistent with the app", async () => {
+test("publishes the signed Build 24 manifest consistent with the app", async () => {
   const response = await fetchPage("/updates/latest.json");
   const body = await response.json();
   const infoPlist = readFileSync(
@@ -241,17 +241,17 @@ test("publishes the Build 23 GitHub Releases migration manifest consistent with 
   const plistValue = (key) =>
     infoPlist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`))?.[1];
   assert.equal(response.status, 200);
-  assert.equal(body.version, "0.8.3-test.7");
-  assert.equal(body.build, 23);
+  assert.equal(body.version, "0.8.3-test.8");
+  assert.equal(body.build, 24);
   assert.equal(body.published_at, "2026-08-03");
   assert.equal(
     body.download_url,
-    "https://github.com/leeugm-create/CineBar/releases",
+    "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-24-universal.zip",
   );
   assert.equal(String(body.build), plistValue("CFBundleVersion"));
   assert.ok(
     body.notes.includes(
-      "Build 23 当前请从 GitHub Releases 手动安装；已签名 appcast 发布后才支持应用内更新",
+      "Build 24 已发布签名 appcast，可在 CineBar 内检查、下载并安装",
     ),
   );
 });
