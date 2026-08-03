@@ -1,5 +1,5 @@
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-26-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 const features = [
@@ -36,7 +36,7 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">CineBar for macOS · 0.8.3-test.9（Build 25）测试版</p>
+          <p className="eyebrow">CineBar for macOS · 0.8.3-test.10（Build 26）测试版</p>
           <h1>找到下一部好片</h1>
           <p className="lede">
             macOS 菜单栏里的电影与电视剧发现工具。更快找到想看的作品，
@@ -54,7 +54,7 @@ export default function Home() {
             支持 Apple 芯片与 Intel Mac · 免费 · 无广告 · 无订阅
           </p>
           <p className="compatibility">
-            当前测试包不是正式稳定版。Build 25 已发布签名 appcast，可在 CineBar
+            当前测试包不是正式稳定版。Build 26 已发布签名 appcast，可在 CineBar
             应用内检查、下载并安装，也可使用上方不可变地址直接下载。
           </p>
         </div>
@@ -94,7 +94,7 @@ export default function Home() {
           <h2>三步开始使用</h2>
         </div>
         <ol>
-          <li>从上方 Build 25 不可变下载地址取得测试包并解压。</li>
+          <li>从上方 Build 26 不可变下载地址取得测试包并解压。</li>
           <li>将 CineBar.app 移入“应用程序”文件夹。</li>
           <li>首次启动时右键 CineBar，选择“打开”并确认。</li>
         </ol>
@@ -118,6 +118,12 @@ export default function Home() {
           <p>
             社区评分使用仅保存在本机偏好中的匿名设备标识；服务端只保存其哈希，
             每个作品仅可评分一次。
+          </p>
+          <p>
+            为估算测试版装机规模，应用每天最多发送一次匿名启动统计：版本、Build、
+            macOS 主版本、CPU 架构和界面语言。服务端只保存 HMAC 哈希后的安装标识和
+            汇总字段，不保存原始标识、IP、文件名、影片内容或账号；当前测试版没有关闭
+            统计的设置入口。
           </p>
           <p>
             影片资料来自 TMDB，IMDb、烂番茄与 Metacritic 评分经 OMDb 提供，

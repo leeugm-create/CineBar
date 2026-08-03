@@ -226,6 +226,22 @@ footer { color: var(--muted); }
 .support { max-width: 760px; }
 .support small { display: block; margin-top: 14px; color: var(--muted); }
 
+.analytics-shell { max-width: 980px; padding: 72px 0 96px; }
+.analytics-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 36px; }
+.analytics-header h1 { max-width: none; margin-bottom: 12px; font-size: clamp(2.6rem, 6vw, 5rem); }
+.analytics-muted { color: var(--muted); }
+.analytics-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.analytics-card { padding: 24px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.analytics-card h2 { margin-bottom: 16px; font-size: 1.15rem; letter-spacing: -0.02em; }
+.analytics-card strong { display: block; margin-top: 4px; font-size: clamp(2.3rem, 6vw, 4rem); line-height: 1; }
+.analytics-label { color: var(--muted); font-weight: 700; }
+.analytics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.analytics-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.analytics-list li { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+.analytics-list li:last-child { padding-bottom: 0; border-bottom: 0; }
+.analytics-footnote { margin-top: 18px; color: var(--muted); font-size: .88rem; }
+.analytics-empty p { max-width: 50rem; color: var(--muted); }
+
 footer { justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; padding: 32px 0 42px; border-top: 1px solid var(--border); font-size: 0.9rem; }
 
 @media (max-width: 840px) {
@@ -235,6 +251,7 @@ footer { justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; paddin
   .hero { min-height: auto; }
   .notice { grid-column: auto; }
   .feature-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-header { flex-direction: column; }
 }
 
 @media (max-width: 560px) {
@@ -253,5 +270,7 @@ footer { justify-content: space-between; flex-wrap: wrap; gap: 14px 24px; paddin
   .recommendation { grid-template-columns: 84px 1fr; gap: 16px; }
   .poster { min-height: 132px; }
   .feature-grid { grid-template-columns: 1fr; }
+  .analytics-metrics,
+  .analytics-grid { grid-template-columns: 1fr; }
   footer { align-items: flex-start; flex-direction: column; }
 }

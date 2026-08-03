@@ -64,13 +64,13 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(page, /VVVZUSU9QUJBW/);
 });
 
-test("discloses the current Build 25 signed update, Local Library, and anonymous community-rating limit", async () => {
+test("discloses the current Build 26 signed update, Local Library, and anonymous community-rating limit", async () => {
   const page = await read("app/page.tsx");
 
-  assert.match(page, /0\.8\.3-test\.9（Build 25）/);
+  assert.match(page, /0\.8\.3-test\.10（Build 26）/);
   assert.match(page, /本地片库/);
   assert.match(page, /应用内检查、下载并安装/);
-  assert.match(page, /CineBar-0\.8\.3-test-build-25-universal\.zip/);
+  assert.match(page, /CineBar-0\.8\.3-test-build-26-universal\.zip/);
   assert.doesNotMatch(page, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(page, /匿名设备标识/);
   assert.match(page, /每个作品仅可评分一次/);
@@ -78,6 +78,14 @@ test("discloses the current Build 25 signed update, Local Library, and anonymous
   assert.doesNotMatch(page, /已经.*公证/);
   assert.match(page, /安装前请验证 CineBar 独立签名/);
   assert.match(page, /不等于 Apple 公证/);
+});
+
+test("keeps the telemetry dashboard server-side and protected by a secret", async () => {
+  const page = await read("app/admin/analytics/page.tsx");
+  assert.match(page, /CINEBAR_TELEMETRY_ADMIN_TOKEN/);
+  assert.match(page, /Authorization.*Bearer/);
+  assert.match(page, /telemetry\.cinebar\.cc/);
+  assert.doesNotMatch(page, /localStorage|install_id|install_hash/);
 });
 
 test("contains accessible navigation and all required sections", async () => {
