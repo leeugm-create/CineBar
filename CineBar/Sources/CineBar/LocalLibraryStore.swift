@@ -145,6 +145,21 @@ final class LocalLibraryStore: ObservableObject {
         mutateEntry(entryID) {
             $0.metadata = metadata
             $0.matchState = metadata == nil ? .unmatched : .confirmed
+            if let metadata {
+                $0.contentCategory = metadata.kind == .movie
+                    ? .movie
+                    : .television
+            }
+        }
+    }
+
+    func confirmMatch(entryID: UUID, metadata: LocalLibraryMetadata) {
+        mutateEntry(entryID) {
+            $0.metadata = metadata
+            $0.matchState = .confirmed
+            $0.contentCategory = metadata.kind == .movie
+                ? .movie
+                : .television
         }
     }
 

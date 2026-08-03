@@ -1169,7 +1169,8 @@ struct CineBarRegressionBehaviorTests {
             metadata: nil,
             isWatched: false,
             isInWatchlist: false,
-            lastOpenedAt: nil
+            lastOpenedAt: nil,
+            contentCategory: .movie
         )
         let unavailableScan = await scanner.scan(
             roots: [unavailableRoot],
@@ -1266,7 +1267,8 @@ struct CineBarRegressionBehaviorTests {
             metadata: nil,
             isWatched: false,
             isInWatchlist: false,
-            lastOpenedAt: nil
+            lastOpenedAt: nil,
+            contentCategory: .television
         )
         precondition(
             LocalLibraryRefreshMerger.merge(
@@ -1320,6 +1322,7 @@ struct CineBarRegressionBehaviorTests {
             voteAverage: 8
         )
         firstStore.updateMetadata(entryID: storedEntryID, metadata: confirmedMetadata)
+        precondition(firstStore.entries[0].contentCategory == .movie)
         firstStore.setWatched(entryID: storedEntryID, value: true)
         firstStore.toggleWatchlist(entryID: storedEntryID)
         firstStore.markOpened(entryID: storedEntryID)
@@ -1611,7 +1614,8 @@ struct CineBarRegressionBehaviorTests {
             metadata: nil,
             isWatched: false,
             isInWatchlist: false,
-            lastOpenedAt: nil
+            lastOpenedAt: nil,
+            contentCategory: .movie
         )
         let suggestions = try! await matchService.search(for: unmatchedEntry)
         precondition(suggestions.map(\.id) == [157336, 2])
@@ -1620,6 +1624,18 @@ struct CineBarRegressionBehaviorTests {
         precondition(unmatchedEntry.metadata == nil)
         precondition(unmatchedEntry.matchState == .unmatched)
         precondition(matchProbe.movieQueries.count == 1)
+
+        let manualSuggestions = try! await matchService.search(
+            query: LocalLibraryMatchQuery(text: "Interstellar", kind: .movie)
+        )
+        precondition(manualSuggestions.map(\.id) == [157336, 2])
+        precondition(matchProbe.movieQueries == ["Interstellar", "Interstellar"])
+
+        let manualTelevisionSuggestions = try! await matchService.search(
+            query: LocalLibraryMatchQuery(text: "Example Show", kind: .television)
+        )
+        precondition(manualTelevisionSuggestions.isEmpty)
+        precondition(matchProbe.televisionQueries == ["Example Show"])
 
         let televisionEntry = LocalLibraryEntry(
             id: UUID(),
@@ -1637,10 +1653,11 @@ struct CineBarRegressionBehaviorTests {
             metadata: nil,
             isWatched: false,
             isInWatchlist: false,
-            lastOpenedAt: nil
+            lastOpenedAt: nil,
+            contentCategory: .television
         )
         _ = try! await matchService.search(for: televisionEntry)
-        precondition(matchProbe.televisionQueries == ["Example Show"])
+        precondition(matchProbe.televisionQueries == ["Example Show", "Example Show"])
 
         var emptyEntry = unmatchedEntry
         emptyEntry.signature = LocalLibraryFileSignature(
@@ -1652,7 +1669,13 @@ struct CineBarRegressionBehaviorTests {
         )
         let emptySuggestions = try! await matchService.search(for: emptyEntry)
         precondition(emptySuggestions.isEmpty)
-        precondition(matchProbe.movieQueries.count == 1)
+        precondition(matchProbe.movieQueries.count == 2)
+
+        var personalEntry = unmatchedEntry
+        personalEntry.contentCategory = .other
+        let personalSuggestions = try! await matchService.search(for: personalEntry)
+        precondition(personalSuggestions.isEmpty)
+        precondition(matchProbe.movieQueries.count == 2)
     }
 }
 

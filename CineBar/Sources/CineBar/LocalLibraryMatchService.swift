@@ -105,6 +105,16 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
     }
 }
 
+struct LocalLibraryMatchQuery: Hashable {
+    let text: String
+    let kind: LocalLibraryMediaKind
+
+    init(text: String, kind: LocalLibraryMediaKind) {
+        self.text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.kind = kind
+    }
+}
+
 struct LocalLibraryMatchService {
     private let movieSearch: (String) async throws -> [Movie]
     private let televisionSearch: (String) async throws -> [TVShow]
@@ -123,12 +133,13 @@ struct LocalLibraryMatchService {
     }
 
     func search(for entry: LocalLibraryEntry) async throws -> [LocalLibraryMatchCandidate] {
+        guard entry.contentCategory != .other else { return [] }
         let query = LocalLibraryFilenameParser.parse(entry.signature.fileName)
         guard !query.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return []
         }
 
-        let kind = entry.metadata?.kind ?? inferredKind(for: entry.signature.fileName)
+        let kind = entry.metadata?.kind ?? mediaKind(for: entry.contentCategory)
         let candidates: [LocalLibraryMatchCandidate]
         switch kind {
         case .movie:
@@ -146,10 +157,36 @@ struct LocalLibraryMatchService {
         }
     }
 
-    private func inferredKind(for filename: String) -> LocalLibraryMediaKind {
-        let televisionPattern = "(?i)(?:s[0-9]{1,2}e[0-9]{1,2}|season[ ._-]*[0-9]{1,2})"
-        return filename.range(of: televisionPattern, options: .regularExpression) == nil
-            ? .movie
-            : .television
+    func search(query: LocalLibraryMatchQuery) async throws -> [LocalLibraryMatchCandidate] {
+        guard !query.text.isEmpty else { return [] }
+        let parsedQuery = LocalLibraryFilenameParser.parse(query.text + ".mkv")
+        let normalizedQuery = LocalLibraryParsedFilename(
+            title: query.text,
+            year: parsedQuery.year,
+            fileExtension: "mkv",
+            category: query.kind == .movie ? .movie : .television,
+            isTrustedTitle: true
+        )
+        let candidates: [LocalLibraryMatchCandidate]
+        switch query.kind {
+        case .movie:
+            candidates = try await movieSearch(query.text).map {
+                LocalLibraryMatchCandidate(movie: $0, query: normalizedQuery)
+            }
+        case .television:
+            candidates = try await televisionSearch(query.text).map {
+                LocalLibraryMatchCandidate(television: $0, query: normalizedQuery)
+            }
+        }
+        return candidates.sorted {
+            if $0.confidence != $1.confidence { return $0.confidence > $1.confidence }
+            return $0.voteAverage > $1.voteAverage
+        }
+    }
+
+    private func mediaKind(
+        for category: LocalLibraryContentCategory
+    ) -> LocalLibraryMediaKind {
+        category == .television ? .television : .movie
     }
 }
