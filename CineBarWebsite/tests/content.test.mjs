@@ -49,7 +49,8 @@ function contrastRatio(foreground, background) {
 
 test("publishes the approved CineBar identity and download entry", async () => {
   const page = await read("app/page.tsx");
-  assert.match(page, /今晚看什么？/);
+  assert.match(page, /找到下一部好片/);
+  assert.doesNotMatch(page, /今晚看什么？/);
   assert.match(page, /macOS 菜单栏/);
   assert.match(page, /测试版/);
   assert.match(
@@ -63,11 +64,13 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(page, /VVVZUSU9QUJBW/);
 });
 
-test("discloses the current Build 18 test update and anonymous community-rating limit", async () => {
+test("discloses the current Build 23 test update, Local Library, and anonymous community-rating limit", async () => {
   const page = await read("app/page.tsx");
 
-  assert.match(page, /0\.8\.3-test\.2（Build 18）/);
-  assert.match(page, /当前测试包可通过应用内更新安装并重新启动/);
+  assert.match(page, /0\.8\.3-test\.7（Build 23）/);
+  assert.match(page, /本地片库/);
+  assert.match(page, /GitHub Releases 手动安装/);
+  assert.match(page, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(page, /匿名设备标识/);
   assert.match(page, /每个作品仅可评分一次/);
   assert.match(page, /不是正式稳定版/);

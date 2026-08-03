@@ -45,7 +45,7 @@ const healthResponse = (service) =>
     JSON.stringify({
       ok: true,
       service,
-      version: "0.8.2-test.2",
+      version: "0.8.3-test.7",
       utc: new Date().toISOString(),
     }),
     {
@@ -63,7 +63,7 @@ const rootPage = () =>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>CineBar — 今晚看什么？</title>
+  <title>CineBar — 找到下一部好片</title>
   <meta name="description" content="CineBar 是一款面向 macOS 的电影与电视剧发现工具。">
   <style>
     :root{color-scheme:dark;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -80,7 +80,7 @@ const rootPage = () =>
   </style>
 </head>
 <body><main><header><img class="logo" src="/cinebar-logo.svg" alt="CineBar">
-<strong>CineBar</strong></header><h1>今晚看什么？</h1>
+<strong>CineBar</strong></header><h1>找到下一部好片</h1>
 <div class="tagline">电影与电视剧发现工具</div>
 <p class="summary">在 macOS 菜单栏中发现热门作品、查看评分与演职员信息，并保存自己的片单。</p>
 <div class="status">cinebar.cc 已启用</div></main></body></html>`, {
@@ -226,7 +226,7 @@ const sharePage = (url, route, metadata, downloadURL) => {
   </style>
 </head>
 <body><main><header><img class="logo" src="/cinebar-logo.svg" alt="CineBar">
-<div><div class="brand">CineBar</div><div class="tagline">今晚看什么？</div></div></header>
+<div><div class="brand">CineBar</div><div class="tagline">找到下一部好片</div></div></header>
 <section class="card"><img class="poster" src="${escapeHTML(poster)}" alt="${escapeHTML(title)} 海报">
 <div class="content"><h1>${escapeHTML(title)}</h1><div class="meta">
 ${year ? `<span class="pill">${escapeHTML(year)}</span>` : ""}
@@ -256,14 +256,15 @@ export default {
     }
     if (url.pathname === "/updates/latest.json") {
       return new Response(JSON.stringify({
-        version: "0.8.3",
-        build: 18,
-        published_at: "2026-07-31",
+        version: "0.8.3-test.7",
+        build: 23,
+        published_at: "2026-08-03",
         download_url: "https://github.com/leeugm-create/CineBar/releases",
         notes: [
-          "新增经过 CineBar 独立签名验证的应用内更新",
-          "后续版本可在 CineBar 内安装并重新启动",
-          "Build 16 用户本次需要从 GitHub Releases 手动安装",
+          "新增本地片库：选择文件夹后可刷新扫描，新影片自动加入",
+          "本地播放依次尝试 IINA、VLC 和 macOS 系统默认播放器",
+          "TMDB 匹配需要确认；本地文件不上传，也不提供盗版或下载资源",
+          "Build 23 当前请从 GitHub Releases 手动安装；已签名 appcast 发布后才支持应用内更新",
         ],
       }), {
         headers: {

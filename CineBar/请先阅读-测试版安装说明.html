@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CineBar 0.8.3 测试版安装说明</title>
+  <title>CineBar 0.8.3-test.7 测试版安装说明</title>
   <style>
     :root { color-scheme: light dark; }
     body {
@@ -29,8 +29,8 @@
   </style>
 </head>
 <body>
-  <h1>CineBar 0.8.3 测试版安装说明</h1>
-  <p class="small">测试编号：0.8.3-test.2（Build 18）｜适用于 macOS 13 及以上</p>
+  <h1>CineBar 0.8.3-test.7 测试版安装说明</h1>
+  <p class="small">测试编号：0.8.3-test.7（Build 23）｜适用于 macOS 13 及以上</p>
 
   <div class="warning">
     <strong>请注意：</strong>这是用于功能验证的测试版本，不是正式发行版。
@@ -71,14 +71,27 @@
 
   <h2>四、更新</h2>
   <ol>
-    <li>Build 16 用户需要先从 <a href="https://github.com/leeugm-create/CineBar/releases">GitHub Releases</a>
+    <li>Build 23 当前请从 GitHub Releases 手动下载并安装；待已签名的 Build 23 appcast
+      与归档发布后，才可在 CineBar 的“设置”→“更新”中安装。</li>
+    <li>Build 16 用户仍需先从
+      <a href="https://github.com/leeugm-create/CineBar/releases">GitHub Releases</a>
       手动安装一次 Sparkle 版本（Build 17 或更新版本）。</li>
-    <li>完成这次迁移后，后续版本可在 CineBar 的“设置”→“更新”中检查、下载并安装。</li>
+    <li>之后的版本均可在 CineBar 内检查、下载并安装。</li>
     <li>每个更新包都会用 CineBar 内置的 EdDSA 公钥验证；签名不匹配的包不会安装。</li>
     <li>本测试构建仍未经过 Apple 公证。首次安装的 macOS 安全确认与更新签名验证是
       两个不同的步骤。</li>
     <li>如果不希望启动时自动检查，在“设置”→“更新”关闭“启动时自动检查更新”；
       仍可随时点击“立即检查”手动检查。</li>
+  </ol>
+
+  <h2>本地片库</h2>
+  <ol>
+    <li>切换到“本地片库”，点击“添加文件夹”，在 macOS 文件选择器中选择包含视频的文件夹并授予访问权限。</li>
+    <li>点击“刷新”扫描目录；以后新增到已选文件夹的影片会自动加入。</li>
+    <li>TMDB 只提供匹配候选项，必须点击“确认匹配”后才会更新资料；跳过不会改动文件。</li>
+    <li>播放只打开本机文件，依次尝试 IINA、VLC 和 macOS 系统默认播放器；断网仍可播放。</li>
+    <li>移动硬盘未连接、文件被移动或权限失效时，重新连接存储卷，或使用“重新定位文件”。</li>
+    <li>CineBar 不上传本地影片，也不提供下载或盗版资源。</li>
   </ol>
 
   <h2>五、首次使用建议</h2>
@@ -96,6 +109,9 @@
       分享服务均已配置。</li>
     <li>“即将上映”的每一行都会显示日期；没有确定日期时显示
       “上映日期待定”。</li>
+    <li>上映日期旁的日历按钮只对今天或未来的日期显示；已经过去的首映日期不会创建提醒。</li>
+    <li>演员照片和影片剧照打开大图后，点击右上角“下载”即可选择保存位置。</li>
+    <li>设置→支持中的“Buy me a coffee”会打开 CineBar 的 PayPal 一次性支持页面。</li>
   </ol>
 
   <h2>六、一次性评分说明</h2>
@@ -151,6 +167,8 @@
   <p><strong>系统要求验证 Mac 密码或 Touch ID：</strong>第一次通过“隐私与安全性”
     允许未公证测试版时可能出现，这是 macOS 安全确认；CineBar 本身不会要求登录
     钥匙串密码。</p>
+  <p><strong>本地片库没有影片或文件不可用：</strong>确认文件夹访问权限仍有效，点击“刷新”；
+    对移动磁盘先重新连接，文件移动后使用“重新定位文件”。</p>
 
   <div class="notice">
     反馈问题时请提供：Mac 型号、macOS 版本、CineBar 版本、是否双屏、复现步骤和

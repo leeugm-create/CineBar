@@ -5,6 +5,7 @@ const features = [
   ["多重评分", "TMDB、IMDb、烂番茄、Metacritic 与 CineBar 社区评分。"],
   ["完整资料", "演员、剧照、预告片、分级、上映日期与播出时间。"],
   ["片单与提醒", "收藏电影和电视剧，并设置定档、下一集与下一季提醒。"],
+  ["本地片库", "选择本机视频文件夹后刷新扫描；匹配需确认，播放不上传文件。"],
   ["正版入口", "查看不同地区的合法观看平台。"],
   ["多语言", "支持简体中文、繁体中文、英语、日语与韩语。"],
 ] as const;
@@ -33,8 +34,8 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">CineBar for macOS · 0.8.3-test.2（Build 18）测试版</p>
-          <h1>今晚看什么？</h1>
+          <p className="eyebrow">CineBar for macOS · 0.8.3-test.7（Build 23）测试版</p>
+          <h1>找到下一部好片</h1>
           <p className="lede">
             macOS 菜单栏里的电影与电视剧发现工具。更快找到想看的作品，
             比较评分，查看演员与预告，并把心仪内容加入片单。
@@ -51,7 +52,7 @@ export default function Home() {
             支持 Apple 芯片与 Intel Mac · 免费 · 无广告 · 无订阅
           </p>
           <p className="compatibility">
-            当前测试包可通过应用内更新安装并重新启动；它不是正式稳定版。
+            当前测试包不是正式稳定版，请从 GitHub Releases 手动安装；已签名 appcast 发布后才支持应用内更新。
           </p>
         </div>
         <div className="product-card" aria-label="CineBar 产品界面示意">

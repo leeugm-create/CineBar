@@ -122,7 +122,7 @@ struct LocalLibraryView: View {
 
     private var filterBar: some View {
         HStack(spacing: 8) {
-            TextField("搜索本地视频", text: $searchText)
+            TextField(String(localized: "搜索本地视频"), text: $searchText)
                 .textFieldStyle(.roundedBorder)
             Picker("筛选", selection: $filter) {
                 ForEach(LocalLibraryFilter.allCases) { option in
@@ -137,7 +137,7 @@ struct LocalLibraryView: View {
     }
 
     private var scanDescription: String {
-        guard let progress = store.scanProgress else { return "正在扫描…" }
+        guard let progress = store.scanProgress else { return String(localized: "正在扫描…") }
         return "正在扫描 \(progress.displayName) · \(progress.mediaFilesFound) 个视频"
     }
 
@@ -238,10 +238,10 @@ private enum LocalLibraryFilter: CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .all: return "全部"
-        case .unwatched: return "未看"
-        case .unmatched: return "待匹配"
-        case .unavailable: return "文件不可用"
+        case .all: return String(localized: "全部")
+        case .unwatched: return String(localized: "未看")
+        case .unmatched: return String(localized: "待匹配")
+        case .unavailable: return String(localized: "文件不可用")
         }
     }
 
@@ -335,16 +335,18 @@ private struct LocalLibraryEntryRow: View {
     }
 
     private var details: String {
-        let year = entry.metadata?.year ?? "未知年份"
-        let kind = entry.metadata?.kind == .television ? "电视剧" : "电影"
+        let year = entry.metadata?.year ?? String(localized: "未知年份")
+        let kind = entry.metadata?.kind == .television
+            ? String(localized: "电视剧")
+            : String(localized: "电影")
         return "\(year) · \(kind) · \(entry.signature.fileName)"
     }
 
     private var fileStateTitle: String {
         switch entry.state {
-        case .available: return "文件可用"
-        case .missing: return "重新定位文件"
-        case .volumeUnavailable: return "存储卷未连接"
+        case .available: return String(localized: "文件可用")
+        case .missing: return String(localized: "重新定位文件")
+        case .volumeUnavailable: return String(localized: "存储卷未连接")
         }
     }
 
@@ -354,9 +356,9 @@ private struct LocalLibraryEntryRow: View {
 
     private var matchStateTitle: String {
         switch entry.matchState {
-        case .unmatched: return "待匹配"
-        case .suggested: return "有建议"
-        case .confirmed: return "已匹配"
+        case .unmatched: return String(localized: "待匹配")
+        case .suggested: return String(localized: "有建议")
+        case .confirmed: return String(localized: "已匹配")
         }
     }
 }
