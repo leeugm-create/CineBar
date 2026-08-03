@@ -83,6 +83,7 @@ struct CineBarTelemetryClient {
         guard let body = try? encoder.encode(payload) else { return }
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
+        request.timeoutInterval = 8
         request.httpBody = body
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("CineBar/\(appVersion)", forHTTPHeaderField: "User-Agent")
