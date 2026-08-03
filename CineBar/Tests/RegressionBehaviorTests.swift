@@ -943,6 +943,179 @@ struct CineBarRegressionBehaviorTests {
         ])
         precondition(!restoredStore.isScanning)
         try? FileManager.default.removeItem(at: storeDirectory)
+
+        precondition(
+            ExternalPlayerResolver.resolve(
+                availableBundleIDs: ["org.videolan.vlc"]
+            ) == [.vlc, .system]
+        )
+        precondition(
+            ExternalPlayerResolver.resolve(
+                availableBundleIDs: [
+                    "com.colliderli.iina", "org.videolan.vlc"
+                ]
+            ) == [.iina, .vlc, .system]
+        )
+        precondition(
+            ExternalPlayerResolver.resolve(availableBundleIDs: []) == [.system]
+        )
+
+        let playbackProbe = LocalLibraryPlaybackProbe()
+        let launcher = ExternalPlayerLauncher(
+            applicationURLForBundleID: { _ in nil },
+            openWithApplication: { _, _ in
+                playbackProbe.applicationOpenCount += 1
+                return true
+            },
+            openSystem: { url in
+                playbackProbe.openedURLs.append(url)
+                return true
+            }
+        )
+        let encodedFileURL = URL(string: "file:///tmp/My%20Movie.mkv")!
+        precondition(launcher.open(fileURL: encodedFileURL))
+        precondition(playbackProbe.openedURLs == [
+            URL(fileURLWithPath: "/tmp/My Movie.mkv")
+        ])
+        precondition(playbackProbe.applicationOpenCount == 0)
+        precondition(
+            !launcher.open(fileURL: URL(string: "https://example.com/movie.mkv")!)
+        )
+        precondition(playbackProbe.openedURLs.count == 1)
+
+        var attemptedPlayers: [String] = []
+        let fallbackLauncher = ExternalPlayerLauncher(
+            applicationURLForBundleID: { bundleID in
+                URL(fileURLWithPath: bundleID == "com.colliderli.iina"
+                    ? "/Applications/IINA.app"
+                    : "/Applications/VLC.app")
+            },
+            openWithApplication: { _, applicationURL in
+                attemptedPlayers.append(applicationURL.lastPathComponent)
+                return applicationURL.lastPathComponent == "VLC.app"
+            },
+            openSystem: { _ in false }
+        )
+        precondition(fallbackLauncher.open(fileURL: encodedFileURL))
+        precondition(attemptedPlayers == ["IINA.app", "VLC.app"])
+
+        let exactMovie = Movie(
+            id: 157336,
+            title: "Interstellar",
+            originalTitle: "Interstellar",
+            overview: "Space exploration",
+            posterPath: "/poster.jpg",
+            releaseDate: "2014-11-05",
+            voteAverage: 8.5,
+            voteCount: 10
+        )
+        let partialMovie = Movie(
+            id: 2,
+            title: "Interstellar Journey",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2016-01-01",
+            voteAverage: 6,
+            voteCount: 1
+        )
+        let exactCandidate = LocalLibraryMatchCandidate(
+            movie: exactMovie,
+            query: LocalLibraryFilenameParser.parse("Interstellar.2014.mkv")
+        )
+        precondition(exactCandidate.id == 157336)
+        precondition(exactCandidate.kind == .movie)
+        precondition(exactCandidate.year == "2014")
+        precondition(exactCandidate.posterURL?.absoluteString ==
+            "https://image.tmdb.org/t/p/w342/poster.jpg")
+        precondition(exactCandidate.voteAverage == 8.5)
+        precondition(exactCandidate.confidence == 1)
+        precondition(
+            exactCandidate.confidence > LocalLibraryMatchCandidate(
+                movie: partialMovie,
+                query: LocalLibraryFilenameParser.parse("Interstellar.2014.mkv")
+            ).confidence
+        )
+
+        let matchProbe = LocalLibraryMatchProbe()
+        let matchService = LocalLibraryMatchService(
+            movieSearch: { query in
+                matchProbe.movieQueries.append(query)
+                return [partialMovie, exactMovie]
+            },
+            televisionSearch: { query in
+                matchProbe.televisionQueries.append(query)
+                return []
+            }
+        )
+        let unmatchedEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: UUID(),
+            relativePath: "Interstellar.2014.mkv",
+            signature: LocalLibraryFileSignature(
+                fileName: "Interstellar.2014.mkv",
+                fileExtension: "mkv",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil
+        )
+        let suggestions = try! await matchService.search(for: unmatchedEntry)
+        precondition(suggestions.map(\.id) == [157336, 2])
+        precondition(matchProbe.movieQueries == ["Interstellar"])
+        precondition(matchProbe.televisionQueries.isEmpty)
+        precondition(unmatchedEntry.metadata == nil)
+        precondition(unmatchedEntry.matchState == .unmatched)
+        precondition(matchProbe.movieQueries.count == 1)
+
+        let televisionEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: UUID(),
+            relativePath: "Example.Show.S01E02.mkv",
+            signature: LocalLibraryFileSignature(
+                fileName: "Example.Show.S01E02.mkv",
+                fileExtension: "mkv",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil
+        )
+        _ = try! await matchService.search(for: televisionEntry)
+        precondition(matchProbe.televisionQueries == ["Example Show S01E02"])
+
+        var emptyEntry = unmatchedEntry
+        emptyEntry.signature = LocalLibraryFileSignature(
+            fileName: "",
+            fileExtension: "",
+            byteCount: 0,
+            modificationDate: nil,
+            resourceIdentifier: nil
+        )
+        let emptySuggestions = try! await matchService.search(for: emptyEntry)
+        precondition(emptySuggestions.isEmpty)
+        precondition(matchProbe.movieQueries.count == 1)
     }
+}
+
+private final class LocalLibraryPlaybackProbe {
+    var applicationOpenCount = 0
+    var openedURLs: [URL] = []
+}
+
+private final class LocalLibraryMatchProbe {
+    var movieQueries: [String] = []
+    var televisionQueries: [String] = []
 }
 #endif
