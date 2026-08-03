@@ -1,4 +1,4 @@
-# CineBar 0.8.3-test.9 (Build 25) installation guide
+# CineBar 0.8.3-test.10 (Build 26) installation guide
 
 This is a test build for macOS 13 Ventura or later. It is not notarized and is
 not a stable release. Download only the complete CineBar test ZIP supplied by
@@ -11,9 +11,11 @@ Downloads folder.
 1. Open **Local Library**, choose **Add Folder**, and grant macOS permission to
    access a folder containing your video files.
 2. Choose **Refresh** to scan it. Videos added to an authorized folder appear
-   after the next refresh.
-3. TMDB search produces suggestions only. Review them and choose **Confirm Match**
-   before CineBar changes a title's metadata.
+   after the next refresh. Movie and TV filenames are classified conservatively;
+   camera, screen-recording, and other personal clips remain under **Other
+   Videos**.
+3. TMDB search produces suggestions only. For a movie or TV file, you can enter
+   a title manually and choose **Confirm Match** before CineBar changes metadata.
 4. Playback is local: CineBar tries IINA, then VLC, then the macOS default
    player. Already scanned files can still play without a network connection.
 
@@ -24,9 +26,9 @@ again, and use **Relocate File** when needed.
 
 ## Updating and troubleshooting
 
-Build 25 has a signed appcast and immutable archive, so CineBar can check,
+Build 26 has a signed appcast and immutable archive, so CineBar can check,
 download, and install it as an in-app update. A direct download remains available
-at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-25-universal.zip`.
+at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-26-universal.zip`.
 The update package is independently signature-checked, which is separate from
 Apple notarization. If CineBar reports no local videos, verify the selected
 folder's permission and use **Refresh**. If a player does not launch, install

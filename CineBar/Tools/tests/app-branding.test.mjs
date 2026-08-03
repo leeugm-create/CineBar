@@ -81,6 +81,10 @@ test("localizes every Local Library label and error across supported locales", a
     "系统拒绝打开",
     "无法启动播放器。文件路径：%@",
     "无法启动播放器。%@。文件路径：%@",
+    "关闭片库",
+    "其他视频",
+    "搜索片名",
+    "搜索",
   ];
   const locales = [
     "en.lproj",
@@ -114,19 +118,19 @@ test("routes Local Library runtime labels through the selected app language", as
   assert.doesNotMatch(source, /String\(localized:/);
 });
 
-test("keeps in-app release metadata on Build 25", async () => {
+test("keeps in-app release metadata on Build 26", async () => {
   const source = await readFile(sourcePath, "utf8");
-  assert.match(source, /CineBar 0\.8\.3-test\.9/);
-  assert.match(source, /Build 25 · 2026 年 8 月 3 日/);
-  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.8/);
+  assert.match(source, /CineBar 0\.8\.3-test\.10/);
+  assert.match(source, /Build 26 · 2026 年 8 月 3 日/);
+  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.9/);
   assert.doesNotMatch(source, /CineBar 0\.8\.0（Build 12）/);
 });
 
 test("documents Local Library setup and local-only playback in English", async () => {
   const guide = await readFile(installGuidePath, "utf8");
   for (const phrase of [
-    "0.8.3-test.9",
-    "Build 25",
+    "0.8.3-test.10",
+    "Build 26",
     "Add Folder",
     "Refresh",
     "Confirm Match",
