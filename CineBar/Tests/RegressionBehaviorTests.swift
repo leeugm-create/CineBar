@@ -50,6 +50,22 @@ private actor RecordingServiceLoader: ServiceDataLoading {
 struct CineBarRegressionBehaviorTests {
     @MainActor
     static func main() async {
+        precondition(MainBrowseSection.allCases.contains(.localLibrary))
+        for language in AppLanguage.allCases {
+            precondition(
+                !MainBrowseSection.localLibrary.title(language: language).isEmpty
+            )
+        }
+        let localLibraryNavigationStore = MovieStore()
+        localLibraryNavigationStore.setMainBrowseSection(.localLibrary)
+        precondition(localLibraryNavigationStore.isShowingLocalLibrary)
+        precondition(
+            localLibraryNavigationStore.mainBrowseSection == .localLibrary
+        )
+        precondition(localLibraryNavigationStore.searchText.isEmpty)
+        precondition(!localLibraryNavigationStore.showCatalog)
+        precondition(!localLibraryNavigationStore.showTVCatalog)
+
         precondition(
             UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"
         )

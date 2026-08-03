@@ -230,6 +230,7 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
     case movies
     case television
     case watchlist
+    case localLibrary
 
     var id: String { rawValue }
 
@@ -250,6 +251,11 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
         case (.watchlist, .enUS): return "Watchlist"
         case (.watchlist, .jaJP): return "マイリスト"
         case (.watchlist, .koKR): return "내 목록"
+        case (.localLibrary, .zhCN): return "本地片库"
+        case (.localLibrary, .zhHK), (.localLibrary, .zhTW): return "本機片庫"
+        case (.localLibrary, .enUS): return "Local Library"
+        case (.localLibrary, .jaJP): return "ローカルライブラリ"
+        case (.localLibrary, .koKR): return "로컬 라이브러리"
         }
     }
 }
@@ -2551,6 +2557,7 @@ final class MovieStore: ObservableObject {
     @Published var movieBrowseSection: MovieBrowseSection = .trending
     @Published var tvBrowseSection: TVBrowseSection = .trending
     @Published var isShowingWatchlist = false
+    @Published var isShowingLocalLibrary = false
     @Published var selectedTVShow: TVShow?
     @Published var tvDetails: TVDetails?
     @Published var tvCast: [CastMember] = []
@@ -3349,6 +3356,7 @@ final class MovieStore: ObservableObject {
     func setMovieBrowseSection(_ section: MovieBrowseSection) {
         movieBrowseSection = section
         isShowingWatchlist = false
+        isShowingLocalLibrary = false
         searchText = ""
         peopleSearchResults = []
         loadMovieBrowseSection(section)
@@ -3614,11 +3622,13 @@ final class MovieStore: ObservableObject {
         searchText = ""
         peopleSearchResults = []
         isShowingWatchlist = false
+        isShowingLocalLibrary = false
         loadTrending()
     }
 
     func toggleWatchlist() {
         isShowingWatchlist.toggle()
+        isShowingLocalLibrary = false
         searchText = ""
         peopleSearchResults = []
         showCatalog = false
@@ -3632,6 +3642,7 @@ final class MovieStore: ObservableObject {
     }
 
     var mainBrowseSection: MainBrowseSection {
+        if isShowingLocalLibrary { return .localLibrary }
         if isShowingWatchlist { return .watchlist }
         return mediaSection == .movies ? .movies : .television
     }
@@ -3639,22 +3650,44 @@ final class MovieStore: ObservableObject {
     func setMainBrowseSection(_ section: MainBrowseSection) {
         switch section {
         case .movies:
+            isShowingLocalLibrary = false
             if mediaSection != .movies {
                 setMediaSection(.movies)
             } else if isShowingWatchlist {
                 toggleWatchlist()
             }
         case .television:
+            isShowingLocalLibrary = false
             if mediaSection != .television {
                 setMediaSection(.television)
             } else if isShowingWatchlist {
                 toggleWatchlist()
             }
         case .watchlist:
+            isShowingLocalLibrary = false
             if !isShowingWatchlist {
                 toggleWatchlist()
             }
+        case .localLibrary:
+            showLocalLibrary()
         }
+    }
+
+    private func showLocalLibrary() {
+        guard !isShowingLocalLibrary else { return }
+        TrailerPlaybackController.shared.close()
+        isShowingLocalLibrary = true
+        isShowingWatchlist = false
+        selectedMovie = nil
+        selectedTVShow = nil
+        selectedPerson = nil
+        showMovieStills = false
+        showCatalog = false
+        showTVCatalog = false
+        peopleSearchResults = []
+        searchText = ""
+        trailers = []
+        tvTrailers = []
     }
 
     func isInWatchlist(_ movie: Movie) -> Bool {
@@ -3978,6 +4011,7 @@ final class MovieStore: ObservableObject {
         showCatalog = false
         showTVCatalog = false
         isShowingWatchlist = false
+        isShowingLocalLibrary = false
         peopleSearchResults = []
         searchText = ""
         loadTrending()
@@ -3997,6 +4031,7 @@ final class MovieStore: ObservableObject {
     func setTVBrowseSection(_ section: TVBrowseSection) {
         tvBrowseSection = section
         isShowingWatchlist = false
+        isShowingLocalLibrary = false
         searchText = ""
         peopleSearchResults = []
         loadTVBrowseSection(section)
@@ -8411,6 +8446,7 @@ struct VerticalResizeHandle: NSViewRepresentable {
 
 struct ContentView: View {
     @ObservedObject var store: MovieStore
+    @ObservedObject var localLibraryStore: LocalLibraryStore
     private let reminderCheckTimer = Timer.publish(
         every: 6 * 60 * 60,
         on: .main,
@@ -8421,6 +8457,8 @@ struct ContentView: View {
         Group {
             if store.showMovieStills, let movie = store.selectedMovie {
                 MovieStillsView(store: store, movie: movie)
+            } else if store.isShowingLocalLibrary {
+                LocalLibraryView(store: localLibraryStore, movieStore: store)
             } else if let person = store.selectedPerson {
                 PersonDetailView(store: store, person: person)
             } else if let movie = store.selectedMovie {
@@ -8999,6 +9037,7 @@ enum PanelPlacement {
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     UNUserNotificationCenterDelegate {
     private let store = MovieStore()
+    private let localLibraryStore = LocalLibraryStore()
     private lazy var updaterService = UpdaterService.shared
     private var statusItem: NSStatusItem?
     private var panel: NSPanel?
@@ -9057,7 +9096,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         var restoredFrame = panel.frame
         restoredFrame.size.width = 520
         panel.setFrame(restoredFrame, display: false)
-        let hostingView = NSHostingView(rootView: ContentView(store: store))
+        let hostingView = NSHostingView(
+            rootView: ContentView(
+                store: store,
+                localLibraryStore: localLibraryStore
+            )
+        )
         let container = liquidGlassContainer(for: hostingView)
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
