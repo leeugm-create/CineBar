@@ -773,6 +773,18 @@ struct CineBarRegressionBehaviorTests {
         )
         resolvedFolder.stopAccessing()
 
+        let bookmarkedRoot = LocalLibraryScanRoot(
+            folderID: UUID(),
+            bookmarkData: bookmark.bookmarkData,
+            displayName: "书签片库"
+        )
+        let bookmarkScan = await scanner.scan(
+            roots: [bookmarkedRoot],
+            existing: [],
+            progress: { _ in }
+        )
+        precondition(bookmarkScan.entries.count == 2)
+
         let backgroundScan = await Task.detached {
             await LocalLibraryScanner().scan(
                 roots: [libraryRoot],
@@ -782,6 +794,65 @@ struct CineBarRegressionBehaviorTests {
         }.value
         precondition(backgroundScan.entries.count == 2)
         try? FileManager.default.removeItem(at: libraryDirectory)
+
+        let cancellationDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarCancellation-\(UUID().uuidString)")
+        try! FileManager.default.createDirectory(
+            at: cancellationDirectory,
+            withIntermediateDirectories: true
+        )
+        for index in 0..<10_000 {
+            FileManager.default.createFile(
+                atPath: cancellationDirectory
+                    .appendingPathComponent("\(index).mkv").path,
+                contents: Data()
+            )
+        }
+        let cancellationRoot = LocalLibraryScanRoot(
+            folderID: UUID(),
+            url: cancellationDirectory,
+            displayName: "取消测试"
+        )
+        let progressSignal = DispatchSemaphore(value: 0)
+        let cancellationTask = Task.detached {
+            await LocalLibraryScanner().scan(
+                roots: [cancellationRoot],
+                existing: [],
+                progress: { _ in progressSignal.signal() }
+            )
+        }
+        precondition(
+            progressSignal.wait(timeout: .now() + 5) == .success
+        )
+        cancellationTask.cancel()
+        let cancelledScan = await cancellationTask.value
+        precondition(cancelledScan.wasCancelled)
+        let cancellationExisting = LocalLibraryEntry(
+            id: UUID(),
+            folderID: cancellationRoot.folderID,
+            relativePath: "not-visited.mkv",
+            signature: LocalLibraryFileSignature(
+                fileName: "not-visited.mkv",
+                fileExtension: "mkv",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil
+        )
+        precondition(
+            LocalLibraryRefreshMerger.merge(
+                existing: [cancellationExisting],
+                scanned: cancelledScan,
+                roots: [cancellationRoot]
+            ).first?.state == .available
+        )
+        try? FileManager.default.removeItem(at: cancellationDirectory)
     }
 }
 #endif

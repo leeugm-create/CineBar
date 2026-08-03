@@ -2,8 +2,23 @@ import Foundation
 
 struct LocalLibraryScanRoot: Hashable {
     let folderID: UUID
-    let url: URL
+    let url: URL?
+    let bookmarkData: Data?
     let displayName: String
+
+    init(folderID: UUID, url: URL, displayName: String) {
+        self.folderID = folderID
+        self.url = url
+        self.bookmarkData = nil
+        self.displayName = displayName
+    }
+
+    init(folderID: UUID, bookmarkData: Data, displayName: String) {
+        self.folderID = folderID
+        self.url = nil
+        self.bookmarkData = bookmarkData
+        self.displayName = displayName
+    }
 }
 
 struct LocalLibraryScanProgress: Hashable {
@@ -30,13 +45,16 @@ final class LocalLibraryScanner {
         existing: [LocalLibraryEntry],
         progress: @escaping @Sendable (LocalLibraryScanProgress) -> Void
     ) async -> LocalLibraryScanResult {
-        await Task.detached(priority: .utility) {
-            Self.scanSynchronously(
-                roots: roots,
-                existing: existing,
-                progress: progress
-            )
-        }.value
+        await withTaskGroup(of: LocalLibraryScanResult.self) { group in
+            group.addTask(priority: .utility) {
+                Self.scanSynchronously(
+                    roots: roots,
+                    existing: existing,
+                    progress: progress
+                )
+            }
+            return await group.next()!
+        }
     }
 
     private static func scanSynchronously(
@@ -49,6 +67,10 @@ final class LocalLibraryScanner {
         var availableFolderIDs = Set<UUID>()
         var unavailableFolderIDs = Set<UUID>()
         var wasCancelled = false
+        var scopedFolders: [LocalLibraryResolvedFolder] = []
+        defer {
+            scopedFolders.forEach { $0.stopAccessing() }
+        }
 
         for root in roots {
             if Task.isCancelled {
@@ -56,9 +78,25 @@ final class LocalLibraryScanner {
                 break
             }
 
+            let rootURL: URL
+            if let bookmarkData = root.bookmarkData {
+                guard let resolvedFolder = try? LocalLibraryFolderBookmark
+                    .resolve(bookmarkData) else {
+                    unavailableFolderIDs.insert(root.folderID)
+                    continue
+                }
+                scopedFolders.append(resolvedFolder)
+                rootURL = resolvedFolder.url.standardizedFileURL
+            } else if let url = root.url {
+                rootURL = url.standardizedFileURL
+            } else {
+                unavailableFolderIDs.insert(root.folderID)
+                continue
+            }
+
             var isDirectory: ObjCBool = false
             guard fileManager.fileExists(
-                atPath: root.url.path,
+                atPath: rootURL.path,
                 isDirectory: &isDirectory
             ), isDirectory.boolValue else {
                 unavailableFolderIDs.insert(root.folderID)
@@ -74,7 +112,6 @@ final class LocalLibraryScanner {
             availableFolderIDs.insert(root.folderID)
             var filesVisited = 0
             var mediaFilesFound = 0
-            let rootURL = root.url.standardizedFileURL
             let properties: Set<URLResourceKey> = [
                 .isRegularFileKey,
                 .fileSizeKey,
