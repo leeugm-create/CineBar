@@ -55,6 +55,60 @@ struct LocalLibraryFolder: Codable, Identifiable, Hashable {
     var bookmarkData: Data
 }
 
+struct LocalLibraryFolderBookmark: Hashable {
+    let bookmarkData: Data
+    let pathHint: String
+
+    static func make(from url: URL) throws -> LocalLibraryFolderBookmark {
+        let bookmarkData = try url.bookmarkData(
+            options: [.withSecurityScope],
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        )
+        return LocalLibraryFolderBookmark(
+            bookmarkData: bookmarkData,
+            pathHint: url.lastPathComponent
+        )
+    }
+
+    static func resolve(_ bookmarkData: Data) throws -> LocalLibraryResolvedFolder {
+        var isStale = false
+        let url = try URL(
+            resolvingBookmarkData: bookmarkData,
+            options: [.withSecurityScope],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        )
+        return LocalLibraryResolvedFolder(
+            url: url,
+            isStale: isStale,
+            startedAccessing: url.startAccessingSecurityScopedResource()
+        )
+    }
+}
+
+final class LocalLibraryResolvedFolder {
+    let url: URL
+    let isStale: Bool
+    private var startedAccessing: Bool
+
+    fileprivate init(url: URL, isStale: Bool, startedAccessing: Bool) {
+        self.url = url
+        self.isStale = isStale
+        self.startedAccessing = startedAccessing
+    }
+
+    func stopAccessing() {
+        guard startedAccessing else { return }
+        url.stopAccessingSecurityScopedResource()
+        startedAccessing = false
+    }
+
+    deinit {
+        stopAccessing()
+    }
+}
+
 struct LocalLibraryParsedFilename: Hashable {
     let title: String
     let year: String?

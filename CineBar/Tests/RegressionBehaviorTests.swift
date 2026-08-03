@@ -596,6 +596,192 @@ struct CineBarRegressionBehaviorTests {
         try! Data("corrupt".utf8).write(to: persistenceURL)
         precondition(persistence.load() == firstSnapshot)
         try? FileManager.default.removeItem(at: persistenceDirectory)
+
+        let libraryDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarLocalLibrary-\(UUID().uuidString)")
+        let moviesDirectory = libraryDirectory.appendingPathComponent("Movies")
+        let showsDirectory = libraryDirectory.appendingPathComponent("Shows")
+        try! FileManager.default.createDirectory(
+            at: moviesDirectory,
+            withIntermediateDirectories: true
+        )
+        try! FileManager.default.createDirectory(
+            at: showsDirectory,
+            withIntermediateDirectories: true
+        )
+        FileManager.default.createFile(
+            atPath: moviesDirectory.appendingPathComponent("A.mkv").path,
+            contents: Data()
+        )
+        FileManager.default.createFile(
+            atPath: showsDirectory.appendingPathComponent("B.mp4").path,
+            contents: Data()
+        )
+
+        let libraryRoot = LocalLibraryScanRoot(
+            folderID: UUID(),
+            url: libraryDirectory,
+            displayName: "测试片库"
+        )
+        let scanner = LocalLibraryScanner()
+        let firstScan = await scanner.scan(
+            roots: [libraryRoot],
+            existing: [],
+            progress: { _ in }
+        )
+        precondition(Set(firstScan.entries.map(\.relativePath)) == [
+            "Movies/A.mkv", "Shows/B.mp4"
+        ])
+
+        FileManager.default.createFile(
+            atPath: moviesDirectory.appendingPathComponent("C.mov").path,
+            contents: Data()
+        )
+        let secondScan = await scanner.scan(
+            roots: [libraryRoot],
+            existing: firstScan.entries,
+            progress: { _ in }
+        )
+        let refreshedEntries = LocalLibraryRefreshMerger.merge(
+            existing: firstScan.entries,
+            scanned: secondScan,
+            roots: [libraryRoot]
+        )
+        precondition(refreshedEntries.count == 3)
+        precondition(Set(refreshedEntries.map(\.relativePath)).count == 3)
+        let aEntry = refreshedEntries.first(where: {
+            $0.relativePath == "Movies/A.mkv"
+        })!
+        let retainedEntry = LocalLibraryEntry(
+            id: aEntry.id,
+            folderID: aEntry.folderID,
+            relativePath: aEntry.relativePath,
+            signature: aEntry.signature,
+            state: aEntry.state,
+            matchState: .confirmed,
+            metadata: LocalLibraryMetadata(
+                id: 42,
+                kind: .movie,
+                title: "A",
+                year: "2026",
+                posterPath: nil,
+                overview: "",
+                voteAverage: 9
+            ),
+            isWatched: true,
+            isInWatchlist: true,
+            lastOpenedAt: Date(timeIntervalSince1970: 1)
+        )
+        let thirdScan = await scanner.scan(
+            roots: [libraryRoot],
+            existing: refreshedEntries,
+            progress: { _ in }
+        )
+        let thirdRefresh = LocalLibraryRefreshMerger.merge(
+            existing: refreshedEntries.map {
+                $0.id == retainedEntry.id ? retainedEntry : $0
+            },
+            scanned: thirdScan,
+            roots: [libraryRoot]
+        )
+        precondition(thirdRefresh.count == 3)
+        let refreshedRetainedEntry = thirdRefresh.first {
+            $0.id == retainedEntry.id
+        }
+        precondition(refreshedRetainedEntry?.metadata?.id == 42)
+        precondition(refreshedRetainedEntry?.isWatched == true)
+        precondition(refreshedRetainedEntry?.isInWatchlist == true)
+        precondition(
+            refreshedRetainedEntry?.lastOpenedAt == retainedEntry.lastOpenedAt
+        )
+
+        try! FileManager.default.removeItem(
+            at: showsDirectory.appendingPathComponent("B.mp4")
+        )
+        let missingScan = await scanner.scan(
+            roots: [libraryRoot],
+            existing: thirdRefresh,
+            progress: { _ in }
+        )
+        let missingRefresh = LocalLibraryRefreshMerger.merge(
+            existing: thirdRefresh,
+            scanned: missingScan,
+            roots: [libraryRoot]
+        )
+        precondition(missingRefresh.first(where: {
+            $0.relativePath == "Shows/B.mp4"
+        })?.state == .missing)
+        let cancelledRefresh = LocalLibraryRefreshMerger.merge(
+            existing: thirdRefresh,
+            scanned: LocalLibraryScanResult(
+                entries: [],
+                availableFolderIDs: [libraryRoot.folderID],
+                unavailableFolderIDs: [],
+                wasCancelled: true
+            ),
+            roots: [libraryRoot]
+        )
+        precondition(cancelledRefresh.first(where: {
+            $0.relativePath == "Movies/A.mkv"
+        })?.state == .available)
+
+        let unavailableRoot = LocalLibraryScanRoot(
+            folderID: UUID(),
+            url: libraryDirectory.appendingPathComponent("not-mounted"),
+            displayName: "外置硬盘"
+        )
+        let unavailableEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: unavailableRoot.folderID,
+            relativePath: "Archive/D.m2ts",
+            signature: LocalLibraryFileSignature(
+                fileName: "D.m2ts",
+                fileExtension: "m2ts",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil
+        )
+        let unavailableScan = await scanner.scan(
+            roots: [unavailableRoot],
+            existing: [unavailableEntry],
+            progress: { _ in }
+        )
+        precondition(
+            LocalLibraryRefreshMerger.merge(
+                existing: [unavailableEntry],
+                scanned: unavailableScan,
+                roots: [unavailableRoot]
+            ).first?.state == .volumeUnavailable
+        )
+
+        let bookmark = try! LocalLibraryFolderBookmark.make(
+            from: libraryDirectory
+        )
+        let resolvedFolder = try! LocalLibraryFolderBookmark.resolve(
+            bookmark.bookmarkData
+        )
+        precondition(
+            resolvedFolder.url.standardizedFileURL ==
+                libraryDirectory.standardizedFileURL
+        )
+        resolvedFolder.stopAccessing()
+
+        let backgroundScan = await Task.detached {
+            await LocalLibraryScanner().scan(
+                roots: [libraryRoot],
+                existing: [],
+                progress: { _ in }
+            )
+        }.value
+        precondition(backgroundScan.entries.count == 2)
+        try? FileManager.default.removeItem(at: libraryDirectory)
     }
 }
 #endif

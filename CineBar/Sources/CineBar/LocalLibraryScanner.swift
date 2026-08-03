@@ -1,0 +1,250 @@
+import Foundation
+
+struct LocalLibraryScanRoot: Hashable {
+    let folderID: UUID
+    let url: URL
+    let displayName: String
+}
+
+struct LocalLibraryScanProgress: Hashable {
+    let folderID: UUID
+    let displayName: String
+    let filesVisited: Int
+    let mediaFilesFound: Int
+}
+
+struct LocalLibraryScanResult: Hashable {
+    let entries: [LocalLibraryEntry]
+    let availableFolderIDs: Set<UUID>
+    let unavailableFolderIDs: Set<UUID>
+    let wasCancelled: Bool
+}
+
+final class LocalLibraryScanner {
+    private static let supportedExtensions: Set<String> = [
+        "mp4", "m4v", "mov", "mkv", "avi", "webm", "ts", "m2ts"
+    ]
+
+    func scan(
+        roots: [LocalLibraryScanRoot],
+        existing: [LocalLibraryEntry],
+        progress: @escaping @Sendable (LocalLibraryScanProgress) -> Void
+    ) async -> LocalLibraryScanResult {
+        await Task.detached(priority: .utility) {
+            Self.scanSynchronously(
+                roots: roots,
+                existing: existing,
+                progress: progress
+            )
+        }.value
+    }
+
+    private static func scanSynchronously(
+        roots: [LocalLibraryScanRoot],
+        existing: [LocalLibraryEntry],
+        progress: @escaping @Sendable (LocalLibraryScanProgress) -> Void
+    ) -> LocalLibraryScanResult {
+        let fileManager = FileManager.default
+        var entriesByKey: [String: LocalLibraryEntry] = [:]
+        var availableFolderIDs = Set<UUID>()
+        var unavailableFolderIDs = Set<UUID>()
+        var wasCancelled = false
+
+        for root in roots {
+            if Task.isCancelled {
+                wasCancelled = true
+                break
+            }
+
+            var isDirectory: ObjCBool = false
+            guard fileManager.fileExists(
+                atPath: root.url.path,
+                isDirectory: &isDirectory
+            ), isDirectory.boolValue else {
+                unavailableFolderIDs.insert(root.folderID)
+                progress(LocalLibraryScanProgress(
+                    folderID: root.folderID,
+                    displayName: root.displayName,
+                    filesVisited: 0,
+                    mediaFilesFound: 0
+                ))
+                continue
+            }
+
+            availableFolderIDs.insert(root.folderID)
+            var filesVisited = 0
+            var mediaFilesFound = 0
+            let rootURL = root.url.standardizedFileURL
+            let properties: Set<URLResourceKey> = [
+                .isRegularFileKey,
+                .fileSizeKey,
+                .contentModificationDateKey,
+                .fileResourceIdentifierKey
+            ]
+            let enumerator = fileManager.enumerator(
+                at: rootURL,
+                includingPropertiesForKeys: Array(properties),
+                options: [.skipsHiddenFiles, .skipsPackageDescendants]
+            )
+
+            while let fileURL = enumerator?.nextObject() as? URL {
+                if Task.isCancelled {
+                    wasCancelled = true
+                    break
+                }
+                filesVisited += 1
+                guard let values = try? fileURL.resourceValues(
+                    forKeys: properties
+                ), values.isRegularFile == true else {
+                    continue
+                }
+                let fileExtension = fileURL.pathExtension.lowercased()
+                guard supportedExtensions.contains(fileExtension) else {
+                    continue
+                }
+
+                let relativePath = relativePath(of: fileURL, from: rootURL)
+                let signature = LocalLibraryFileSignature(
+                    fileName: fileURL.lastPathComponent,
+                    fileExtension: fileExtension,
+                    byteCount: Int64(values.fileSize ?? 0),
+                    modificationDate: values.contentModificationDate,
+                    resourceIdentifier: values.fileResourceIdentifier.map {
+                        String(describing: $0)
+                    }
+                )
+                let entry = LocalLibraryEntry(
+                    id: existingEntry(
+                        in: existing,
+                        folderID: root.folderID,
+                        relativePath: relativePath
+                    )?.id ?? UUID(),
+                    folderID: root.folderID,
+                    relativePath: relativePath,
+                    signature: signature,
+                    state: .available,
+                    matchState: .unmatched,
+                    metadata: nil,
+                    isWatched: false,
+                    isInWatchlist: false,
+                    lastOpenedAt: nil
+                )
+                entriesByKey[LocalLibraryEntryMerge.key(
+                    folderID: root.folderID,
+                    relativePath: relativePath
+                )] = entry
+                mediaFilesFound += 1
+                progress(LocalLibraryScanProgress(
+                    folderID: root.folderID,
+                    displayName: root.displayName,
+                    filesVisited: filesVisited,
+                    mediaFilesFound: mediaFilesFound
+                ))
+            }
+            if wasCancelled { break }
+        }
+
+        return LocalLibraryScanResult(
+            entries: entriesByKey.values.sorted {
+                LocalLibraryEntryMerge.key(
+                    folderID: $0.folderID,
+                    relativePath: $0.relativePath
+                ) < LocalLibraryEntryMerge.key(
+                    folderID: $1.folderID,
+                    relativePath: $1.relativePath
+                )
+            },
+            availableFolderIDs: availableFolderIDs,
+            unavailableFolderIDs: unavailableFolderIDs,
+            wasCancelled: wasCancelled
+        )
+    }
+
+    private static func existingEntry(
+        in entries: [LocalLibraryEntry],
+        folderID: UUID,
+        relativePath: String
+    ) -> LocalLibraryEntry? {
+        let key = LocalLibraryEntryMerge.key(
+            folderID: folderID,
+            relativePath: relativePath
+        )
+        return entries.first {
+            LocalLibraryEntryMerge.key(
+                folderID: $0.folderID,
+                relativePath: $0.relativePath
+            ) == key
+        }
+    }
+
+    private static func relativePath(of fileURL: URL, from rootURL: URL) -> String {
+        let rootComponents = rootURL.pathComponents
+        let fileComponents = fileURL.standardizedFileURL.pathComponents
+        return fileComponents.dropFirst(rootComponents.count).joined(separator: "/")
+    }
+}
+
+enum LocalLibraryRefreshMerger {
+    static func merge(
+        existing: [LocalLibraryEntry],
+        scanned: LocalLibraryScanResult,
+        roots: [LocalLibraryScanRoot]
+    ) -> [LocalLibraryEntry] {
+        var existingByKey: [String: LocalLibraryEntry] = [:]
+        for entry in existing {
+            let key = LocalLibraryEntryMerge.key(
+                folderID: entry.folderID,
+                relativePath: entry.relativePath
+            )
+            if existingByKey[key] == nil {
+                existingByKey[key] = entry
+            }
+        }
+
+        var mergedByKey: [String: LocalLibraryEntry] = [:]
+        for scannedEntry in scanned.entries {
+            let key = LocalLibraryEntryMerge.key(
+                folderID: scannedEntry.folderID,
+                relativePath: scannedEntry.relativePath
+            )
+            if let oldEntry = existingByKey.removeValue(forKey: key) {
+                var updatedEntry = oldEntry
+                updatedEntry.relativePath = scannedEntry.relativePath
+                updatedEntry.signature = scannedEntry.signature
+                updatedEntry.state = .available
+                mergedByKey[key] = updatedEntry
+            } else {
+                mergedByKey[key] = scannedEntry
+            }
+        }
+
+        let knownFolderIDs = Set(roots.map(\.folderID))
+        for (key, entry) in existingByKey {
+            guard knownFolderIDs.contains(entry.folderID) else {
+                mergedByKey[key] = entry
+                continue
+            }
+            guard !scanned.wasCancelled else {
+                mergedByKey[key] = entry
+                continue
+            }
+            var unavailableEntry = entry
+            if scanned.unavailableFolderIDs.contains(entry.folderID) {
+                unavailableEntry.state = .volumeUnavailable
+            } else if scanned.availableFolderIDs.contains(entry.folderID) {
+                unavailableEntry.state = .missing
+            }
+            mergedByKey[key] = unavailableEntry
+        }
+
+        return mergedByKey.values.sorted {
+            LocalLibraryEntryMerge.key(
+                folderID: $0.folderID,
+                relativePath: $0.relativePath
+            ) < LocalLibraryEntryMerge.key(
+                folderID: $1.folderID,
+                relativePath: $1.relativePath
+            )
+        }
+    }
+}
