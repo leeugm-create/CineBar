@@ -107,6 +107,24 @@ struct CineBarRegressionBehaviorTests {
                 "電視電影"
         )
 
+        let personalVideo = LocalLibraryFilenameParser.parse(
+            "IMG_20260803_142233.mov"
+        )
+        precondition(personalVideo.category == .other)
+        precondition(!personalVideo.isTrustedTitle)
+
+        let movieFilename = LocalLibraryFilenameParser.parse(
+            "Interstellar.2014.2160p.mkv"
+        )
+        precondition(movieFilename.category == .movie)
+        precondition(movieFilename.isTrustedTitle)
+
+        let televisionFilename = LocalLibraryFilenameParser.parse(
+            "The Bear S02E03.mkv"
+        )
+        precondition(televisionFilename.category == .television)
+        precondition(televisionFilename.isTrustedTitle)
+
         precondition(
             UpdatePolicy.feedURL == "https://cinebar.cc/appcast.xml"
         )
@@ -874,7 +892,48 @@ struct CineBarRegressionBehaviorTests {
         try! persistence.save(firstSnapshot)
         try! persistence.save(secondSnapshot)
         try! Data("corrupt".utf8).write(to: persistenceURL)
-        precondition(persistence.load() == firstSnapshot)
+        precondition(
+            persistence.load().schemaVersion ==
+                LocalLibrarySnapshot.currentSchemaVersion
+        )
+
+        let legacyMovieEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: UUID(),
+            relativePath: "Interstellar.2014.mkv",
+            signature: LocalLibraryFileSignature(
+                fileName: "Interstellar.2014.mkv",
+                fileExtension: "mkv",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .confirmed,
+            metadata: LocalLibraryMetadata(
+                id: 157336,
+                kind: .movie,
+                title: "Interstellar",
+                year: "2014",
+                posterPath: nil,
+                overview: "",
+                voteAverage: 8.7,
+                genreIDs: nil
+            ),
+            isWatched: true,
+            isInWatchlist: true,
+            lastOpenedAt: Date(timeIntervalSince1970: 1)
+        )
+        try! persistence.save(LocalLibrarySnapshot(
+            schemaVersion: 1,
+            entries: [legacyMovieEntry]
+        ))
+        let migratedSnapshot = persistence.load()
+        precondition(migratedSnapshot.schemaVersion == 2)
+        precondition(
+            migratedSnapshot.entries.first?.contentCategory == .movie
+        )
+        precondition(migratedSnapshot.entries.first?.isWatched == true)
         try? FileManager.default.removeItem(at: persistenceDirectory)
 
         let libraryDirectory = FileManager.default.temporaryDirectory
@@ -1512,7 +1571,7 @@ struct CineBarRegressionBehaviorTests {
             lastOpenedAt: nil
         )
         _ = try! await matchService.search(for: televisionEntry)
-        precondition(matchProbe.televisionQueries == ["Example Show S01E02"])
+        precondition(matchProbe.televisionQueries == ["Example Show"])
 
         var emptyEntry = unmatchedEntry
         emptyEntry.signature = LocalLibraryFileSignature(

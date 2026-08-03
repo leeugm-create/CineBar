@@ -17,6 +17,12 @@ enum LocalLibraryMediaKind: String, Codable, Hashable {
     case television
 }
 
+enum LocalLibraryContentCategory: String, Codable, Hashable {
+    case movie
+    case television
+    case other
+}
+
 struct LocalLibraryFileSignature: Codable, Hashable {
     let fileName: String
     let fileExtension: String
@@ -56,10 +62,69 @@ struct LocalLibraryEntry: Codable, Identifiable, Hashable {
     var signature: LocalLibraryFileSignature
     var state: LocalLibraryFileState
     var matchState: LocalLibraryMatchState
+    var contentCategory: LocalLibraryContentCategory = .other
     var metadata: LocalLibraryMetadata?
     var isWatched: Bool
     var isInWatchlist: Bool
     var lastOpenedAt: Date?
+
+    private enum CodingKeys: String, CodingKey {
+        case id, folderID, relativePath, signature, state, matchState
+        case contentCategory, metadata, isWatched, isInWatchlist, lastOpenedAt
+    }
+
+    init(
+        id: UUID,
+        folderID: UUID,
+        relativePath: String,
+        signature: LocalLibraryFileSignature,
+        state: LocalLibraryFileState,
+        matchState: LocalLibraryMatchState,
+        metadata: LocalLibraryMetadata?,
+        isWatched: Bool,
+        isInWatchlist: Bool,
+        lastOpenedAt: Date?,
+        contentCategory: LocalLibraryContentCategory = .other
+    ) {
+        self.id = id
+        self.folderID = folderID
+        self.relativePath = relativePath
+        self.signature = signature
+        self.state = state
+        self.matchState = matchState
+        self.contentCategory = contentCategory
+        self.metadata = metadata
+        self.isWatched = isWatched
+        self.isInWatchlist = isInWatchlist
+        self.lastOpenedAt = lastOpenedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        folderID = try container.decode(UUID.self, forKey: .folderID)
+        relativePath = try container.decode(String.self, forKey: .relativePath)
+        signature = try container.decode(
+            LocalLibraryFileSignature.self,
+            forKey: .signature
+        )
+        state = try container.decode(LocalLibraryFileState.self, forKey: .state)
+        matchState = try container.decode(
+            LocalLibraryMatchState.self,
+            forKey: .matchState
+        )
+        contentCategory = try container.decodeIfPresent(
+            LocalLibraryContentCategory.self,
+            forKey: .contentCategory
+        ) ?? .other
+        metadata = try container.decodeIfPresent(
+            LocalLibraryMetadata.self,
+            forKey: .metadata
+        )
+        isWatched = try container.decode(Bool.self, forKey: .isWatched)
+        isInWatchlist = try container.decode(Bool.self, forKey: .isInWatchlist)
+        lastOpenedAt = try container.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
+    }
 }
 
 struct LocalLibraryFolder: Codable, Identifiable, Hashable {
@@ -127,6 +192,8 @@ struct LocalLibraryParsedFilename: Hashable {
     let title: String
     let year: String?
     let fileExtension: String
+    let category: LocalLibraryContentCategory
+    let isTrustedTitle: Bool
 }
 
 enum LocalLibraryFilenameParser {
@@ -135,13 +202,19 @@ enum LocalLibraryFilenameParser {
             return LocalLibraryParsedFilename(
                 title: "",
                 year: nil,
-                fileExtension: ""
+                fileExtension: "",
+                category: .other,
+                isTrustedTitle: false
             )
         }
         let fileURL = URL(fileURLWithPath: filename)
         let fileExtension = fileURL.pathExtension.lowercased()
         let stem = fileURL.deletingPathExtension().lastPathComponent
         let year = extractedYear(from: stem)
+        let hasEpisodeMarker = stem.range(
+            of: "(?i)(?:s[0-9]{1,2}e[0-9]{1,2}|season[ ._-]*[0-9]{1,2})",
+            options: .regularExpression
+        ) != nil
         var title = stem.replacingOccurrences(
             of: "[._]+",
             with: " ",
@@ -158,6 +231,11 @@ enum LocalLibraryFilenameParser {
             options: [.regularExpression, .caseInsensitive]
         )
         title = title.replacingOccurrences(
+            of: "(?i)\\b(?:s[0-9]{1,2}e[0-9]{1,2}|season[ ._-]*[0-9]{1,2})\\b",
+            with: " ",
+            options: .regularExpression
+        )
+        title = title.replacingOccurrences(
             of: "\\s+",
             with: " ",
             options: .regularExpression
@@ -166,10 +244,17 @@ enum LocalLibraryFilenameParser {
             in: CharacterSet(charactersIn: " -_.")
         )
 
+        let trustedTitle = isTrustedTitle(title: title, stem: stem)
+        let category: LocalLibraryContentCategory = trustedTitle
+            ? (hasEpisodeMarker ? .television : .movie)
+            : .other
+
         return LocalLibraryParsedFilename(
             title: title.isEmpty ? filename : title,
             year: year,
-            fileExtension: fileExtension
+            fileExtension: fileExtension,
+            category: category,
+            isTrustedTitle: trustedTitle
         )
     }
 
@@ -179,6 +264,23 @@ enum LocalLibraryFilenameParser {
             return nil
         }
         return String(filename[range])
+    }
+
+    private static func isTrustedTitle(title: String, stem: String) -> Bool {
+        let personalPattern = "(?i)^(?:img|vid|pxl|dsc|mov|mvi|gopr|cimg|dji|screen[ ._-]*recording|截屏|屏幕录制|录屏|微信视频|whatsapp[ ._-]*video)[ ._-]*(?:[0-9]{4,}|$)"
+        if stem.range(of: personalPattern, options: .regularExpression) != nil {
+            return false
+        }
+        let timestampPattern = "^(?:[0-9]{4}[-_][0-9]{2}[-_][0-9]{2}(?:[-_][0-9]{2,6})?|[0-9]{8,})$"
+        if title.range(of: timestampPattern, options: .regularExpression) != nil {
+            return false
+        }
+        guard !title.isEmpty,
+              title.rangeOfCharacter(from: .letters) != nil
+        else {
+            return false
+        }
+        return title.count >= 2
     }
 }
 
@@ -207,7 +309,7 @@ enum LocalLibraryEntryMerge {
 }
 
 struct LocalLibrarySnapshot: Codable, Hashable {
-    static let currentSchemaVersion = 1
+    static let currentSchemaVersion = 2
 
     var schemaVersion: Int
     var folders: [LocalLibraryFolder]
@@ -221,6 +323,32 @@ struct LocalLibrarySnapshot: Codable, Hashable {
         self.schemaVersion = schemaVersion
         self.folders = folders
         self.entries = entries
+    }
+
+    func migrated() -> LocalLibrarySnapshot {
+        guard schemaVersion < Self.currentSchemaVersion else { return self }
+        var migratedEntries = entries
+        for index in migratedEntries.indices {
+            if let metadata = migratedEntries[index].metadata {
+                migratedEntries[index].contentCategory = metadata.kind == .movie
+                    ? .movie
+                    : .television
+                continue
+            }
+            let parsed = LocalLibraryFilenameParser.parse(
+                migratedEntries[index].signature.fileName
+            )
+            migratedEntries[index].contentCategory = parsed.category
+            if parsed.isTrustedTitle,
+               migratedEntries[index].matchState == .unmatched {
+                migratedEntries[index].matchState = .suggested
+            }
+        }
+        return LocalLibrarySnapshot(
+            schemaVersion: Self.currentSchemaVersion,
+            folders: folders,
+            entries: migratedEntries
+        )
     }
 }
 
@@ -261,7 +389,7 @@ struct LocalLibraryPersistence {
         guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(LocalLibrarySnapshot.self, from: data)
+        return try? decoder.decode(LocalLibrarySnapshot.self, from: data).migrated()
     }
 
     private static func defaultFileURL() -> URL {
