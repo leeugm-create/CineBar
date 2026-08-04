@@ -112,12 +112,14 @@ struct LocalLibraryView: View {
     @ObservedObject var store: LocalLibraryStore
     @ObservedObject var movieStore: MovieStore
 
-    @State private var searchText = ""
-    @State private var categoryFilter = LocalLibraryCategoryFilter.all
-    @State private var statusFilter = LocalLibraryStatusFilter.all
+    @Binding var searchText: String
+    @Binding var categoryFilter: LocalLibraryCategoryFilter
+    @Binding var statusFilter: LocalLibraryStatusFilter
     @State private var actionMessage: String?
     @State private var failedPlaybackPath: String?
     @State private var matchSession: LocalLibraryMatchSession?
+    @State private var fileDetailEntry: LocalLibraryEntry?
+    @State private var pendingMatchEntry: LocalLibraryEntry?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -175,6 +177,7 @@ struct LocalLibraryView: View {
                                 onToggleWatchlist: {
                                     store.toggleWatchlist(entryID: entry.id)
                                 },
+                                onDetail: { openDetails(for: entry) },
                                 onMatch: { findMatches(for: entry) },
                                 onRelocate: { relocate(entry) }
                             )
@@ -194,10 +197,35 @@ struct LocalLibraryView: View {
                         metadata: candidate.metadata
                     )
                     matchSession = nil
+                    fileDetailEntry = nil
+                    guard store.entries.contains(where: {
+                        $0.id == session.entry.id &&
+                            $0.matchState == .confirmed &&
+                            $0.metadata == candidate.metadata
+                    }) else { return }
+                    openExternalDetail(for: candidate.metadata)
                 },
                 onDismiss: { matchSession = nil }
             )
         }
+        .sheet(item: $fileDetailEntry, onDismiss: presentPendingMatch) { entry in
+            LocalLibraryFileDetailView(
+                entry: entry,
+                folder: store.folders.first { $0.id == entry.folderID },
+                language: movieStore.appLanguage,
+                onMatch: {
+                    pendingMatchEntry = entry
+                    fileDetailEntry = nil
+                },
+                onDismiss: { fileDetailEntry = nil }
+            )
+        }
+    }
+
+    private func presentPendingMatch() {
+        guard let entry = pendingMatchEntry else { return }
+        pendingMatchEntry = nil
+        findMatches(for: entry)
     }
 
     private var header: some View {
@@ -389,6 +417,34 @@ struct LocalLibraryView: View {
         }
     }
 
+    private func openDetails(for entry: LocalLibraryEntry) {
+        guard entry.matchState == .confirmed,
+              let metadata = entry.metadata,
+              openExternalDetail(for: metadata)
+        else {
+            fileDetailEntry = entry
+            return
+        }
+    }
+
+    @discardableResult
+    private func openExternalDetail(for metadata: LocalLibraryMetadata) -> Bool {
+        movieStore.isShowingLocalLibrary = true
+        switch metadata.kind {
+        case .movie:
+            guard let movie = LocalLibraryDetailBridge.movie(from: metadata) else {
+                return false
+            }
+            movieStore.select(movie)
+        case .television:
+            guard let show = LocalLibraryDetailBridge.television(from: metadata) else {
+                return false
+            }
+            movieStore.selectTV(show)
+        }
+        return true
+    }
+
     private func relocate(_ entry: LocalLibraryEntry) {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
@@ -475,6 +531,7 @@ private struct LocalLibraryEntryRow: View {
     let onPlay: () -> Void
     let onToggleWatched: () -> Void
     let onToggleWatchlist: () -> Void
+    let onDetail: () -> Void
     let onMatch: () -> Void
     let onRelocate: () -> Void
 
@@ -502,8 +559,10 @@ private struct LocalLibraryEntryRow: View {
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 5) {
-                Button(localized("播放"), systemImage: "play.fill", action: onPlay)
+                Button(localized("查看详情"), action: onDetail)
                     .buttonStyle(.borderedProminent)
+                Button(localized("播放"), systemImage: "play.fill", action: onPlay)
+                    .buttonStyle(.bordered)
                     .disabled(entry.state != .available)
                 HStack(spacing: 4) {
                     Button(entry.isWatched ? localized("未看") : localized("已看"), action: onToggleWatched)
@@ -571,6 +630,94 @@ private struct LocalLibraryEntryRow: View {
         case .suggested: return localized("有建议")
         case .confirmed: return localized("已匹配")
         }
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalLibraryLocalization.string(key, language: language)
+    }
+}
+
+struct LocalLibraryFileDetailView: View {
+    let entry: LocalLibraryEntry
+    let folder: LocalLibraryFolder?
+    let language: AppLanguage
+    let onMatch: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .help(localized("关闭详情"))
+
+                Spacer()
+                Text(localized("文件详情")).font(.headline)
+                Spacer()
+                Color.clear.frame(width: 20, height: 20)
+            }
+            .padding()
+
+            Divider()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 14) {
+                    LabeledContent(localized("文件名")) {
+                        selectableText(entry.signature.fileName)
+                    }
+                    LabeledContent(localized("路径")) {
+                        selectableText(entry.relativePath)
+                    }
+                    LabeledContent(localized("文件夹")) {
+                        selectableText(folder?.displayName ?? localized("未知"))
+                    }
+                    LabeledContent(localized("文件大小")) {
+                        Text(fileSize)
+                    }
+                    LabeledContent(localized("观看状态")) {
+                        Label(
+                            entry.isWatched ? localized("已看") : localized("未看"),
+                            systemImage: entry.isWatched
+                                ? "checkmark.circle.fill"
+                                : "circle"
+                        )
+                    }
+                    LabeledContent(localized("片单状态")) {
+                        Label(
+                            entry.isInWatchlist ? localized("片单") : localized("加入片单"),
+                            systemImage: entry.isInWatchlist
+                                ? "bookmark.fill"
+                                : "bookmark"
+                        )
+                    }
+
+                    Divider()
+
+                    Button(localized("匹配影片或电视剧"), action: onMatch)
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .padding()
+            }
+        }
+        .frame(width: 480, height: 400)
+    }
+
+    private var fileSize: String {
+        ByteCountFormatter.string(
+            fromByteCount: entry.signature.byteCount,
+            countStyle: .file
+        )
+    }
+
+    private func selectableText(_ value: String) -> some View {
+        Text(value)
+            .lineLimit(2)
+            .multilineTextAlignment(.trailing)
+            .textSelection(.enabled)
     }
 
     private func localized(_ key: String) -> String {

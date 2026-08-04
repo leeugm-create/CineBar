@@ -9410,6 +9410,9 @@ struct VerticalResizeHandle: NSViewRepresentable {
 struct ContentView: View {
     @ObservedObject var store: MovieStore
     @ObservedObject var localLibraryStore: LocalLibraryStore
+    @State private var localLibrarySearchText = ""
+    @State private var localLibraryCategoryFilter = LocalLibraryCategoryFilter.all
+    @State private var localLibraryStatusFilter = LocalLibraryStatusFilter.all
     private let reminderCheckTimer = Timer.publish(
         every: 6 * 60 * 60,
         on: .main,
@@ -9420,14 +9423,20 @@ struct ContentView: View {
         Group {
             if store.showMovieStills, let movie = store.selectedMovie {
                 MovieStillsView(store: store, movie: movie)
-            } else if store.isShowingLocalLibrary {
-                LocalLibraryView(store: localLibraryStore, movieStore: store)
             } else if let person = store.selectedPerson {
                 PersonDetailView(store: store, person: person)
             } else if let movie = store.selectedMovie {
                 MovieDetailView(store: store, movie: movie)
             } else if let show = store.selectedTVShow {
                 TVDetailView(store: store, show: show)
+            } else if store.isShowingLocalLibrary {
+                LocalLibraryView(
+                    store: localLibraryStore,
+                    movieStore: store,
+                    searchText: $localLibrarySearchText,
+                    categoryFilter: $localLibraryCategoryFilter,
+                    statusFilter: $localLibraryStatusFilter
+                )
             } else {
                 mainList
             }

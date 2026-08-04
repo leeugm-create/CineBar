@@ -147,6 +147,64 @@ test("keeps Local Library category tabs separate from combinable status filters"
   );
 });
 
+test("routes confirmed Local Library media to existing details and keeps file-only details local", async () => {
+  const [source, viewSource] = await Promise.all([
+    readFile(sourcePath, "utf8"),
+    readFile(localLibraryViewPath, "utf8"),
+  ]);
+
+  assert.match(viewSource, /struct LocalLibraryFileDetailView: View/);
+  assert.match(viewSource, /Button\(localized\("查看详情"\), action: onDetail\)/);
+  assert.match(viewSource, /\.sheet\(item: \$fileDetailEntry/);
+  assert.match(
+    viewSource,
+    /\.sheet\(item: \$fileDetailEntry, onDismiss: presentPendingMatch\)/,
+  );
+  assert.match(
+    viewSource,
+    /LocalLibraryDetailBridge\.movie\(from: metadata\)[\s\S]*?movieStore\.select\(movie\)/,
+  );
+  assert.match(
+    viewSource,
+    /LocalLibraryDetailBridge\.television\(from: metadata\)[\s\S]*?movieStore\.selectTV\(show\)/,
+  );
+  assert.match(
+    viewSource,
+    /store\.confirmMatch\([\s\S]*?store\.entries\.contains[\s\S]*?openExternalDetail\(for: candidate\.metadata\)/,
+  );
+
+  const fileDetailStart = viewSource.indexOf("struct LocalLibraryFileDetailView: View");
+  const fileDetailEnd = viewSource.indexOf("enum LocalLibraryPosterURL", fileDetailStart);
+  const fileDetailSource = viewSource.slice(fileDetailStart, fileDetailEnd);
+  for (const key of [
+    "文件名",
+    "路径",
+    "文件夹",
+    "文件大小",
+    "观看状态",
+    "片单状态",
+    "匹配影片或电视剧",
+  ]) {
+    assert.match(fileDetailSource, new RegExp(key), `file detail is missing ${key}`);
+  }
+  assert.doesNotMatch(fileDetailSource, /voteAverage|cast|评分|演员|剧照|预告/);
+
+  const contentViewSource = source.slice(source.indexOf("struct ContentView: View"));
+  const movieRoute = contentViewSource.indexOf("else if let movie = store.selectedMovie");
+  const televisionRoute = contentViewSource.indexOf("else if let show = store.selectedTVShow");
+  const localLibraryRoute = contentViewSource.indexOf("else if store.isShowingLocalLibrary");
+  assert.ok(movieRoute >= 0, "missing selected movie route");
+  assert.ok(televisionRoute >= 0, "missing selected television route");
+  assert.ok(localLibraryRoute >= 0, "missing Local Library route");
+  assert.ok(movieRoute < localLibraryRoute, "movie details must precede the Local Library list");
+  assert.ok(
+    televisionRoute < localLibraryRoute,
+    "television details must precede the Local Library list",
+  );
+  assert.match(source, /@State private var localLibraryCategoryFilter/);
+  assert.match(source, /categoryFilter: \$localLibraryCategoryFilter/);
+});
+
 test("keeps in-app release metadata on Build 26", async () => {
   const source = await readFile(sourcePath, "utf8");
   assert.match(source, /CineBar 0\.8\.3-test\.10/);
