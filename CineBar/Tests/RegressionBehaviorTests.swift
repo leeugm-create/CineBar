@@ -88,6 +88,52 @@ struct CineBarRegressionBehaviorTests {
         precondition(
             LocalLibraryEmptyState.match(language: .enUS).systemImage == "magnifyingglass"
         )
+
+        var matchSearchState = LocalLibraryMatchSearchState()
+        precondition(!matchSearchState.hasSearched)
+        let staleGeneration = matchSearchState.begin()
+        let currentGeneration = matchSearchState.begin()
+        precondition(
+            !matchSearchState.finish(
+                generation: staleGeneration,
+                receivedResults: true
+            )
+        )
+        precondition(matchSearchState.isSearching)
+        precondition(!matchSearchState.hasSearched)
+        precondition(
+            matchSearchState.finish(
+                generation: currentGeneration,
+                receivedResults: true
+            )
+        )
+        precondition(!matchSearchState.isSearching)
+        precondition(matchSearchState.hasSearched)
+        matchSearchState.reset()
+        precondition(!matchSearchState.isSearching)
+        precondition(!matchSearchState.hasSearched)
+        precondition(
+            LocalLibraryMatchSearchState.isCancellation(CancellationError())
+        )
+        precondition(
+            LocalLibraryMatchSearchState.isCancellation(URLError(.cancelled))
+        )
+        precondition(
+            LocalLibraryMatchSearchState.isCancellation(
+                NSError(
+                    domain: NSURLErrorDomain,
+                    code: NSURLErrorCancelled
+                )
+            )
+        )
+        precondition(
+            !LocalLibraryMatchSearchState.isCancellation(URLError(.timedOut))
+        )
+
+        let automaticMatchSearchState = LocalLibraryMatchSearchState(
+            initialHasSearched: true
+        )
+        precondition(automaticMatchSearchState.hasSearched)
         precondition(
             LocalLibraryGenreLocalization.title(id: 12, language: .zhCN) == "冒险"
         )

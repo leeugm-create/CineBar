@@ -256,10 +256,6 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   );
   assert.match(
     matchSheetSource,
-    /queryText\.trimmingCharacters\(in: \.whitespacesAndNewlines\)\.isEmpty[\s\S]*?localized\("请输入片名"\)[\s\S]*?LocalLibraryEmptyState\.match\(language: language\)/,
-  );
-  assert.match(
-    matchSheetSource,
     /ForEach\(Array\(candidates\.enumerated\(\)\), id: \\.element\.id\)[\s\S]*?offset == 0[\s\S]*?localized\("最佳建议"\)[\s\S]*?localized\("相似度"\)[\s\S]*?candidate\.confidence/,
   );
   assert.match(
@@ -269,13 +265,38 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   const searchSource = matchSheetSource.slice(matchSheetSource.indexOf("private func search()"));
   assert.match(
     searchSource,
-    /let results = try await session\.search\(query\)[\s\S]*?candidates = results[\s\S]*?searchError = nil/,
+    /let generation = searchState\.begin\(\)[\s\S]*?let results = try await session\.search\(query\)[\s\S]*?guard searchState\.isCurrent\(generation\),\s*!Task\.isCancelled\s*else \{ return \}[\s\S]*?candidates = results[\s\S]*?searchError = nil/,
+  );
+  assert.match(
+    searchSource,
+    /catch[\s\S]*?guard searchState\.isCurrent\(generation\) else \{ return \}[\s\S]*?Task\.isCancelled \|\|[\s\S]*?LocalLibraryMatchSearchState\.isCancellation\(error\)/,
+  );
+  assert.match(
+    searchSource,
+    /searchState\.finish\([\s\S]*?generation: generation[\s\S]*?receivedResults:/,
   );
   const failedSearchCatch = searchSource.slice(
     searchSource.indexOf("} catch {"),
-    searchSource.indexOf("isSearching = false"),
+    searchSource.indexOf("private func clearSearch()"),
   );
   assert.doesNotMatch(failedSearchCatch, /candidates = \[\]/);
+  assert.doesNotMatch(searchSource, /\n\s*isSearching = false/);
+  assert.match(
+    matchSheetSource,
+    /@State private var searchState: LocalLibraryMatchSearchState/,
+  );
+  assert.match(
+    matchSheetSource,
+    /initialHasSearched: session\.entry\.contentCategory != \.other/,
+  );
+  assert.match(
+    matchSheetSource,
+    /state: searchState\.hasSearched[\s\S]*?LocalLibraryEmptyState\.match\(language: language\)[\s\S]*?localized\("请输入片名"\)/,
+  );
+  assert.match(
+    matchSheetSource,
+    /private func clearSearch\(\)[\s\S]*?searchState\.reset\(\)/,
+  );
   assert.doesNotMatch(matchSheetSource, /onConfirm\(candidates\.first/);
 });
 

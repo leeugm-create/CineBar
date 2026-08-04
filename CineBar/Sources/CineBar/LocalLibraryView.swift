@@ -527,6 +527,58 @@ private struct LocalLibraryMatchSession: Identifiable {
     var id: UUID { entry.id }
 }
 
+struct LocalLibraryMatchSearchState {
+    private(set) var generation = 0
+    private(set) var isSearching = false
+    private(set) var hasSearched: Bool
+
+    init(initialHasSearched: Bool = false) {
+        hasSearched = initialHasSearched
+    }
+
+    mutating func begin() -> Int {
+        generation += 1
+        isSearching = true
+        return generation
+    }
+
+    func isCurrent(_ requestGeneration: Int) -> Bool {
+        requestGeneration == generation
+    }
+
+    @discardableResult
+    mutating func finish(
+        generation requestGeneration: Int,
+        receivedResults: Bool
+    ) -> Bool {
+        guard isCurrent(requestGeneration) else { return false }
+        isSearching = false
+        if receivedResults {
+            hasSearched = true
+        }
+        return true
+    }
+
+    mutating func reset() {
+        generation += 1
+        isSearching = false
+        hasSearched = false
+    }
+
+    static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError {
+            return true
+        }
+        if let urlError = error as? URLError,
+           urlError.code == .cancelled {
+            return true
+        }
+        let error = error as NSError
+        return error.domain == NSURLErrorDomain &&
+            error.code == NSURLErrorCancelled
+    }
+}
+
 private struct LocalLibraryEntryRow: View {
     let entry: LocalLibraryEntry
     let language: AppLanguage
@@ -800,7 +852,7 @@ private struct LocalLibraryMatchSheet: View {
     @State private var queryText: String
     @State private var kind: LocalLibraryMediaKind
     @State private var candidates: [LocalLibraryMatchCandidate]
-    @State private var isSearching = false
+    @State private var searchState: LocalLibraryMatchSearchState
     @State private var searchError: String?
     @State private var searchTask: Task<Void, Never>?
 
@@ -817,6 +869,11 @@ private struct LocalLibraryMatchSheet: View {
         _queryText = State(initialValue: session.initialQuery)
         _kind = State(initialValue: session.initialKind)
         _candidates = State(initialValue: session.candidates)
+        _searchState = State(
+            initialValue: LocalLibraryMatchSearchState(
+                initialHasSearched: session.entry.contentCategory != .other
+            )
+        )
     }
 
     var body: some View {
@@ -856,7 +913,7 @@ private struct LocalLibraryMatchSheet: View {
                 Button {
                     search()
                 } label: {
-                    if isSearching {
+                    if searchState.isSearching {
                         ProgressView().controlSize(.small)
                     } else {
                         Label(localized("搜索"), systemImage: "magnifyingglass")
@@ -864,7 +921,7 @@ private struct LocalLibraryMatchSheet: View {
                 }
                 .disabled(
                     queryText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
-                        isSearching
+                        searchState.isSearching
                 )
             }
             if let searchError {
@@ -872,20 +929,18 @@ private struct LocalLibraryMatchSheet: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
-            if candidates.isEmpty && isSearching {
+            if candidates.isEmpty && searchState.isSearching {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if candidates.isEmpty {
                 LocalLibraryEmptyState(
-                    state: queryText
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                        .isEmpty
-                        ? LocalLibraryEmptyState.Descriptor(
+                    state: searchState.hasSearched
+                        ? LocalLibraryEmptyState.match(language: language)
+                        : LocalLibraryEmptyState.Descriptor(
                             title: localized("请输入片名"),
                             description: nil,
                             systemImage: "text.cursor"
                         )
-                        : LocalLibraryEmptyState.match(language: language)
                 )
             } else {
                 List {
@@ -966,31 +1021,52 @@ private struct LocalLibraryMatchSheet: View {
 
     private func search() {
         let query = LocalLibraryMatchQuery(text: queryText, kind: kind)
-        isSearching = true
+        let previousTask = searchTask
+        let generation = searchState.begin()
+        previousTask?.cancel()
         searchTask = Task {
             do {
                 let results = try await session.search(query)
-                try Task.checkCancellation()
+                guard searchState.isCurrent(generation),
+                      !Task.isCancelled
+                else { return }
+                guard searchState.finish(
+                    generation: generation,
+                    receivedResults: true
+                ) else { return }
                 candidates = results
                 searchError = nil
-            } catch is CancellationError {
             } catch {
+                guard searchState.isCurrent(generation) else { return }
+                guard !(Task.isCancelled ||
+                    LocalLibraryMatchSearchState.isCancellation(error))
+                else {
+                    searchState.finish(
+                        generation: generation,
+                        receivedResults: false
+                    )
+                    return
+                }
+                guard searchState.finish(
+                    generation: generation,
+                    receivedResults: false
+                ) else { return }
                 searchError = localized("匹配影片失败。")
             }
-            isSearching = false
         }
     }
 
     private func clearSearch() {
+        searchState.reset()
         searchTask?.cancel()
         searchTask = nil
-        isSearching = false
         queryText = ""
         candidates = []
         searchError = nil
     }
 
     private func dismiss() {
+        searchState.reset()
         searchTask?.cancel()
         onDismiss()
     }
