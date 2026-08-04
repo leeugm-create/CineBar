@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 const sourcePath = new URL("../../Sources/CineBar/main.swift", import.meta.url);
+const localLibraryModelPath = new URL("../../Sources/CineBar/LocalLibrary.swift", import.meta.url);
 const localLibraryViewPath = new URL("../../Sources/CineBar/LocalLibraryView.swift", import.meta.url);
 const localizationRoot = new URL("../../Assets/Localization/", import.meta.url);
 const installGuidePath = new URL("../../INSTALL.md", import.meta.url);
@@ -116,6 +117,34 @@ test("routes Local Library runtime labels through the selected app language", as
   const source = await readFile(localLibraryViewPath, "utf8");
   assert.match(source, /LocalLibraryLocalization\.string\(key, language:/);
   assert.doesNotMatch(source, /String\(localized:/);
+});
+
+test("keeps Local Library category tabs separate from combinable status filters", async () => {
+  const [modelSource, viewSource] = await Promise.all([
+    readFile(localLibraryModelPath, "utf8"),
+    readFile(localLibraryViewPath, "utf8"),
+  ]);
+
+  assert.match(
+    modelSource,
+    /enum LocalLibraryCategoryFilter[\s\S]*?case all[\s\S]*?case movie[\s\S]*?case television[\s\S]*?case other[\s\S]*?case \.other: return entry\.contentCategory == \.other/,
+  );
+  assert.match(
+    modelSource,
+    /enum LocalLibraryStatusFilter[\s\S]*?case all[\s\S]*?case unwatched[\s\S]*?case unmatched[\s\S]*?case unavailable/,
+  );
+  assert.match(
+    viewSource,
+    /Picker\(localized\("内容类型"\), selection: \$categoryFilter\)[\s\S]*?ForEach\(LocalLibraryCategoryFilter\.allCases\)[\s\S]*?\.pickerStyle\(\.segmented\)/,
+  );
+  assert.match(
+    viewSource,
+    /Picker\(localized\("筛选"\), selection: \$statusFilter\)[\s\S]*?ForEach\(LocalLibraryStatusFilter\.allCases\)[\s\S]*?\.pickerStyle\(\.menu\)/,
+  );
+  assert.match(
+    viewSource,
+    /guard categoryFilter\.includes\(entry\) else \{ return false \}[\s\S]*?guard statusFilter\.includes\(entry\) else \{ return false \}/,
+  );
 });
 
 test("keeps in-app release metadata on Build 26", async () => {
