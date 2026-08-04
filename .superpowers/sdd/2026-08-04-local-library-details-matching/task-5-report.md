@@ -203,3 +203,77 @@ Actual result:
 - No interactive Sparkle installer UI or first-launch Gatekeeper walkthrough was performed.
 - Reusing the same Build 27 URL required replacing the previously published archive and appcast signature. Current local, tracked, and public bytes are synchronized and verified, but caches holding the earlier Build 27 archive could temporarily retain the prior bytes despite `must-revalidate` headers.
 - Existing unrelated untracked/ignored artifacts were preserved; no cleanup was performed.
+
+## Review remediation: stable ASCII installation entry
+
+### Finding and TDD fix
+
+The delivery archive retained both Chinese installation guides, and `ditto` could extract them correctly, but a generic `unzip -l` listing did not render their filenames reliably in this environment. That made the archive lack a stable, immediately discoverable installation entry for tools or users that do not preserve the Unicode names.
+
+The package workflow now copies the existing English `CineBar/INSTALL.md` to the delivery root as `INSTALL.md` while preserving both Chinese guides. A focused Node regression test asserts all three copy operations. The test first failed because the package script had no `INSTALL.md` copy operation, then passed after the one-line packaging fix.
+
+Build-input fix commit:
+
+- `5c4ac71f475dabafc8edf862cafd3b37a1e59555` — `fix: package ASCII installation guide`
+
+### Rebuilt package and provenance
+
+The release remains version `0.8.3`, Build `27`, short version `0.8.3-test.11`, and uses the same public URL. This rebuild supersedes the earlier Build 27 archive hash recorded above.
+
+- Artifact: `dist/CineBar-0.8.3-test-build-27-universal.zip`
+- Public tracked copy: `CineBarWebsite/public/downloads/CineBar-0.8.3-test-build-27-universal.zip`
+- Size: `5,996,531` bytes
+- Current SHA-256: `4a69faf3352e7f05f3219e0f28cea2745531d4fed903c8559c22fa26e24c4adc`
+- Architectures: `x86_64 arm64`
+- Embedded manifest commit: `5c4ac71f475dabafc8edf862cafd3b37a1e59555`
+- Embedded source tree: `534ad5a420c233a18a74c82cc3779f688f6609a8`
+- Manifest version/build/status: `0.8.3` / `27` / `clean`
+
+`unzip -Z1` showed the exact ASCII entry `CineBar-0.8.3-test-build-27/INSTALL.md`. A separate `ditto` extraction confirmed these three root files and byte-compared each one with its tracked source:
+
+- `INSTALL.md`
+- `请先阅读-测试版安装说明.html`
+- `请先阅读-测试版安装说明.txt`
+
+The extracted application passed `codesign --verify --deep --strict --verbose=2`; `lipo` reported `x86_64 arm64`; the delivery and embedded `BuildManifest.json` files were identical.
+
+### Re-signed appcast and publication
+
+The prior first Build 27 item was replaced and the existing publishing workflow generated a new EdDSA signature for the rebuilt archive. Historical Build 26–23 items were not changed or deleted.
+
+Current first enclosure:
+
+- build `27`
+- short version `0.8.3-test.11`
+- URL `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-27-universal.zip`
+- length `5996531`
+- order `27, 26, 25, 24, 23`
+
+Publishing commit:
+
+- `2b2cf0c2eac2d1d707ad27fa6a314e3e55d7d964` — `release: refresh Build 27 installation bundle`
+
+Deployment records:
+
+- Cloudflare version ID: `f89de3d1-298e-48fd-bd9f-b7ea44c0e815`
+- Public targets: `https://cinebar.cc` and `https://cinebar-website.leeugm.workers.dev`
+- Sites source staging commit: `3f05deecf4fca28f0a8fcb7280384eeb4f49834b`
+- Sites source tree: `e7e6075ec841fd691aa156c5ee5e91fb0ec982b7`
+- Sites project version: 5
+- Sites deployment ID: `appgdep_6a7207791b188191bc09593dbde0474f`
+- Sites owner-only deployment: `https://cinebar-official.brucelee8282.chatgpt.site`
+
+### Verification evidence
+
+Before rebuilding, all 35 Node tests passed, the full Swift source compiled for the test harness, the Swift regression executable exited 0, and `git diff --check` exited 0. After publishing, all 35 Node tests passed again.
+
+Fresh online verification returned HTTP 200 for `/`, `/health`, `/appcast.xml`, and the Build 27 ZIP. The live appcast was byte-identical to the committed appcast. Sparkle `sign_update --verify` accepted the first enclosure signature for the freshly downloaded archive. The local artifact, tracked public copy, and fresh public download all had SHA-256 `4a69faf3352e7f05f3219e0f28cea2745531d4fed903c8559c22fa26e24c4adc`.
+
+The public ZIP was extracted with `ditto`; all three root installation guides existed and were byte-identical to their tracked sources. The extracted app passed strict deep code-signature verification, remained universal `x86_64 arm64`, and its matching manifests pointed to clean build-input commit `5c4ac71f475dabafc8edf862cafd3b37a1e59555` and source tree `534ad5a420c233a18a74c82cc3779f688f6609a8`.
+
+### Remaining concerns
+
+- Build 27 remains ad-hoc signed, is not signed with Apple Developer ID, and is not Apple notarized. Sparkle EdDSA authenticates only the update archive.
+- Replacing the same Build 27 URL again introduces cache risk: a stale intermediary or client may temporarily retain an earlier Build 27 byte sequence and signature pair.
+- No interactive Sparkle installer, first-launch Gatekeeper, or manual GUI installation walkthrough was performed.
+- Existing unrelated untracked/ignored artifacts were preserved; no cleanup was performed.
