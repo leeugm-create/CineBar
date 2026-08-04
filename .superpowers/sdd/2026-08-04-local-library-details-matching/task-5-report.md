@@ -4,6 +4,8 @@
 
 Complete. Build 27 release metadata, localized in-app New Features copy, English and Chinese installation guides, release notes, website version/download copy, health metadata, signed Sparkle appcast, and immutable website download archive are synchronized. The public `cinebar.cc` deployment is live and was verified from the network.
 
+The current Build 27 artifact was rebuilt during review remediation. The remediation section at the end of this report supersedes the initial artifact hash, manifest commit, enclosure length, and deployment identifiers recorded below.
+
 This remains a test build. The application bundle is ad-hoc signed for integrity and the update archive has a CineBar Sparkle EdDSA signature, but it is not Apple Developer ID signed and has not been Apple notarized.
 
 ## Commits
@@ -92,3 +94,112 @@ Two attempts to attach a local Sites build archive timed out in the file-blob up
 - The application uses ad-hoc signing and is explicitly documented as a non-notarized test build. It must not be described as an Apple-notarized or formal stable release.
 - The package manifest intentionally points to clean build-input commit `170e0f1`; the later `5afa47f` commit only publishes that already-reviewed immutable ZIP and its signed appcast.
 - Existing unrelated untracked/ignored artifacts were preserved. No cleanup was performed. Temporary verification and exact-source build directories under the system temporary directory were also left in place because the command safety layer rejected automatic cleanup traps.
+
+## Review remediation: explicit app code-signing disclosure
+
+### Finding and fix
+
+The packaged HTML/TXT guides and English guide disclosed that Build 27 was not notarized, but did not explicitly disclose that `CineBar.app` itself used only ad-hoc code signing and was not signed with an Apple Developer ID certificate. The release notes mentioned an independent update signature without explaining that Sparkle EdDSA verifies only the update archive and does not provide Developer ID code signing or notarization.
+
+The following files now use consistent, explicit wording:
+
+- `CineBar/INSTALL.md`
+- `CineBar/请先阅读-测试版安装说明.html`
+- `CineBar/请先阅读-测试版安装说明.txt`
+- `CineBar/ReleaseNotes/0.8.3-test.11-Build-27.txt`
+
+Each states that the application bundle uses only ad-hoc/temporary code signing, is not Apple Developer ID signed, and is not Apple notarized. They separately state that Sparkle EdDSA verifies the downloaded update archive and cannot substitute for the app's code-signing identity or notarization.
+
+TDD evidence:
+
+```bash
+node --test --test-name-pattern='ad-hoc app signing' CineBar/Tools/tests/app-branding.test.mjs
+```
+
+Before the wording fix, the new test failed because `INSTALL.md` did not contain `ad-hoc`. After the minimal four-document fix, it reported 1 test passed and 0 failed.
+
+Build-input fix commit:
+
+- `25278eac60da5aa4b9723364cf12cf615a26dc00` — `fix: disclose Build 27 ad-hoc signing`
+
+### Rebuilt package and provenance
+
+The same Build 27 version and URL were retained, but the archive was rebuilt because the corrected guides and release notes are tracked BuildManifest inputs.
+
+- Artifact: `dist/CineBar-0.8.3-test-build-27-universal.zip`
+- Public tracked copy: `CineBarWebsite/public/downloads/CineBar-0.8.3-test-build-27-universal.zip`
+- Size: `5,994,753` bytes
+- Current SHA-256: `7b7e9dbc38487dd20b4d8bc5f7f41fd1f7060561bd967df28103bc28aa1dc41d`
+- Architectures: `x86_64 arm64`
+- Embedded manifest commit: `25278eac60da5aa4b9723364cf12cf615a26dc00`
+- Embedded source tree: `845111984458340db481ddb42002d0dd12f979c0`
+- Manifest version/build/status: `0.8.3` / `27` / `clean`
+
+Commands:
+
+```bash
+CineBar/Tools/check_build_provenance.sh "$(pwd)" 0.8.3 27 CineBar/Sources/CineBar CineBar/Info.plist CineBar/PkgInfo CineBar/Assets CineBar/ReleaseNotes CineBar/INSTALL.md CineBar/README.md CineBar/请先阅读-测试版安装说明.html CineBar/请先阅读-测试版安装说明.txt CineBar/Tools/build_test_package.sh CineBar/Tools/check_build_provenance.sh
+CineBar/Tools/build_test_package.sh
+codesign --verify --deep --strict --verbose=2 <extracted-build>/CineBar.app
+lipo -archs <extracted-build>/CineBar.app/Contents/MacOS/CineBar
+```
+
+Actual result: provenance reported clean commit `25278ea` and source tree `8451119`; both architecture compiles completed; package creation exited 0; extracted application code-signature verification passed; `lipo` reported `x86_64 arm64`; delivery and embedded manifests were identical. Direct checks of the packaged HTML/TXT guides and release notes found the required ad-hoc, Apple Developer ID, notarization, and Sparkle EdDSA disclosures.
+
+### Re-signed appcast and publication
+
+Because the release remains Build 27, the prior Build 27 item was removed before running the existing `publish_sparkle_update.sh` workflow; the script then generated a fresh Build 27 item and EdDSA signature from the reviewed release-notes file. Historical Build 26–23 items were preserved.
+
+Current first enclosure:
+
+- build `27`
+- short version `0.8.3-test.11`
+- URL `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-27-universal.zip`
+- length `5994753`
+- order `27, 26, 25, 24, 23`
+
+Publishing commit:
+
+- `515dcec` — `release: refresh Build 27 signing disclosure package`
+
+The exact tracked website tree was deployed through the existing public Wrangler workflow:
+
+- Cloudflare version ID: `d48209fb-ba7b-4864-8c07-936b84c1400c`
+- Public targets: `https://cinebar.cc` and `https://cinebar-website.leeugm.workers.dev`
+- Sites source staging commit: `49df512b16113e04f854c5835d6e09f76ef34669`
+- Sites project version: 4
+- Sites owner-only deployment: `https://cinebar-official.brucelee8282.chatgpt.site`
+
+### Final and live verification
+
+Pre-publication verification results:
+
+- Node: 34 tests passed, 0 failed.
+- Swift full-source compilation and regression executable: exit 0.
+- Website: production build succeeded; 17 tests passed, 0 failed; deploy dry-run exited 0.
+- ESLint: exit 0 with the existing `@next/next/no-img-element` warning and no errors.
+- `git diff --check`: exit 0.
+
+Live verification downloaded the public appcast and ZIP again and performed these checks:
+
+```bash
+curl --fail --location https://cinebar.cc/appcast.xml
+curl --fail --location https://cinebar.cc/downloads/CineBar-0.8.3-test-build-27-universal.zip
+CineBar/.vendor/Sparkle-2.9.2/bin/sign_update --verify <public-zip> <live-enclosure-signature>
+shasum -a 256 dist/CineBar-0.8.3-test-build-27-universal.zip CineBarWebsite/public/downloads/CineBar-0.8.3-test-build-27-universal.zip <public-zip>
+```
+
+Actual result:
+
+- `/`, `/health`, `/appcast.xml`, and the Build 27 ZIP each returned HTTP 200.
+- The live appcast was byte-identical to the committed appcast and its first item was Build 27.
+- Sparkle `sign_update --verify` accepted the live enclosure signature for the freshly downloaded ZIP.
+- Local artifact, tracked website archive, and public download all had SHA-256 `7b7e9dbc38487dd20b4d8bc5f7f41fd1f7060561bd967df28103bc28aa1dc41d`.
+- The public ZIP was extracted again; both Chinese installation guides contained the explicit ad-hoc, non-Developer ID, non-notarized, and Sparkle EdDSA boundary wording; the extracted app passed `codesign --verify --deep --strict`; its BuildManifest pointed to clean commit `25278ea`.
+
+### Remaining concerns
+
+- Build 27 is still an ad-hoc signed, non-Developer ID, non-notarized test build. Neither the Sparkle EdDSA signature nor successful code-signature verification changes that status.
+- No interactive Sparkle installer UI or first-launch Gatekeeper walkthrough was performed.
+- Reusing the same Build 27 URL required replacing the previously published archive and appcast signature. Current local, tracked, and public bytes are synchronized and verified, but caches holding the earlier Build 27 archive could temporarily retain the prior bytes despite `must-revalidate` headers.
+- Existing unrelated untracked/ignored artifacts were preserved; no cleanup was performed.
