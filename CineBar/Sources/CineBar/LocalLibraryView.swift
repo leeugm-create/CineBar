@@ -403,7 +403,9 @@ struct LocalLibraryView: View {
                     candidates: entry.contentCategory == .other
                         ? []
                         : try await service.search(for: entry),
-                    initialQuery: parsed.isTrustedTitle ? parsed.title : "",
+                    initialQuery: entry.contentCategory == .other
+                        ? ""
+                        : (parsed.isTrustedTitle ? parsed.title : ""),
                     initialKind: entry.contentCategory == .television
                         ? .television
                         : .movie,
@@ -800,6 +802,7 @@ private struct LocalLibraryMatchSheet: View {
     @State private var candidates: [LocalLibraryMatchCandidate]
     @State private var isSearching = false
     @State private var searchError: String?
+    @State private var searchTask: Task<Void, Never>?
 
     init(
         session: LocalLibraryMatchSession,
@@ -818,13 +821,33 @@ private struct LocalLibraryMatchSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(localized("确认影片匹配")).font(.title3.bold())
-            Text(localized("选择后将覆盖当前匹配信息；跳过不会影响本地文件或播放。"))
+            HStack {
+                Button(action: dismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .help(localized("关闭匹配"))
+
+                Spacer()
+                Text(localized("确认影片匹配")).font(.title3.bold())
+                Spacer()
+                Color.clear.frame(width: 20, height: 20)
+            }
+            Text(localized("最佳建议仅供参考；确认需手动操作，且当前条目的匹配不可撤销。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 TextField(localized("搜索片名"), text: $queryText)
                     .textFieldStyle(.roundedBorder)
+                Button {
+                    clearSearch()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help(localized("清除搜索"))
                 Picker(localized("内容类型"), selection: $kind) {
                     Text(localized("电影")).tag(LocalLibraryMediaKind.movie)
                     Text(localized("电视剧")).tag(LocalLibraryMediaKind.television)
@@ -849,61 +872,92 @@ private struct LocalLibraryMatchSheet: View {
                     .font(.caption)
                     .foregroundStyle(.red)
             }
-            if candidates.isEmpty {
+            if candidates.isEmpty && isSearching {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if candidates.isEmpty {
                 LocalLibraryEmptyState(
-                    state: LocalLibraryEmptyState.match(language: language)
+                    state: queryText
+                        .trimmingCharacters(in: .whitespacesAndNewlines)
+                        .isEmpty
+                        ? LocalLibraryEmptyState.Descriptor(
+                            title: localized("请输入片名"),
+                            description: nil,
+                            systemImage: "text.cursor"
+                        )
+                        : LocalLibraryEmptyState.match(language: language)
                 )
             } else {
-                List(candidates) { candidate in
-                    HStack(spacing: 12) {
-                        if let posterURL = candidate.posterURL {
-                            AsyncImage(url: posterURL) { image in
-                                image.resizable().scaledToFill()
-                            } placeholder: {
+                List {
+                    ForEach(Array(candidates.enumerated()), id: \.element.id) { offset, candidate in
+                        HStack(spacing: 12) {
+                            if let posterURL = candidate.posterURL {
+                                AsyncImage(url: posterURL) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Image(systemName: "film")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(width: 46, height: 68)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                            } else {
                                 Image(systemName: "film")
                                     .foregroundStyle(.secondary)
+                                    .frame(width: 46, height: 68)
                             }
-                            .frame(width: 46, height: 68)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                        } else {
-                            Image(systemName: "film")
-                                .foregroundStyle(.secondary)
-                                .frame(width: 46, height: 68)
-                        }
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(candidate.title).font(.headline)
-                            Text(
-                                candidate.year + " · " +
-                                    (candidate.kind == .movie ? localized("电影") : localized("电视剧"))
-                            )
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack(spacing: 6) {
+                                    Text(candidate.title).font(.headline)
+                                    if offset == 0 {
+                                        Text(localized("最佳建议"))
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(.tint)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(.tint.opacity(0.12), in: Capsule())
+                                    }
+                                }
+                                Text(
+                                    candidate.year + " · " +
+                                        (candidate.kind == .movie
+                                            ? localized("电影")
+                                            : localized("电视剧"))
+                                )
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            if !candidate.genreIDs.isEmpty {
-                                Text(candidate.genreIDs.map {
-                                    LocalLibraryGenreLocalization.title(
-                                        id: $0,
-                                        language: language
-                                    )
-                                }.joined(separator: " · "))
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
+                                if !candidate.genreIDs.isEmpty {
+                                    Text(candidate.genreIDs.map {
+                                        LocalLibraryGenreLocalization.title(
+                                            id: $0,
+                                            language: language
+                                        )
+                                    }.joined(separator: " · "))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Label(
+                                    String(format: "%.1f / 10", candidate.voteAverage),
+                                    systemImage: "star.fill"
+                                )
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                                Text(
+                                    localized("相似度") + " " +
+                                        String(Int((candidate.confidence * 100).rounded())) + "%"
+                                )
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                             }
-                            Label(
-                                String(format: "%.1f / 10", candidate.voteAverage),
-                                systemImage: "star.fill"
-                            )
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
+                            Spacer()
+                            Button(localized("确认匹配")) { onConfirm(candidate) }
                         }
-                        Spacer()
-                        Button(localized("确认匹配")) { onConfirm(candidate) }
                     }
                 }
             }
             HStack {
                 Spacer()
-                Button(localized("跳过"), action: onDismiss)
+                Button(localized("跳过"), action: dismiss)
             }
         }
         .padding()
@@ -913,16 +967,32 @@ private struct LocalLibraryMatchSheet: View {
     private func search() {
         let query = LocalLibraryMatchQuery(text: queryText, kind: kind)
         isSearching = true
-        searchError = nil
-        Task {
+        searchTask = Task {
             do {
-                candidates = try await session.search(query)
+                let results = try await session.search(query)
+                try Task.checkCancellation()
+                candidates = results
+                searchError = nil
+            } catch is CancellationError {
             } catch {
-                candidates = []
                 searchError = localized("匹配影片失败。")
             }
             isSearching = false
         }
+    }
+
+    private func clearSearch() {
+        searchTask?.cancel()
+        searchTask = nil
+        isSearching = false
+        queryText = ""
+        candidates = []
+        searchError = nil
+    }
+
+    private func dismiss() {
+        searchTask?.cancel()
+        onDismiss()
     }
 
     private func localized(_ key: String) -> String {

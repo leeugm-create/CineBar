@@ -86,6 +86,23 @@ test("localizes every Local Library label and error across supported locales", a
     "其他视频",
     "搜索片名",
     "搜索",
+    "查看详情",
+    "文件详情",
+    "文件名",
+    "路径",
+    "文件夹",
+    "文件大小",
+    "观看状态",
+    "片单状态",
+    "未知",
+    "关闭详情",
+    "匹配影片或电视剧",
+    "关闭匹配",
+    "清除搜索",
+    "请输入片名",
+    "最佳建议",
+    "相似度",
+    "最佳建议仅供参考；确认需手动操作，且当前条目的匹配不可撤销。",
   ];
   const locales = [
     "en.lproj",
@@ -203,6 +220,63 @@ test("routes confirmed Local Library media to existing details and keeps file-on
   );
   assert.match(source, /@State private var localLibraryCategoryFilter/);
   assert.match(source, /categoryFilter: \$localLibraryCategoryFilter/);
+});
+
+test("keeps Local Library matching explicit, dismissible, and resilient", async () => {
+  const viewSource = await readFile(localLibraryViewPath, "utf8");
+  const matchSheetStart = viewSource.indexOf("private struct LocalLibraryMatchSheet: View");
+  assert.ok(matchSheetStart >= 0, "missing LocalLibraryMatchSheet");
+  const matchSheetSource = viewSource.slice(matchSheetStart);
+
+  assert.match(
+    viewSource,
+    /candidates: entry\.contentCategory == \.other\s*\? \[\][\s\S]*?initialQuery: entry\.contentCategory == \.other\s*\? ""/,
+  );
+  assert.match(
+    matchSheetSource,
+    /Button\(action: dismiss\)[\s\S]*?Image\(systemName: "xmark\.circle\.fill"\)[\s\S]*?\.help\(localized\("关闭匹配"\)\)/,
+  );
+  assert.match(matchSheetSource, /Button\(localized\("跳过"\), action: dismiss\)/);
+  assert.match(
+    matchSheetSource,
+    /private func dismiss\(\)[\s\S]*?searchTask\?\.cancel\(\)[\s\S]*?onDismiss\(\)/,
+  );
+  assert.match(matchSheetSource, /TextField\(localized\("搜索片名"\), text: \$queryText\)/);
+  assert.match(
+    matchSheetSource,
+    /Picker\(localized\("内容类型"\), selection: \$kind\)[\s\S]*?LocalLibraryMediaKind\.movie[\s\S]*?LocalLibraryMediaKind\.television/,
+  );
+  assert.match(
+    matchSheetSource,
+    /Button[\s\S]*?clearSearch\(\)[\s\S]*?\.help\(localized\("清除搜索"\)\)/,
+  );
+  assert.match(
+    matchSheetSource,
+    /private func clearSearch\(\)[\s\S]*?queryText = ""[\s\S]*?candidates = \[\]/,
+  );
+  assert.match(
+    matchSheetSource,
+    /queryText\.trimmingCharacters\(in: \.whitespacesAndNewlines\)\.isEmpty[\s\S]*?localized\("请输入片名"\)[\s\S]*?LocalLibraryEmptyState\.match\(language: language\)/,
+  );
+  assert.match(
+    matchSheetSource,
+    /ForEach\(Array\(candidates\.enumerated\(\)\), id: \\.element\.id\)[\s\S]*?offset == 0[\s\S]*?localized\("最佳建议"\)[\s\S]*?localized\("相似度"\)[\s\S]*?candidate\.confidence/,
+  );
+  assert.match(
+    matchSheetSource,
+    /localized\("最佳建议仅供参考；确认需手动操作，且当前条目的匹配不可撤销。"\)/,
+  );
+  const searchSource = matchSheetSource.slice(matchSheetSource.indexOf("private func search()"));
+  assert.match(
+    searchSource,
+    /let results = try await session\.search\(query\)[\s\S]*?candidates = results[\s\S]*?searchError = nil/,
+  );
+  const failedSearchCatch = searchSource.slice(
+    searchSource.indexOf("} catch {"),
+    searchSource.indexOf("isSearching = false"),
+  );
+  assert.doesNotMatch(failedSearchCatch, /candidates = \[\]/);
+  assert.doesNotMatch(matchSheetSource, /onConfirm\(candidates\.first/);
 });
 
 test("keeps in-app release metadata on Build 26", async () => {
