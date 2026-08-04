@@ -6,4 +6,6 @@ CineBar 0.8.3-test.11 · Build 27
 - 修复较早的匹配请求覆盖较新搜索结果或错误状态的问题。
 - 搜索、分类和状态筛选会在进入详情并返回后保留。
 
-本版本为测试版，使用 CineBar 独立更新签名，未经过 Apple 公证。
+本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID
+签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名
+或 Apple 公证。

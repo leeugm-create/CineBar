@@ -7,6 +7,18 @@ const localLibraryModelPath = new URL("../../Sources/CineBar/LocalLibrary.swift"
 const localLibraryViewPath = new URL("../../Sources/CineBar/LocalLibraryView.swift", import.meta.url);
 const localizationRoot = new URL("../../Assets/Localization/", import.meta.url);
 const installGuidePath = new URL("../../INSTALL.md", import.meta.url);
+const htmlInstallGuidePath = new URL(
+  "../../请先阅读-测试版安装说明.html",
+  import.meta.url,
+);
+const textInstallGuidePath = new URL(
+  "../../请先阅读-测试版安装说明.txt",
+  import.meta.url,
+);
+const releaseNotesPath = new URL(
+  "../../ReleaseNotes/0.8.3-test.11-Build-27.txt",
+  import.meta.url,
+);
 
 test("uses the new CineBar Chinese tagline in the app shell", async () => {
   const source = await readFile(sourcePath, "utf8");
@@ -337,5 +349,24 @@ test("documents Local Library setup and local-only playback in English", async (
     "in-app update",
   ]) {
     assert.match(guide, new RegExp(phrase));
+  }
+});
+
+test("discloses ad-hoc app signing separately from Sparkle update signing", async () => {
+  const [english, html, text, releaseNotes] = await Promise.all([
+    readFile(installGuidePath, "utf8"),
+    readFile(htmlInstallGuidePath, "utf8"),
+    readFile(textInstallGuidePath, "utf8"),
+    readFile(releaseNotesPath, "utf8"),
+  ]);
+
+  for (const document of [english, html, text, releaseNotes]) {
+    assert.match(document, /ad-hoc/i);
+    assert.match(document, /Apple Developer ID/);
+  }
+  assert.match(english, /not notarized/i);
+  for (const document of [html, text, releaseNotes]) {
+    assert.match(document, /未经 Apple 公证/);
+    assert.match(document, /Sparkle EdDSA/);
   }
 });

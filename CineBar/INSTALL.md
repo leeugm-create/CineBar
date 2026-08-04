@@ -1,10 +1,11 @@
 # CineBar 0.8.3-test.11 (Build 27) installation guide
 
-This is a test build for macOS 13 Ventura or later. It is not notarized and is
-not a stable release. Download only the complete CineBar test ZIP supplied by
-the developer, move `CineBar.app` to Applications, then Control-click it and
-choose **Open** for the first launch. Do not run it permanently from the ZIP or
-Downloads folder.
+This is a test build for macOS 13 Ventura or later. The application bundle uses
+ad-hoc code signing only: it is not signed with an Apple Developer ID
+certificate, is not notarized, and is not a stable release. Download only the
+complete CineBar test ZIP supplied by the developer, move `CineBar.app` to
+Applications, then Control-click it and choose **Open** for the first launch.
+Do not run it permanently from the ZIP or Downloads folder.
 
 ## Local Library
 
@@ -34,7 +35,8 @@ again, and use **Relocate File** when needed.
 Build 27 has a signed appcast and immutable archive, so CineBar can check,
 download, and install it as an in-app update. A direct download remains available
 at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-27-universal.zip`.
-The update package is independently signature-checked, which is separate from
-Apple notarization. If CineBar reports no local videos, verify the selected
-folder's permission and use **Refresh**. If a player does not launch, install
-IINA or VLC, or set a compatible macOS default player.
+The Sparkle EdDSA update signature verifies the downloaded archive. It is
+separate from the app's ad-hoc code signature and does not provide Apple
+Developer ID signing or Apple notarization. If CineBar reports no local videos,
+verify the selected folder's permission and use **Refresh**. If a player does
+not launch, install IINA or VLC, or set a compatible macOS default player.
