@@ -103,6 +103,9 @@ test("localizes every Local Library label and error across supported locales", a
     "最佳建议",
     "相似度",
     "最佳建议仅供参考；确认需手动操作，且当前条目的匹配不可撤销。",
+    "本地片库的内容分类与状态筛选现在可以组合使用",
+    "已确认影片可打开完整资料，未匹配文件显示本地详情",
+    "匹配搜索改为明确确认，并避免旧请求覆盖新结果",
   ];
   const locales = [
     "en.lproj",
@@ -300,11 +303,11 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   assert.doesNotMatch(matchSheetSource, /onConfirm\(candidates\.first/);
 });
 
-test("keeps in-app release metadata on Build 26", async () => {
+test("keeps in-app release metadata on Build 27", async () => {
   const source = await readFile(sourcePath, "utf8");
-  assert.match(source, /CineBar 0\.8\.3-test\.10/);
-  assert.match(source, /Build 26 · 2026 年 8 月 3 日/);
-  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.9/);
+  assert.match(source, /CineBar 0\.8\.3-test\.11/);
+  assert.match(source, /Build 27 · 2026 年 8 月 4 日/);
+  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.10/);
   assert.doesNotMatch(source, /CineBar 0\.8\.0（Build 12）/);
 });
 
@@ -320,10 +323,11 @@ test("documents the always-on anonymous installation telemetry contract", async 
 test("documents Local Library setup and local-only playback in English", async () => {
   const guide = await readFile(installGuidePath, "utf8");
   for (const phrase of [
-    "0.8.3-test.10",
-    "Build 26",
+    "0.8.3-test.11",
+    "Build 27",
     "Add Folder",
     "Refresh",
+    "View Details",
     "Confirm Match",
     "IINA",
     "VLC",

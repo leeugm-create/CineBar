@@ -3,7 +3,7 @@ export function GET() {
     {
       ok: true,
       service: "cinebar-website",
-      version: "0.8.3-test.10-build-26",
+      version: "0.8.3-test.11-build-27",
       utc: new Date().toISOString(),
     },
     {

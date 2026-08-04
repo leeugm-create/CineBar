@@ -1,4 +1,4 @@
-# CineBar 0.8.3-test.10 (Build 26) installation guide
+# CineBar 0.8.3-test.11 (Build 27) installation guide
 
 This is a test build for macOS 13 Ventura or later. It is not notarized and is
 not a stable release. Download only the complete CineBar test ZIP supplied by
@@ -13,10 +13,15 @@ Downloads folder.
 2. Choose **Refresh** to scan it. Videos added to an authorized folder appear
    after the next refresh. Movie and TV filenames are classified conservatively;
    camera, screen-recording, and other personal clips remain under **Other
-   Videos**.
+   Videos**. Content categories can be combined with status filters.
 3. TMDB search produces suggestions only. For a movie or TV file, you can enter
    a title manually and choose **Confirm Match** before CineBar changes metadata.
-4. Playback is local: CineBar tries IINA, then VLC, then the macOS default
+   The matching sheet can be dismissed at any time, and an older search cannot
+   replace newer results.
+4. Choose **View Details** to open the full existing Movie or TV details for a
+   confirmed match. Unmatched and Other Videos show file-only details without
+   invented external ratings, cast, stills, or trailers.
+5. Playback is local: CineBar tries IINA, then VLC, then the macOS default
    player. Already scanned files can still play without a network connection.
 
 CineBar does not upload your local videos and does not provide downloads,
@@ -26,9 +31,9 @@ again, and use **Relocate File** when needed.
 
 ## Updating and troubleshooting
 
-Build 26 has a signed appcast and immutable archive, so CineBar can check,
+Build 27 has a signed appcast and immutable archive, so CineBar can check,
 download, and install it as an in-app update. A direct download remains available
-at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-26-universal.zip`.
+at `https://cinebar.cc/downloads/CineBar-0.8.3-test-build-27-universal.zip`.
 The update package is independently signature-checked, which is separate from
 Apple notarization. If CineBar reports no local videos, verify the selected
 folder's permission and use **Refresh**. If a player does not launch, install

@@ -8765,17 +8765,17 @@ struct SettingsRootView: View {
         settingsCard {
             HStack {
                 VStack(alignment: .leading) {
-                    Text("CineBar 0.8.3-test.10").font(.title3.bold())
-                    Text("Build 26 · 2026 年 8 月 3 日")
+                    Text("CineBar 0.8.3-test.11").font(.title3.bold())
+                    Text("Build 27 · 2026 年 8 月 4 日")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
             }
             Divider()
-            featureRow("繁体中文的本地片库类型已改用正确字形")
-            featureRow("简体中文、英语、日语和韩语类型显示保持不变")
-            featureRow("Build 26 已发布签名 appcast，可直接在 CineBar 内更新")
+            featureRow("本地片库的内容分类与状态筛选现在可以组合使用")
+            featureRow("已确认影片可打开完整资料，未匹配文件显示本地详情")
+            featureRow("匹配搜索改为明确确认，并避免旧请求覆盖新结果")
         }
     }
 
@@ -8804,7 +8804,7 @@ struct SettingsRootView: View {
 
     private var about: some View {
         settingsCard {
-            Text("CineBar 0.8.3-test.10（Build 26）").font(.headline)
+            Text("CineBar 0.8.3-test.11（Build 27）").font(.headline)
             Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
             Text("OMDb 内容按非商业许可使用；观看平台信息由 JustWatch 提供。")
             Link(
