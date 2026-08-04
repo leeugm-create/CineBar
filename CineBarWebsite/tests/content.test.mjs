@@ -88,6 +88,16 @@ test("keeps the telemetry dashboard server-side and protected by a secret", asyn
   assert.doesNotMatch(page, /localStorage|install_id|install_hash/);
 });
 
+test("protects the analytics route before rendering any aggregate data", async () => {
+  const worker = await read("worker/index.ts");
+  assert.match(worker, /url\.pathname === ["']\/admin\/analytics["']/);
+  assert.match(worker, /CINEBAR_TELEMETRY_ADMIN_TOKEN/);
+  assert.match(worker, /startsWith\(["']Basic ["']\)/);
+  assert.match(worker, /atob\(/);
+  assert.match(worker, /www-authenticate/);
+  assert.match(worker, /Administrator authentication required/);
+});
+
 test("contains accessible navigation and all required sections", async () => {
   const page = await read("app/page.tsx");
   for (const id of ["features", "install", "privacy", "support"]) {

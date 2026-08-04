@@ -5,6 +5,8 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  /** Shared with the telemetry Worker; never sent to browser code. */
+  CINEBAR_TELEMETRY_ADMIN_TOKEN?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -23,6 +25,32 @@ const OFFICIAL_HOST = "cinebar.cc";
 const HSTS_POLICY = "max-age=31536000; includeSubDomains";
 const CONTENT_SECURITY_POLICY = "default-src 'self'; base-uri 'self'; form-action 'self' https://www.paypal.com; frame-ancestors 'none'; img-src 'self' data: blob:; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.cinebar.cc https://share.cinebar.cc; font-src 'self' data:; upgrade-insecure-requests";
 const PERMISSIONS_POLICY = "accelerometer=(), camera=(), geolocation=(), microphone=(), payment=(), usb=()";
+
+function isAdminAnalyticsRequest(request: Request, env: Env): boolean {
+  const token = env.CINEBAR_TELEMETRY_ADMIN_TOKEN;
+  if (!token) return false;
+
+  const authorization = request.headers.get("authorization");
+  if (!authorization?.startsWith("Basic ")) return false;
+
+  try {
+    return atob(authorization.slice("Basic ".length)) === `admin:${token}`;
+  } catch {
+    return false;
+  }
+}
+
+function adminAnalyticsUnauthorized(url: URL): Response {
+  const response = new Response("Administrator authentication required.", {
+    status: 401,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/plain; charset=utf-8",
+      "www-authenticate": 'Basic realm="CineBar Analytics", charset="UTF-8"',
+    },
+  });
+  return addSecurityHeaders(response, url);
+}
 
 function addSecurityHeaders(response: Response, url: URL): Response {
   const headers = new Headers(response.headers);
@@ -54,6 +82,12 @@ const worker = {
     if (url.hostname === OFFICIAL_HOST && url.protocol === "http:") {
       url.protocol = "https:";
       return Response.redirect(url, 308);
+    }
+
+    // The telemetry API is protected, but the dashboard must be protected too.
+    // Otherwise a guessed URL would reveal aggregate installation counts.
+    if (url.pathname === "/admin/analytics" && !isAdminAnalyticsRequest(request, env)) {
+      return adminAnalyticsUnauthorized(url);
     }
 
     if (request.method === "GET" || request.method === "HEAD") {
