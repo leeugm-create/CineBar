@@ -19,6 +19,7 @@ const releaseNotesPath = new URL(
   "../../ReleaseNotes/0.8.3-test.11-Build-27.txt",
   import.meta.url,
 );
+const packageScriptPath = new URL("../build_test_package.sh", import.meta.url);
 
 test("uses the new CineBar Chinese tagline in the app shell", async () => {
   const source = await readFile(sourcePath, "utf8");
@@ -368,5 +369,20 @@ test("discloses ad-hoc app signing separately from Sparkle update signing", asyn
   for (const document of [html, text, releaseNotes]) {
     assert.match(document, /未经 Apple 公证/);
     assert.match(document, /Sparkle EdDSA/);
+  }
+});
+
+test("packages ASCII and Chinese installation guides at the delivery root", async () => {
+  const script = await readFile(packageScriptPath, "utf8");
+  for (const guide of [
+    "INSTALL.md",
+    "请先阅读-测试版安装说明.html",
+    "请先阅读-测试版安装说明.txt",
+  ]) {
+    assert.match(
+      script,
+      new RegExp(`cp \\"\\$app_source_dir/${guide}\\" \\"\\$delivery_dir/\\"`),
+      `package script must copy ${guide} to the delivery root`,
+    );
   }
 });

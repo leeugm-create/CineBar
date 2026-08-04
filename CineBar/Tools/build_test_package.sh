@@ -106,6 +106,7 @@ codesign --force --sign - "$sparkle_framework"
 codesign --force --sign - "$app_bundle"
 codesign --verify --deep --strict "$app_bundle"
 
+cp "$app_source_dir/INSTALL.md" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
 if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
