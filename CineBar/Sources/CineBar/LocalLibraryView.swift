@@ -85,12 +85,36 @@ enum LocalLibraryGenreLocalization {
     }
 }
 
+extension LocalLibraryCategoryFilter {
+    func title(language: AppLanguage) -> String {
+        switch self {
+        case .all: return LocalLibraryLocalization.string("全部", language: language)
+        case .movie: return LocalLibraryLocalization.string("电影", language: language)
+        case .television: return LocalLibraryLocalization.string("电视剧", language: language)
+        case .other: return LocalLibraryLocalization.string("其他视频", language: language)
+        }
+    }
+}
+
+extension LocalLibraryStatusFilter {
+    func title(language: AppLanguage) -> String {
+        switch self {
+        case .all: return LocalLibraryLocalization.string("全部", language: language)
+        case .unwatched: return LocalLibraryLocalization.string("未看", language: language)
+        case .unmatched: return LocalLibraryLocalization.string("待匹配", language: language)
+        case .unavailable:
+            return LocalLibraryLocalization.string("文件不可用", language: language)
+        }
+    }
+}
+
 struct LocalLibraryView: View {
     @ObservedObject var store: LocalLibraryStore
     @ObservedObject var movieStore: MovieStore
 
     @State private var searchText = ""
-    @State private var filter = LocalLibraryFilter.all
+    @State private var categoryFilter = LocalLibraryCategoryFilter.all
+    @State private var statusFilter = LocalLibraryStatusFilter.all
     @State private var actionMessage: String?
     @State private var failedPlaybackPath: String?
     @State private var matchSession: LocalLibraryMatchSession?
@@ -239,16 +263,27 @@ struct LocalLibraryView: View {
     }
 
     private var filterBar: some View {
-        HStack(spacing: 8) {
-            TextField(localized("搜索本地视频"), text: $searchText)
-                .textFieldStyle(.roundedBorder)
-            Picker(localized("筛选"), selection: $filter) {
-                ForEach(LocalLibraryFilter.allCases) { option in
-                    Text(option.title(language: movieStore.appLanguage)).tag(option)
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
+                TextField(localized("搜索本地视频"), text: $searchText)
+                    .textFieldStyle(.roundedBorder)
+                Picker(localized("筛选"), selection: $statusFilter) {
+                    ForEach(LocalLibraryStatusFilter.allCases) { option in
+                        Text(option.title(language: movieStore.appLanguage))
+                            .tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+                .frame(width: 110)
+            }
+            Picker(localized("内容类型"), selection: $categoryFilter) {
+                ForEach(LocalLibraryCategoryFilter.allCases) { option in
+                    Text(option.title(language: movieStore.appLanguage))
+                        .tag(option)
                 }
             }
-            .pickerStyle(.menu)
-            .frame(width: 110)
+            .pickerStyle(.segmented)
+            .labelsHidden()
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
@@ -261,7 +296,8 @@ struct LocalLibraryView: View {
 
     private var filteredEntries: [LocalLibraryEntry] {
         store.entries.filter { entry in
-            guard filter.includes(entry) else { return false }
+            guard categoryFilter.includes(entry) else { return false }
+            guard statusFilter.includes(entry) else { return false }
             let haystack = [entry.signature.fileName, entry.metadata?.title ?? ""]
                 .joined(separator: " ")
             return searchText.isEmpty || haystack.localizedCaseInsensitiveContains(searchText)
@@ -419,36 +455,6 @@ struct LocalLibraryView: View {
             return localized("所选文件不在已授权的文件夹中。")
         case .notAFile:
             return localized("所选项目不是文件。")
-        }
-    }
-}
-
-private enum LocalLibraryFilter: CaseIterable, Identifiable {
-    case all, movie, television, other, unwatched, unmatched, unavailable
-
-    var id: Self { self }
-
-    func title(language: AppLanguage) -> String {
-        switch self {
-        case .all: return LocalLibraryLocalization.string("全部", language: language)
-        case .movie: return LocalLibraryLocalization.string("电影", language: language)
-        case .television: return LocalLibraryLocalization.string("电视剧", language: language)
-        case .other: return LocalLibraryLocalization.string("其他视频", language: language)
-        case .unwatched: return LocalLibraryLocalization.string("未看", language: language)
-        case .unmatched: return LocalLibraryLocalization.string("待匹配", language: language)
-        case .unavailable: return LocalLibraryLocalization.string("文件不可用", language: language)
-        }
-    }
-
-    func includes(_ entry: LocalLibraryEntry) -> Bool {
-        switch self {
-        case .all: return true
-        case .movie: return entry.contentCategory == .movie
-        case .television: return entry.contentCategory == .television
-        case .other: return entry.contentCategory == .other
-        case .unwatched: return !entry.isWatched
-        case .unmatched: return entry.matchState != .confirmed
-        case .unavailable: return entry.state != .available
         }
     }
 }

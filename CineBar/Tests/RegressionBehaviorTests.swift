@@ -1112,6 +1112,38 @@ struct CineBarRegressionBehaviorTests {
                 $0.signature.fileName == "IMG_20260803_142233.mov"
             })?.contentCategory == .other
         )
+
+        let categoryMovie = classificationScan.entries.first(where: {
+            $0.signature.fileName == "Interstellar.2014.mkv"
+        })!
+        var categoryTelevision = classificationScan.entries.first(where: {
+            $0.signature.fileName == "Example.Show.S01E02.mp4"
+        })!
+        categoryTelevision.isWatched = true
+        categoryTelevision.matchState = .confirmed
+        var categoryOther = classificationScan.entries.first(where: {
+            $0.signature.fileName == "IMG_20260803_142233.mov"
+        })!
+        categoryOther.state = .volumeUnavailable
+
+        precondition(LocalLibraryCategoryFilter.all.includes(categoryMovie))
+        precondition(LocalLibraryCategoryFilter.movie.includes(categoryMovie))
+        precondition(!LocalLibraryCategoryFilter.movie.includes(categoryTelevision))
+        precondition(LocalLibraryCategoryFilter.television.includes(categoryTelevision))
+        precondition(!LocalLibraryCategoryFilter.television.includes(categoryOther))
+        precondition(LocalLibraryCategoryFilter.other.includes(categoryOther))
+        precondition(!LocalLibraryCategoryFilter.other.includes(categoryMovie))
+        precondition(categoryOther.metadata == nil)
+        precondition(LocalLibraryCategoryFilter.all.includes(categoryOther))
+
+        precondition(
+            LocalLibraryCategoryFilter.movie.includes(categoryMovie) &&
+                LocalLibraryStatusFilter.unmatched.includes(categoryMovie)
+        )
+        precondition(LocalLibraryStatusFilter.unwatched.includes(categoryMovie))
+        precondition(!LocalLibraryStatusFilter.unmatched.includes(categoryTelevision))
+        precondition(!LocalLibraryStatusFilter.unwatched.includes(categoryTelevision))
+        precondition(LocalLibraryStatusFilter.unavailable.includes(categoryOther))
         try? FileManager.default.removeItem(at: classificationDirectory)
 
         FileManager.default.createFile(

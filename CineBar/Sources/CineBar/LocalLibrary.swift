@@ -23,6 +23,42 @@ enum LocalLibraryContentCategory: String, Codable, Hashable {
     case other
 }
 
+enum LocalLibraryCategoryFilter: CaseIterable, Identifiable {
+    case all
+    case movie
+    case television
+    case other
+
+    var id: Self { self }
+
+    func includes(_ entry: LocalLibraryEntry) -> Bool {
+        switch self {
+        case .all: return true
+        case .movie: return entry.contentCategory == .movie
+        case .television: return entry.contentCategory == .television
+        case .other: return entry.contentCategory == .other
+        }
+    }
+}
+
+enum LocalLibraryStatusFilter: CaseIterable, Identifiable {
+    case all
+    case unwatched
+    case unmatched
+    case unavailable
+
+    var id: Self { self }
+
+    func includes(_ entry: LocalLibraryEntry) -> Bool {
+        switch self {
+        case .all: return true
+        case .unwatched: return !entry.isWatched
+        case .unmatched: return entry.matchState != .confirmed
+        case .unavailable: return entry.state != .available
+        }
+    }
+}
+
 struct LocalLibraryFileSignature: Codable, Hashable {
     let fileName: String
     let fileExtension: String
