@@ -66,3 +66,34 @@ Actual results:
 - Verification includes Swift compilation/regression behavior and source-level UI contracts, but no interactive macOS GUI automation or live TMDB request was run. In-flight close behavior is protected by cancellation-aware source assertions and compilation, not an end-to-end UI test.
 - The `最佳建议` badge intentionally trusts the existing deterministic service order; it does not recalculate ranking in the view and never confirms a candidate automatically.
 - Existing unrelated untracked build artifacts, `.superpowers/brainstorm/`, and `task-7-report.md` were preserved and excluded from the implementation commit.
+
+## Review remediation
+
+Fix commit: `40fe0924f41fb7c624008c830051781cb56448dd` (`fix: serialize local library match searches`)
+
+Two Important review findings were reproduced and fixed:
+
+- Search requests now receive a monotonically increasing generation. Success, failure, cancellation, and loading-state completion first prove they still own the current generation, so a cancelled/stale task cannot clear a newer request's loading state, replace its candidates, or show an error. `CancellationError`, `URLError.cancelled`, and `NSURLErrorCancelled` are treated as silent cancellation.
+- Matching now tracks whether results have actually been received. A fresh `.other` session and Clear/reset show `请输入片名` even after the user types; only a completed search with an empty result shows `没有找到候选项`. Non-`.other` sessions retain the completed automatic-search state.
+
+### Remediation TDD evidence
+
+Before the fix, the targeted Node test exited 1 because the matching sheet had no generation guard or `hasSearched` state and still contained an unconditional `isSearching = false` write. The Swift regression compilation also exited 1 with `cannot find 'LocalLibraryMatchSearchState' in scope` for the new stale-generation, reset, and cancellation-classification preconditions.
+
+After the fix, the targeted matching Node test reported 1 passed and 0 failed. The Swift compiler and regression executable both exited 0.
+
+### Remediation verification
+
+Commands:
+
+```bash
+node --test CineBar/Tools/tests/*.test.mjs
+mkdir -p /tmp/cinebar-tests
+xcrun swiftc -parse-as-library -D CINEBAR_TEST CineBar/Sources/CineBar/*.swift CineBar/Tests/RegressionBehaviorTests.swift -o /tmp/cinebar-tests/CineBarRegressionTests
+/tmp/cinebar-tests/CineBarRegressionTests
+git diff --check
+```
+
+Actual result on the remediation tree: Node reported 16 tests, 16 passed, 0 failed; Swift compilation produced no diagnostics and the regression executable exited 0 with no failed preconditions; `git diff --check` exited 0.
+
+Remaining concern: no interactive macOS GUI or live TMDB end-to-end run was performed. The generation/reset/cancellation semantics are covered by pure Swift regression preconditions, and their SwiftUI wiring is covered by the Node source-level contract.
