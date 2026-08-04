@@ -1625,6 +1625,76 @@ struct CineBarRegressionBehaviorTests {
             voteCount: 10,
             genreIDs: [12, 878]
         )
+        let confirmedMovieMetadata = LocalLibraryMetadata(
+            id: 603,
+            kind: .movie,
+            title: "The Matrix",
+            year: "1999",
+            posterPath: "/matrix.jpg",
+            overview: "A hacker learns the truth.",
+            voteAverage: 8.2,
+            genreIDs: [28, 878]
+        )
+        let bridgedMovie = LocalLibraryDetailBridge.movie(
+            from: confirmedMovieMetadata
+        )!
+        precondition(bridgedMovie.id == confirmedMovieMetadata.id)
+        precondition(bridgedMovie.title == confirmedMovieMetadata.title)
+        precondition(bridgedMovie.overview == confirmedMovieMetadata.overview)
+        precondition(bridgedMovie.year == confirmedMovieMetadata.year)
+        precondition(bridgedMovie.posterPath == confirmedMovieMetadata.posterPath)
+
+        let confirmedTelevisionMetadata = LocalLibraryMetadata(
+            id: 1399,
+            kind: .television,
+            title: "Game of Thrones",
+            year: "2011",
+            posterPath: "/thrones.jpg",
+            overview: "Nine families vie for power.",
+            voteAverage: 8.5,
+            genreIDs: [18, 10765]
+        )
+        let bridgedTelevision = LocalLibraryDetailBridge.television(
+            from: confirmedTelevisionMetadata
+        )!
+        precondition(bridgedTelevision.id == confirmedTelevisionMetadata.id)
+        precondition(bridgedTelevision.name == confirmedTelevisionMetadata.title)
+        precondition(bridgedTelevision.overview == confirmedTelevisionMetadata.overview)
+        precondition(bridgedTelevision.year == confirmedTelevisionMetadata.year)
+        precondition(
+            bridgedTelevision.posterPath == confirmedTelevisionMetadata.posterPath
+        )
+
+        let legacyPosterMetadata = LocalLibraryMetadata(
+            id: 604,
+            kind: .movie,
+            title: "Legacy Poster",
+            year: "2000",
+            posterPath: "https://image.tmdb.org/t/p/w342/legacy.jpg",
+            overview: "",
+            voteAverage: 0
+        )
+        let bridgedLegacyPoster = LocalLibraryDetailBridge.movie(
+            from: legacyPosterMetadata
+        )!
+        precondition(bridgedLegacyPoster.posterPath == "/legacy.jpg")
+        precondition(
+            bridgedLegacyPoster.posterURL?.absoluteString ==
+                "https://image.tmdb.org/t/p/w342/legacy.jpg"
+        )
+
+        let invalidYearMetadata = LocalLibraryMetadata(
+            id: confirmedMovieMetadata.id,
+            kind: confirmedMovieMetadata.kind,
+            title: confirmedMovieMetadata.title,
+            year: "99",
+            posterPath: confirmedMovieMetadata.posterPath,
+            overview: confirmedMovieMetadata.overview,
+            voteAverage: confirmedMovieMetadata.voteAverage,
+            genreIDs: confirmedMovieMetadata.genreIDs
+        )
+        precondition(LocalLibraryDetailBridge.movie(from: invalidYearMetadata) == nil)
+
         let partialMovie = Movie(
             id: 2,
             title: "Interstellar Journey",
@@ -1644,11 +1714,10 @@ struct CineBarRegressionBehaviorTests {
         precondition(exactCandidate.year == "2014")
         precondition(exactCandidate.posterURL?.absoluteString ==
             "https://image.tmdb.org/t/p/w342/poster.jpg")
-        precondition(exactCandidate.metadata.posterPath ==
-            "https://image.tmdb.org/t/p/w342/poster.jpg")
+        precondition(exactCandidate.metadata.posterPath == "/poster.jpg")
         precondition(LocalLibraryPosterURL.resolve(
             exactCandidate.metadata.posterPath
-        )?.absoluteString == "https://image.tmdb.org/t/p/w342/poster.jpg")
+        )?.absoluteString == "https://image.tmdb.org/t/p/w154/poster.jpg")
         precondition(exactCandidate.voteAverage == 8.5)
         precondition(exactCandidate.genreIDs == [12, 878])
         precondition(exactCandidate.metadata.genreIDs == [12, 878])
@@ -1658,6 +1727,17 @@ struct CineBarRegressionBehaviorTests {
                 movie: partialMovie,
                 query: LocalLibraryFilenameParser.parse("Interstellar.2014.mkv")
             ).confidence
+        )
+
+        let containingMovie = Movie(
+            id: 3,
+            title: "Interstellar Journey",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2014-01-01",
+            voteAverage: 10,
+            voteCount: 1
         )
 
         let matchProbe = LocalLibraryMatchProbe()
@@ -1697,6 +1777,15 @@ struct CineBarRegressionBehaviorTests {
         precondition(unmatchedEntry.metadata == nil)
         precondition(unmatchedEntry.matchState == .unmatched)
         precondition(matchProbe.movieQueries.count == 1)
+
+        let typoMatchService = LocalLibraryMatchService(
+            movieSearch: { _ in [containingMovie, exactMovie] },
+            televisionSearch: { _ in [] }
+        )
+        let typoSuggestions = try! await typoMatchService.search(
+            query: LocalLibraryMatchQuery(text: "Interstelar 2014", kind: .movie)
+        )
+        precondition(typoSuggestions.map(\.id) == [157336, 3])
 
         let manualSuggestions = try! await matchService.search(
             query: LocalLibraryMatchQuery(text: "Interstellar", kind: .movie)
@@ -1749,6 +1838,17 @@ struct CineBarRegressionBehaviorTests {
         let personalSuggestions = try! await matchService.search(for: personalEntry)
         precondition(personalSuggestions.isEmpty)
         precondition(matchProbe.movieQueries.count == 2)
+
+        let manualOtherSuggestions = try! await matchService.search(
+            query: LocalLibraryMatchQuery(
+                text: LocalLibraryFilenameParser.parse(
+                    personalEntry.signature.fileName
+                ).title,
+                kind: .movie
+            )
+        )
+        precondition(manualOtherSuggestions.map(\.id) == [157336, 2])
+        precondition(matchProbe.movieQueries.count == 3)
     }
 }
 

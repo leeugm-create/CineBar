@@ -5,7 +5,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
     let kind: LocalLibraryMediaKind
     let title: String
     let year: String
-    let posterURL: URL?
+    let posterPath: String?
     let overview: String
     let voteAverage: Double
     let genreIDs: [Int]
@@ -17,7 +17,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             kind: .movie,
             title: movie.title,
             year: movie.year,
-            posterURL: movie.posterURL,
+            posterPath: movie.posterPath,
             overview: movie.overview,
             voteAverage: movie.voteAverage,
             genreIDs: movie.genreIDs ?? [],
@@ -31,7 +31,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             kind: .television,
             title: show.name,
             year: show.year,
-            posterURL: show.posterURL,
+            posterPath: show.posterPath,
             overview: show.overview,
             voteAverage: show.voteAverage,
             genreIDs: show.genreIDs ?? [],
@@ -45,11 +45,15 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
             kind: kind,
             title: title,
             year: year,
-            posterPath: posterURL?.absoluteString,
+            posterPath: posterPath,
             overview: overview,
             voteAverage: voteAverage,
             genreIDs: genreIDs
         )
+    }
+
+    var posterURL: URL? {
+        LocalLibraryDetailBridge.posterURL(for: posterPath)
     }
 
     private init(
@@ -57,7 +61,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         kind: LocalLibraryMediaKind,
         title: String,
         year: String,
-        posterURL: URL?,
+        posterPath: String?,
         overview: String,
         voteAverage: Double,
         genreIDs: [Int],
@@ -67,7 +71,7 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         self.kind = kind
         self.title = title
         self.year = year
-        self.posterURL = posterURL
+        self.posterPath = posterPath
         self.overview = overview
         self.voteAverage = voteAverage
         self.genreIDs = genreIDs
@@ -92,10 +96,33 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         if candidateTitle.contains(queryTitle) || queryTitle.contains(candidateTitle) {
             score = max(score, 0.7)
         }
+        score = max(score, editDistanceSimilarity(queryTitle, candidateTitle))
         if let queryYear = query.year, queryYear == year {
             score = min(0.95, score + 0.1)
         }
         return score
+    }
+
+    private static func editDistanceSimilarity(_ lhs: String, _ rhs: String) -> Double {
+        let lhsCharacters = Array(lhs)
+        let rhsCharacters = Array(rhs)
+        let longestLength = max(lhsCharacters.count, rhsCharacters.count)
+        guard longestLength > 0 else { return 0 }
+
+        var previousRow = Array(0...rhsCharacters.count)
+        for (lhsIndex, lhsCharacter) in lhsCharacters.enumerated() {
+            var currentRow = [lhsIndex + 1]
+            for (rhsIndex, rhsCharacter) in rhsCharacters.enumerated() {
+                let substitutionCost = lhsCharacter == rhsCharacter ? 0 : 1
+                currentRow.append(min(
+                    previousRow[rhsIndex + 1] + 1,
+                    currentRow[rhsIndex] + 1,
+                    previousRow[rhsIndex] + substitutionCost
+                ))
+            }
+            previousRow = currentRow
+        }
+        return 1 - Double(previousRow[rhsCharacters.count]) / Double(longestLength)
     }
 
     private static func normalized(_ value: String) -> String {
@@ -151,10 +178,7 @@ struct LocalLibraryMatchService {
                 LocalLibraryMatchCandidate(television: $0, query: query)
             }
         }
-        return candidates.sorted {
-            if $0.confidence != $1.confidence { return $0.confidence > $1.confidence }
-            return $0.voteAverage > $1.voteAverage
-        }
+        return candidates.sorted(by: Self.isPreferred)
     }
 
     func search(query: LocalLibraryMatchQuery) async throws -> [LocalLibraryMatchCandidate] {
@@ -178,10 +202,18 @@ struct LocalLibraryMatchService {
                 LocalLibraryMatchCandidate(television: $0, query: normalizedQuery)
             }
         }
-        return candidates.sorted {
-            if $0.confidence != $1.confidence { return $0.confidence > $1.confidence }
-            return $0.voteAverage > $1.voteAverage
-        }
+        return candidates.sorted(by: Self.isPreferred)
+    }
+
+    private static func isPreferred(
+        _ lhs: LocalLibraryMatchCandidate,
+        _ rhs: LocalLibraryMatchCandidate
+    ) -> Bool {
+        if lhs.confidence != rhs.confidence { return lhs.confidence > rhs.confidence }
+        if lhs.voteAverage != rhs.voteAverage { return lhs.voteAverage > rhs.voteAverage }
+        let titleOrder = lhs.title.localizedStandardCompare(rhs.title)
+        if titleOrder != .orderedSame { return titleOrder == .orderedAscending }
+        return lhs.id < rhs.id
     }
 
     private func mediaKind(
