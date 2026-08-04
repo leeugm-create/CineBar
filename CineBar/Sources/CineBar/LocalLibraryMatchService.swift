@@ -86,19 +86,25 @@ struct LocalLibraryMatchCandidate: Hashable, Identifiable {
         let queryTitle = normalized(query.title)
         let candidateTitle = normalized(title)
         guard !queryTitle.isEmpty, !candidateTitle.isEmpty else { return 0 }
-        if candidateTitle == queryTitle { return 1 }
-
-        let queryTokens = Set(queryTitle.split(separator: " "))
-        let candidateTokens = Set(candidateTitle.split(separator: " "))
-        let overlap = Double(queryTokens.intersection(candidateTokens).count)
-        let union = Double(queryTokens.union(candidateTokens).count)
-        var score = union == 0 ? 0 : overlap / union
-        if candidateTitle.contains(queryTitle) || queryTitle.contains(candidateTitle) {
-            score = max(score, 0.7)
+        var score: Double
+        if candidateTitle == queryTitle {
+            score = 0.9
+        } else {
+            let queryTokens = Set(queryTitle.split(separator: " "))
+            let candidateTokens = Set(candidateTitle.split(separator: " "))
+            let overlap = Double(queryTokens.intersection(candidateTokens).count)
+            let union = Double(queryTokens.union(candidateTokens).count)
+            score = union == 0 ? 0 : overlap / union
+            if candidateTitle.contains(queryTitle) || queryTitle.contains(candidateTitle) {
+                score = max(score, 0.7)
+            }
+            score = min(
+                0.89,
+                max(score, editDistanceSimilarity(queryTitle, candidateTitle))
+            )
         }
-        score = max(score, editDistanceSimilarity(queryTitle, candidateTitle))
         if let queryYear = query.year, queryYear == year {
-            score = min(0.95, score + 0.1)
+            score = min(1, score + 0.1)
         }
         return score
     }

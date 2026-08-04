@@ -89,29 +89,54 @@ struct CineBarRegressionBehaviorTests {
             LocalLibraryEmptyState.match(language: .enUS).systemImage == "magnifyingglass"
         )
 
+        let slowEntryID = UUID()
+        let fastEntryID = UUID()
         var matchSearchState = LocalLibraryMatchSearchState()
         precondition(!matchSearchState.hasSearched)
-        let staleGeneration = matchSearchState.begin()
-        let currentGeneration = matchSearchState.begin()
-        precondition(
-            !matchSearchState.finish(
-                generation: staleGeneration,
-                receivedResults: true
-            )
-        )
-        precondition(matchSearchState.isSearching)
-        precondition(!matchSearchState.hasSearched)
+        let slowRequest = matchSearchState.begin(entryID: slowEntryID)
+        let fastRequest = matchSearchState.begin(entryID: fastEntryID)
+        precondition(slowRequest.entryID == slowEntryID)
+        precondition(fastRequest.entryID == fastEntryID)
         precondition(
             matchSearchState.finish(
-                generation: currentGeneration,
+                request: fastRequest,
                 receivedResults: true
             )
         )
         precondition(!matchSearchState.isSearching)
         precondition(matchSearchState.hasSearched)
+        precondition(
+            !matchSearchState.finish(
+                request: slowRequest,
+                receivedResults: true
+            )
+        )
+        precondition(matchSearchState.hasSearched)
         matchSearchState.reset()
         precondition(!matchSearchState.isSearching)
         precondition(!matchSearchState.hasSearched)
+
+        var closedMatchSearchState = LocalLibraryMatchSearchState()
+        let closedRequest = closedMatchSearchState.begin(entryID: slowEntryID)
+        closedMatchSearchState.cancel(entryID: slowEntryID)
+        precondition(!closedMatchSearchState.isSearching)
+        precondition(
+            !closedMatchSearchState.finish(
+                request: closedRequest,
+                receivedResults: true
+            )
+        )
+
+        var confirmedMatchSearchState = LocalLibraryMatchSearchState()
+        let confirmedRequest = confirmedMatchSearchState.begin(entryID: slowEntryID)
+        confirmedMatchSearchState.confirm(entryID: slowEntryID)
+        precondition(!confirmedMatchSearchState.isSearching)
+        precondition(
+            !confirmedMatchSearchState.finish(
+                request: confirmedRequest,
+                receivedResults: true
+            )
+        )
         precondition(
             LocalLibraryMatchSearchState.isCancellation(CancellationError())
         )
@@ -1761,17 +1786,80 @@ struct CineBarRegressionBehaviorTests {
                 "https://image.tmdb.org/t/p/w342/legacy.jpg"
         )
 
-        let invalidYearMetadata = LocalLibraryMetadata(
+        let unknownYearMovieMetadata = LocalLibraryMetadata(
             id: confirmedMovieMetadata.id,
             kind: confirmedMovieMetadata.kind,
             title: confirmedMovieMetadata.title,
-            year: "99",
+            year: "年份未知",
             posterPath: confirmedMovieMetadata.posterPath,
             overview: confirmedMovieMetadata.overview,
             voteAverage: confirmedMovieMetadata.voteAverage,
             genreIDs: confirmedMovieMetadata.genreIDs
         )
-        precondition(LocalLibraryDetailBridge.movie(from: invalidYearMetadata) == nil)
+        let unknownYearMovie = LocalLibraryDetailBridge.movie(
+            from: unknownYearMovieMetadata
+        )!
+        precondition(unknownYearMovie.releaseDate == nil)
+
+        let unknownYearTelevisionMetadata = LocalLibraryMetadata(
+            id: confirmedTelevisionMetadata.id,
+            kind: confirmedTelevisionMetadata.kind,
+            title: confirmedTelevisionMetadata.title,
+            year: "年份未知",
+            posterPath: confirmedTelevisionMetadata.posterPath,
+            overview: confirmedTelevisionMetadata.overview,
+            voteAverage: confirmedTelevisionMetadata.voteAverage,
+            genreIDs: confirmedTelevisionMetadata.genreIDs
+        )
+        let unknownYearTelevision = LocalLibraryDetailBridge.television(
+            from: unknownYearTelevisionMetadata
+        )!
+        precondition(unknownYearTelevision.firstAirDate == nil)
+
+        let otherRoutingDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarOtherRoute-\(UUID().uuidString)")
+        let otherRoutingStateURL = otherRoutingDirectory
+            .appendingPathComponent("Library.json")
+        try! FileManager.default.createDirectory(
+            at: otherRoutingDirectory,
+            withIntermediateDirectories: true
+        )
+        let otherRoutingEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: UUID(),
+            relativePath: "Camera Clip.mov",
+            signature: LocalLibraryFileSignature(
+                fileName: "Camera Clip.mov",
+                fileExtension: "mov",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil,
+            contentCategory: .other
+        )
+        try! LocalLibraryPersistence(fileURL: otherRoutingStateURL).save(
+            LocalLibrarySnapshot(folders: [], entries: [otherRoutingEntry])
+        )
+        let otherRoutingStore = LocalLibraryStore(fileURL: otherRoutingStateURL)
+        otherRoutingStore.confirmMatch(
+            entryID: otherRoutingEntry.id,
+            metadata: unknownYearMovieMetadata
+        )
+        let confirmedOtherRoutingEntry = otherRoutingStore.entries[0]
+        precondition(confirmedOtherRoutingEntry.matchState == .confirmed)
+        precondition(confirmedOtherRoutingEntry.contentCategory == .movie)
+        precondition(
+            LocalLibraryDetailBridge.movie(
+                from: confirmedOtherRoutingEntry.metadata!
+            )?.releaseDate == nil
+        )
+        try? FileManager.default.removeItem(at: otherRoutingDirectory)
 
         let partialMovie = Movie(
             id: 2,
@@ -1816,6 +1904,58 @@ struct CineBarRegressionBehaviorTests {
             releaseDate: "2014-01-01",
             voteAverage: 10,
             voteCount: 1
+        )
+
+        let sameTitle1984 = Movie(
+            id: 1984,
+            title: "Dune",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "1984-12-14",
+            voteAverage: 1,
+            voteCount: 1
+        )
+        let sameTitle2021 = Movie(
+            id: 2021,
+            title: "Dune",
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: "2021-10-22",
+            voteAverage: 10,
+            voteCount: 1
+        )
+        let sameTitleEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: UUID(),
+            relativePath: "Dune.1984.mkv",
+            signature: LocalLibraryFileSignature(
+                fileName: "Dune.1984.mkv",
+                fileExtension: "mkv",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil,
+            contentCategory: .movie
+        )
+        let sameTitleMatchService = LocalLibraryMatchService(
+            movieSearch: { _ in [sameTitle2021, sameTitle1984] },
+            televisionSearch: { _ in [] }
+        )
+        let sameTitleSuggestions = try! await sameTitleMatchService.search(
+            for: sameTitleEntry
+        )
+        precondition(sameTitleSuggestions.map(\.id) == [1984, 2021])
+        precondition(
+            sameTitleSuggestions[0].confidence >
+                sameTitleSuggestions[1].confidence
         )
 
         let matchProbe = LocalLibraryMatchProbe()

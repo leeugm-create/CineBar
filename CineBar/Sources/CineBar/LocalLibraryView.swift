@@ -207,6 +207,7 @@ struct LocalLibraryView: View {
                 },
                 onDismiss: { matchSession = nil }
             )
+            .id(session.id)
         }
         .sheet(item: $fileDetailEntry, onDismiss: presentPendingMatch) { entry in
             LocalLibraryFileDetailView(
@@ -387,36 +388,30 @@ struct LocalLibraryView: View {
 
     private func findMatches(for entry: LocalLibraryEntry) {
         actionMessage = nil
-        Task {
-            do {
-                let service = LocalLibraryMatchService(
-                    client: TMDBClient(
-                        token: movieStore.token,
-                        language: movieStore.appLanguage.apiCode
-                    )
-                )
-                let parsed = LocalLibraryFilenameParser.parse(
-                    entry.signature.fileName
-                )
-                matchSession = LocalLibraryMatchSession(
-                    entry: entry,
-                    candidates: entry.contentCategory == .other
-                        ? []
-                        : try await service.search(for: entry),
-                    initialQuery: entry.contentCategory == .other
-                        ? ""
-                        : (parsed.isTrustedTitle ? parsed.title : ""),
-                    initialKind: entry.contentCategory == .television
-                        ? .television
-                        : .movie,
-                    search: { query in
-                        try await service.search(query: query)
-                    }
-                )
-            } catch {
-                actionMessage = localized("匹配影片失败。")
+        let service = LocalLibraryMatchService(
+            client: TMDBClient(
+                token: movieStore.token,
+                language: movieStore.appLanguage.apiCode
+            )
+        )
+        let parsed = LocalLibraryFilenameParser.parse(
+            entry.signature.fileName
+        )
+        matchSession = LocalLibraryMatchSession(
+            entry: entry,
+            initialQuery: entry.contentCategory == .other
+                ? ""
+                : (parsed.isTrustedTitle ? parsed.title : ""),
+            initialKind: entry.contentCategory == .television
+                ? .television
+                : .movie,
+            automaticSearch: entry.contentCategory == .other
+                ? nil
+                : { try await service.search(for: entry) },
+            search: { query in
+                try await service.search(query: query)
             }
-        }
+        )
     }
 
     private func openDetails(for entry: LocalLibraryEntry) {
@@ -519,16 +514,22 @@ struct LocalLibraryView: View {
 
 private struct LocalLibraryMatchSession: Identifiable {
     let entry: LocalLibraryEntry
-    let candidates: [LocalLibraryMatchCandidate]
     let initialQuery: String
     let initialKind: LocalLibraryMediaKind
+    let automaticSearch: (() async throws -> [LocalLibraryMatchCandidate])?
     let search: (LocalLibraryMatchQuery) async throws -> [LocalLibraryMatchCandidate]
 
     var id: UUID { entry.id }
 }
 
+struct LocalLibraryMatchRequest: Equatable {
+    let entryID: UUID
+    let generation: Int
+}
+
 struct LocalLibraryMatchSearchState {
     private(set) var generation = 0
+    private(set) var activeEntryID: UUID?
     private(set) var isSearching = false
     private(set) var hasSearched: Bool
 
@@ -536,22 +537,27 @@ struct LocalLibraryMatchSearchState {
         hasSearched = initialHasSearched
     }
 
-    mutating func begin() -> Int {
+    mutating func begin(entryID: UUID) -> LocalLibraryMatchRequest {
         generation += 1
+        activeEntryID = entryID
         isSearching = true
-        return generation
+        return LocalLibraryMatchRequest(
+            entryID: entryID,
+            generation: generation
+        )
     }
 
-    func isCurrent(_ requestGeneration: Int) -> Bool {
-        requestGeneration == generation
+    func isCurrent(_ request: LocalLibraryMatchRequest) -> Bool {
+        request.generation == generation && request.entryID == activeEntryID
     }
 
     @discardableResult
     mutating func finish(
-        generation requestGeneration: Int,
+        request: LocalLibraryMatchRequest,
         receivedResults: Bool
     ) -> Bool {
-        guard isCurrent(requestGeneration) else { return false }
+        guard isCurrent(request) else { return false }
+        activeEntryID = nil
         isSearching = false
         if receivedResults {
             hasSearched = true
@@ -561,8 +567,24 @@ struct LocalLibraryMatchSearchState {
 
     mutating func reset() {
         generation += 1
+        activeEntryID = nil
         isSearching = false
         hasSearched = false
+    }
+
+    mutating func cancel(entryID: UUID) {
+        invalidate(entryID: entryID)
+    }
+
+    mutating func confirm(entryID: UUID) {
+        invalidate(entryID: entryID)
+    }
+
+    private mutating func invalidate(entryID: UUID) {
+        guard activeEntryID == entryID else { return }
+        generation += 1
+        activeEntryID = nil
+        isSearching = false
     }
 
     static func isCancellation(_ error: Error) -> Bool {
@@ -868,10 +890,10 @@ private struct LocalLibraryMatchSheet: View {
         self.onDismiss = onDismiss
         _queryText = State(initialValue: session.initialQuery)
         _kind = State(initialValue: session.initialKind)
-        _candidates = State(initialValue: session.candidates)
+        _candidates = State(initialValue: [])
         _searchState = State(
             initialValue: LocalLibraryMatchSearchState(
-                initialHasSearched: session.entry.contentCategory != .other
+                initialHasSearched: false
             )
         )
     }
@@ -1005,7 +1027,7 @@ private struct LocalLibraryMatchSheet: View {
                                 .foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button(localized("确认匹配")) { onConfirm(candidate) }
+                            Button(localized("确认匹配")) { confirm(candidate) }
                         }
                     }
                 }
@@ -1017,38 +1039,53 @@ private struct LocalLibraryMatchSheet: View {
         }
         .padding()
         .frame(width: 560, height: 500)
+        .onAppear(perform: searchAutomaticallyIfNeeded)
+        .onDisappear(perform: cancelSearch)
+    }
+
+    private func searchAutomaticallyIfNeeded() {
+        guard let automaticSearch = session.automaticSearch else { return }
+        performSearch(automaticSearch)
     }
 
     private func search() {
         let query = LocalLibraryMatchQuery(text: queryText, kind: kind)
+        performSearch {
+            try await session.search(query)
+        }
+    }
+
+    private func performSearch(
+        _ operation: @escaping () async throws -> [LocalLibraryMatchCandidate]
+    ) {
         let previousTask = searchTask
-        let generation = searchState.begin()
+        let request = searchState.begin(entryID: session.entry.id)
         previousTask?.cancel()
         searchTask = Task {
             do {
-                let results = try await session.search(query)
-                guard searchState.isCurrent(generation),
+                let results = try await operation()
+                guard searchState.isCurrent(request),
                       !Task.isCancelled
                 else { return }
                 guard searchState.finish(
-                    generation: generation,
+                    request: request,
                     receivedResults: true
                 ) else { return }
                 candidates = results
                 searchError = nil
             } catch {
-                guard searchState.isCurrent(generation) else { return }
+                guard searchState.isCurrent(request) else { return }
                 guard !(Task.isCancelled ||
                     LocalLibraryMatchSearchState.isCancellation(error))
                 else {
                     searchState.finish(
-                        generation: generation,
+                        request: request,
                         receivedResults: false
                     )
                     return
                 }
                 guard searchState.finish(
-                    generation: generation,
+                    request: request,
                     receivedResults: false
                 ) else { return }
                 searchError = localized("匹配影片失败。")
@@ -1066,9 +1103,21 @@ private struct LocalLibraryMatchSheet: View {
     }
 
     private func dismiss() {
-        searchState.reset()
-        searchTask?.cancel()
+        cancelSearch()
         onDismiss()
+    }
+
+    private func confirm(_ candidate: LocalLibraryMatchCandidate) {
+        searchState.confirm(entryID: session.entry.id)
+        searchTask?.cancel()
+        searchTask = nil
+        onConfirm(candidate)
+    }
+
+    private func cancelSearch() {
+        searchState.cancel(entryID: session.entry.id)
+        searchTask?.cancel()
+        searchTask = nil
     }
 
     private func localized(_ key: String) -> String {

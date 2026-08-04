@@ -77,13 +77,13 @@ test("keeps the public website anonymous without GPT account sign-in", async () 
   );
 });
 
-test("discloses the current Build 27 signed update, Local Library, and anonymous community-rating limit", async () => {
+test("discloses the current Build 28 signed update, Local Library, and anonymous community-rating limit", async () => {
   const page = await read("app/page.tsx");
 
-  assert.match(page, /0\.8\.3-test\.11（Build 27）/);
+  assert.match(page, /0\.8\.3-test\.12（Build 28）/);
   assert.match(page, /本地片库/);
   assert.match(page, /应用内检查、下载并安装/);
-  assert.match(page, /CineBar-0\.8\.3-test-build-27-universal\.zip/);
+  assert.match(page, /CineBar-0\.8\.3-test-build-28-universal\.zip/);
   assert.doesNotMatch(page, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(page, /匿名设备标识/);
   assert.match(page, /每个作品仅可评分一次/);
@@ -175,7 +175,23 @@ test("keeps the Sites Vite plugin in a tracked source path", async () => {
 test("exposes an uncached website health response", async () => {
   const route = await read("app/health/route.ts");
   assert.match(route, /service:\s*["']cinebar-website["']/);
-  assert.match(route, /0\.8\.3-test\.11-build-27/);
+  assert.match(route, /0\.8\.3-test\.12-build-28/);
   assert.match(route, /cache-control/);
   assert.match(route, /no-store/);
+});
+
+test("keeps the signed appcast in descending immutable build order", async () => {
+  const appcast = await read("public/appcast.xml");
+  const builds = [...appcast.matchAll(/sparkle:version="(\d+)"/g)].map(
+    (match) => Number(match[1]),
+  );
+  assert.deepEqual(builds, [28, 27, 26, 25, 24, 23]);
+  assert.match(
+    appcast,
+    /CineBar-0\.8\.3-test-build-28-universal\.zip/,
+  );
+  assert.match(
+    appcast,
+    /CineBar-0\.8\.3-test-build-27-universal\.zip/,
+  );
 });

@@ -16,7 +16,7 @@ const textInstallGuidePath = new URL(
   import.meta.url,
 );
 const releaseNotesPath = new URL(
-  "../../ReleaseNotes/0.8.3-test.11-Build-27.txt",
+  "../../ReleaseNotes/0.8.3-test.12-Build-28.txt",
   import.meta.url,
 );
 const packageScriptPath = new URL("../build_test_package.sh", import.meta.url);
@@ -119,6 +119,9 @@ test("localizes every Local Library label and error across supported locales", a
     "本地片库的内容分类与状态筛选现在可以组合使用",
     "已确认影片可打开完整资料，未匹配文件显示本地详情",
     "匹配搜索改为明确确认，并避免旧请求覆盖新结果",
+    "自动匹配在关闭、确认或新请求时会立即取消",
+    "同名候选会优先选择与文件年份一致的版本",
+    "缺少上映日期的有效匹配也可以打开完整详情",
   ];
   const locales = [
     "en.lproj",
@@ -244,9 +247,14 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   assert.ok(matchSheetStart >= 0, "missing LocalLibraryMatchSheet");
   const matchSheetSource = viewSource.slice(matchSheetStart);
 
+  const findMatchesSource = viewSource.slice(
+    viewSource.indexOf("private func findMatches(for entry:"),
+    viewSource.indexOf("private func openDetails(for entry:"),
+  );
+  assert.doesNotMatch(findMatchesSource, /Task\s*\{/);
   assert.match(
-    viewSource,
-    /candidates: entry\.contentCategory == \.other\s*\? \[\][\s\S]*?initialQuery: entry\.contentCategory == \.other\s*\? ""/,
+    findMatchesSource,
+    /matchSession = LocalLibraryMatchSession\([\s\S]*?initialQuery: entry\.contentCategory == \.other\s*\? ""[\s\S]*?automaticSearch: entry\.contentCategory == \.other\s*\? nil\s*:\s*\{ try await service\.search\(for: entry\) \}/,
   );
   assert.match(
     matchSheetSource,
@@ -255,7 +263,13 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   assert.match(matchSheetSource, /Button\(localized\("跳过"\), action: dismiss\)/);
   assert.match(
     matchSheetSource,
-    /private func dismiss\(\)[\s\S]*?searchTask\?\.cancel\(\)[\s\S]*?onDismiss\(\)/,
+    /private func dismiss\(\)[\s\S]*?cancelSearch\(\)[\s\S]*?onDismiss\(\)/,
+  );
+  assert.match(matchSheetSource, /\.onAppear\(perform: searchAutomaticallyIfNeeded\)/);
+  assert.match(matchSheetSource, /\.onDisappear\(perform: cancelSearch\)/);
+  assert.match(
+    matchSheetSource,
+    /private func confirm\(_ candidate:[\s\S]*?searchState\.confirm\(entryID: session\.entry\.id\)[\s\S]*?searchTask\?\.cancel\(\)[\s\S]*?onConfirm\(candidate\)/,
   );
   assert.match(matchSheetSource, /TextField\(localized\("搜索片名"\), text: \$queryText\)/);
   assert.match(
@@ -278,18 +292,18 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
     matchSheetSource,
     /localized\("最佳建议仅供参考；确认需手动操作，且当前条目的匹配不可撤销。"\)/,
   );
-  const searchSource = matchSheetSource.slice(matchSheetSource.indexOf("private func search()"));
+  const searchSource = matchSheetSource.slice(matchSheetSource.indexOf("private func performSearch("));
   assert.match(
     searchSource,
-    /let generation = searchState\.begin\(\)[\s\S]*?let results = try await session\.search\(query\)[\s\S]*?guard searchState\.isCurrent\(generation\),\s*!Task\.isCancelled\s*else \{ return \}[\s\S]*?candidates = results[\s\S]*?searchError = nil/,
+    /let request = searchState\.begin\(entryID: session\.entry\.id\)[\s\S]*?previousTask\?\.cancel\(\)[\s\S]*?let results = try await operation\(\)[\s\S]*?guard searchState\.isCurrent\(request\),\s*!Task\.isCancelled\s*else \{ return \}[\s\S]*?candidates = results[\s\S]*?searchError = nil/,
   );
   assert.match(
     searchSource,
-    /catch[\s\S]*?guard searchState\.isCurrent\(generation\) else \{ return \}[\s\S]*?Task\.isCancelled \|\|[\s\S]*?LocalLibraryMatchSearchState\.isCancellation\(error\)/,
+    /catch[\s\S]*?guard searchState\.isCurrent\(request\) else \{ return \}[\s\S]*?Task\.isCancelled \|\|[\s\S]*?LocalLibraryMatchSearchState\.isCancellation\(error\)/,
   );
   assert.match(
     searchSource,
-    /searchState\.finish\([\s\S]*?generation: generation[\s\S]*?receivedResults:/,
+    /searchState\.finish\([\s\S]*?request: request[\s\S]*?receivedResults:/,
   );
   const failedSearchCatch = searchSource.slice(
     searchSource.indexOf("} catch {"),
@@ -303,7 +317,7 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   );
   assert.match(
     matchSheetSource,
-    /initialHasSearched: session\.entry\.contentCategory != \.other/,
+    /initialHasSearched: false/,
   );
   assert.match(
     matchSheetSource,
@@ -316,11 +330,16 @@ test("keeps Local Library matching explicit, dismissible, and resilient", async 
   assert.doesNotMatch(matchSheetSource, /onConfirm\(candidates\.first/);
 });
 
-test("keeps in-app release metadata on Build 27", async () => {
-  const source = await readFile(sourcePath, "utf8");
-  assert.match(source, /CineBar 0\.8\.3-test\.11/);
-  assert.match(source, /Build 27 · 2026 年 8 月 4 日/);
-  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.10/);
+test("keeps in-app release metadata on Build 28", async () => {
+  const [source, info] = await Promise.all([
+    readFile(sourcePath, "utf8"),
+    readFile(new URL("../../Info.plist", import.meta.url), "utf8"),
+  ]);
+  assert.match(source, /CineBar 0\.8\.3-test\.12/);
+  assert.match(source, /Build 28 · 2026 年 8 月 5 日/);
+  assert.match(info, /<key>CFBundleShortVersionString<\/key>\s*<string>0\.8\.3<\/string>/);
+  assert.match(info, /<key>CFBundleVersion<\/key>\s*<string>28<\/string>/);
+  assert.doesNotMatch(source, /CineBar 0\.8\.3-test\.11/);
   assert.doesNotMatch(source, /CineBar 0\.8\.0（Build 12）/);
 });
 
@@ -336,8 +355,8 @@ test("documents the always-on anonymous installation telemetry contract", async 
 test("documents Local Library setup and local-only playback in English", async () => {
   const guide = await readFile(installGuidePath, "utf8");
   for (const phrase of [
-    "0.8.3-test.11",
-    "Build 27",
+    "0.8.3-test.12",
+    "Build 28",
     "Add Folder",
     "Refresh",
     "View Details",

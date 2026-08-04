@@ -133,4 +133,3 @@ CineBar/Tools/check_build_provenance.sh "$(pwd)" 0.8.3 27 CineBar/Sources/CineBa
 - [ ] Inspect `git diff --check`, the generated build manifest, app bundle signature, Sparkle feed version/build, and the final ZIP path.
 - [ ] Confirm the manual test flow: Local Library → Other videos → close detail → match typo → see Best Suggestion → confirm → Movie/TV detail → Back preserves category; also verify Movie/TV category tabs and status filtering.
 - [ ] Report exact package path, version/build, test commands and results, and the token usage for this modification; do not claim in-app update availability unless the signed appcast entry was actually published and verified.
-

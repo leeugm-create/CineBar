@@ -288,4 +288,3 @@ git add CineBar/Info.plist CineBar/ReleaseNotes CineBar/README.md \
   CineBar/请先阅读-测试版安装说明.txt
 git commit -m "release: prepare CineBar Build 26 local library update"
 ```
-

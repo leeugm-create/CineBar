@@ -157,6 +157,9 @@
 "本地片库的内容分类与状态筛选现在可以组合使用" = "Local Library content categories can now be combined with status filters";
 "已确认影片可打开完整资料，未匹配文件显示本地详情" = "Confirmed titles open full details; unmatched files show local details";
 "匹配搜索改为明确确认，并避免旧请求覆盖新结果" = "Matching requires explicit confirmation and stale requests cannot replace new results";
+"自动匹配在关闭、确认或新请求时会立即取消" = "Automatic matching is cancelled when closing, confirming, or starting a new request";
+"同名候选会优先选择与文件年份一致的版本" = "Same-title candidates prefer the version matching the file year";
+"缺少上映日期的有效匹配也可以打开完整详情" = "Valid matches without release dates can still open full details";
 "Build 25 已发布签名 appcast，可直接在 CineBar 内更新" = "Build 25 has a signed appcast and can be updated directly in CineBar";
 "文件夹权限需要更新。请重新添加同一文件夹。" = "Folder access needs to be renewed. Add the same folder again.";
 "复制路径" = "Copy Path";

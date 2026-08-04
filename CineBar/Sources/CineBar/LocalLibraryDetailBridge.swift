@@ -4,7 +4,7 @@ enum LocalLibraryDetailBridge {
     static func movie(from metadata: LocalLibraryMetadata) -> Movie? {
         guard metadata.kind == .movie,
               metadata.id > 0,
-              let releaseDate = date(for: metadata.year)
+              !metadata.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return nil }
 
         return Movie(
@@ -13,7 +13,7 @@ enum LocalLibraryDetailBridge {
             originalTitle: nil,
             overview: metadata.overview,
             posterPath: normalizedPosterPath(metadata.posterPath),
-            releaseDate: releaseDate,
+            releaseDate: date(for: metadata.year),
             voteAverage: metadata.voteAverage,
             voteCount: 0,
             genreIDs: metadata.genreIDs
@@ -23,7 +23,7 @@ enum LocalLibraryDetailBridge {
     static func television(from metadata: LocalLibraryMetadata) -> TVShow? {
         guard metadata.kind == .television,
               metadata.id > 0,
-              let firstAirDate = date(for: metadata.year)
+              !metadata.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return nil }
 
         return TVShow(
@@ -32,7 +32,7 @@ enum LocalLibraryDetailBridge {
             originalName: nil,
             overview: metadata.overview,
             posterPath: normalizedPosterPath(metadata.posterPath),
-            firstAirDate: firstAirDate,
+            firstAirDate: date(for: metadata.year),
             voteAverage: metadata.voteAverage,
             voteCount: 0,
             genreIDs: metadata.genreIDs
