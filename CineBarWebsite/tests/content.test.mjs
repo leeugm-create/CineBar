@@ -64,6 +64,19 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(page, /VVVZUSU9QUJBW/);
 });
 
+test("keeps the public website anonymous without GPT account sign-in", async () => {
+  const page = await read("app/page.tsx");
+  const layout = await read("app/layout.tsx");
+  assert.doesNotMatch(
+    `${page}\n${layout}`,
+    /ChatGPT|GPT account|signin-with-chatgpt/i,
+  );
+  await assert.rejects(
+    access(new URL("../app/chatgpt-auth.ts", import.meta.url)),
+    /ENOENT/,
+  );
+});
+
 test("discloses the current Build 26 signed update, Local Library, and anonymous community-rating limit", async () => {
   const page = await read("app/page.tsx");
 
