@@ -214,9 +214,16 @@ struct LocalLibraryView: View {
                 entry: entry,
                 folder: store.folders.first { $0.id == entry.folderID },
                 language: movieStore.appLanguage,
+                onPlay: { play(entry) },
                 onMatch: {
                     pendingMatchEntry = entry
                     fileDetailEntry = nil
+                },
+                onOpenExternalDetail: {
+                    guard entry.matchState == .confirmed,
+                          let metadata = entry.metadata,
+                          openExternalDetail(for: metadata)
+                    else { return }
                 },
                 onDismiss: { fileDetailEntry = nil }
             )
@@ -415,13 +422,7 @@ struct LocalLibraryView: View {
     }
 
     private func openDetails(for entry: LocalLibraryEntry) {
-        guard entry.matchState == .confirmed,
-              let metadata = entry.metadata,
-              openExternalDetail(for: metadata)
-        else {
-            fileDetailEntry = entry
-            return
-        }
+        fileDetailEntry = entry
     }
 
     @discardableResult
@@ -656,6 +657,8 @@ private struct LocalLibraryEntryRow: View {
         }
         .padding(10)
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+        .contentShape(RoundedRectangle(cornerRadius: 10))
+        .onTapGesture { onDetail() }
     }
 
     @ViewBuilder
@@ -717,7 +720,9 @@ struct LocalLibraryFileDetailView: View {
     let entry: LocalLibraryEntry
     let folder: LocalLibraryFolder?
     let language: AppLanguage
+    let onPlay: () -> Void
     let onMatch: () -> Void
+    let onOpenExternalDetail: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
@@ -741,6 +746,42 @@ struct LocalLibraryFileDetailView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 14) {
+                        poster
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(title)
+                                .font(.title3.bold())
+                                .lineLimit(2)
+                            Text(metaLine)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Label(matchStateTitle, systemImage: "sparkles")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 0)
+                    }
+
+                    HStack(spacing: 10) {
+                        Button {
+                            onPlay()
+                        } label: {
+                            Label(localized("播放"), systemImage: "play.fill")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(entry.state != .available)
+
+                        if entry.matchState == .confirmed {
+                            Button(localized("打开在线详情"), action: onOpenExternalDetail)
+                                .buttonStyle(.bordered)
+                        } else {
+                            Button(localized("匹配影片或电视剧"), action: onMatch)
+                                .buttonStyle(.bordered)
+                        }
+                    }
+
+                    Divider()
+
                     LabeledContent(localized("文件名")) {
                         selectableText(entry.signature.fileName)
                     }
@@ -769,17 +810,57 @@ struct LocalLibraryFileDetailView: View {
                                 : "bookmark"
                         )
                     }
-
-                    Divider()
-
-                    Button(localized("匹配影片或电视剧"), action: onMatch)
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity, alignment: .center)
                 }
                 .padding()
             }
         }
-        .frame(width: 480, height: 400)
+        .frame(width: 480, height: 460)
+    }
+
+    private var title: String {
+        entry.metadata?.title ?? entry.signature.fileName
+    }
+
+    private var metaLine: String {
+        var parts: [String] = []
+        if let year = entry.metadata?.year, !year.isEmpty {
+            parts.append(year)
+        }
+        let kind: String
+        switch entry.contentCategory {
+        case .movie: kind = localized("电影")
+        case .television: kind = localized("电视剧")
+        case .other: kind = localized("其他视频")
+        }
+        parts.append(kind)
+        return parts.joined(separator: " · ")
+    }
+
+    private var matchStateTitle: String {
+        switch entry.matchState {
+        case .unmatched: return localized("待匹配")
+        case .suggested: return localized("有建议")
+        case .confirmed: return localized("已匹配")
+        }
+    }
+
+    @ViewBuilder
+    private var poster: some View {
+        if let url = LocalLibraryPosterURL.resolve(entry.metadata?.posterPath) {
+            AsyncImage(url: url) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                Image(systemName: "film").font(.title2).foregroundStyle(.secondary)
+            }
+            .frame(width: 76, height: 112)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+        } else {
+            Image(systemName: "film")
+                .font(.title2)
+                .foregroundStyle(.secondary)
+                .frame(width: 76, height: 112)
+                .background(.tertiary, in: RoundedRectangle(cornerRadius: 8))
+        }
     }
 
     private var fileSize: String {

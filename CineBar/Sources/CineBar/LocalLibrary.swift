@@ -307,6 +307,10 @@ enum LocalLibraryFilenameParser {
         if stem.range(of: personalPattern, options: .regularExpression) != nil {
             return false
         }
+        let placeholderPattern = "(?i)^(?:未命名|无标题|新建文件夹|新建视频|新视频)(?:[ ._\\-]*(?:拷贝|副本|[0-9]+))*$|^(?:untitled|new[ ._-]*folder|new[ ._-]*video)(?:[ ._\\-]*[0-9]+)*$"
+        if stem.range(of: placeholderPattern, options: .regularExpression) != nil {
+            return false
+        }
         let timestampPattern = "^(?:[0-9]{4}[-_][0-9]{2}[-_][0-9]{2}(?:[-_][0-9]{2,6})?|[0-9]{8,})$"
         if title.range(of: timestampPattern, options: .regularExpression) != nil {
             return false

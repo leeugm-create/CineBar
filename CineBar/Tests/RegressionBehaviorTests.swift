@@ -212,6 +212,30 @@ struct CineBarRegressionBehaviorTests {
         precondition(televisionFilename.category == .television)
         precondition(televisionFilename.isTrustedTitle)
 
+        let unnamedFilename = LocalLibraryFilenameParser.parse(
+            "未命名.mov"
+        )
+        precondition(unnamedFilename.category == .other)
+        precondition(!unnamedFilename.isTrustedTitle)
+
+        let unnamedCopy = LocalLibraryFilenameParser.parse(
+            "未命名 拷贝.mov"
+        )
+        precondition(unnamedCopy.category == .other)
+        precondition(!unnamedCopy.isTrustedTitle)
+
+        let untitledFilename = LocalLibraryFilenameParser.parse(
+            "Untitled 3.mp4"
+        )
+        precondition(untitledFilename.category == .other)
+        precondition(!untitledFilename.isTrustedTitle)
+
+        let newFolderFilename = LocalLibraryFilenameParser.parse(
+            "新建文件夹.mp4"
+        )
+        precondition(newFolderFilename.category == .other)
+        precondition(!newFolderFilename.isTrustedTitle)
+
         let telemetryDefaultsName = "CineBarTelemetryRegressionTests-\(UUID().uuidString)"
         let telemetryDefaults = UserDefaults(suiteName: telemetryDefaultsName)!
         let fixedTelemetryDate = Date(timeIntervalSince1970: 1_754_214_400)
