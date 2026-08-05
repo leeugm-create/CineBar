@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 31&lt;/li&gt;&lt;li&gt;- 本地片库条目支持右键手动分类：可将其设为“电影”“电视剧”或“其他视频”，已确认匹配的条目也可随时改回；改为“其他视频”会清除该条目的匹配资料。&lt;/li&gt;&lt;li&gt;- 已匹配影片或电视剧点击进入完整详情页后，顶栏新增“本地播放”按钮：当本地片库有对应文件时出现，点击直接用 IINA、VLC 或系统播放器播放该本地文件。&lt;/li&gt;&lt;li&gt;- “添加 NAS”升级为多种连接方式：可选择已挂载的网络卷目录，或直接填写 WebDAV、SFTP 连接填入账号密码接入。账号密码保存在 macOS 钥匙串，不落盘到片库配置。&lt;/li&gt;&lt;li&gt;- NAS 远程目录会被扫描并纳入本地片库；播放远程文件时先将文件取回本地临时目录再交给播放器。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 32&lt;/li&gt;&lt;li&gt;- NAS 相关配置移入“设置”，本地片库顶部不再直接提供添加 NAS 入口；需要时在 设置 → 本地片库 中添加与管理。&lt;/li&gt;&lt;li&gt;- NAS 影片在本地片库中以独立分项显示：可通过“来源”下拉切换查看全部 / 本地视频 / 各 NAS，影片不再混在同一条列表里。&lt;/li&gt;&lt;li&gt;- 新增 SMB 挂载引导：在设置中点击“挂载 SMB”，系统会先打开“连接服务器”让你挂载共享目录，挂载完成后选择对应卷目录加入片库。&lt;/li&gt;&lt;li&gt;- 设置中的“本地片库”分项可查看已添加的 NAS 连接方式（协议、地址、端口）与凭据状态。&lt;/li&gt;&lt;li&gt;- 本地片库页左上角标题改回 CineBar；搜索栏移到下一行，“全部/电影/电视剧/其他视频”分类筛选上移至上方。&lt;/li&gt;&lt;li&gt;- 顶部“电影/电视剧/我的片单/本地片库”分段选择保持选中高亮。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-31-universal.zip"
-        sparkle:version="31"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-32-universal.zip"
+        sparkle:version="32"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="6225299"
+        length="6282379"
         type="application/octet-stream"
-        sparkle:edSignature="thltnKQnfi4Yir23VaWtncELApt7VJa5iZ2zarQroR9MXVsNfVyQqlz/sb/EDgpAOvc2l0Odckv9GsLHP7nJDQ=="/>
+        sparkle:edSignature="QNzY2S9vz11sEtKDWUXLQM3+YaqLWG9Ux8B25EoqDwUsmRjtK+SyVqCMHuaPat/z1atSPS/gmR9P9mxXAcs+DQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 31&lt;/li&gt;&lt;li&gt;- 本地片库条目支持右键手动分类：可将其设为“电影”“电视剧”或“其他视频”，已确认匹配的条目也可随时改回；改为“其他视频”会清除该条目的匹配资料。&lt;/li&gt;&lt;li&gt;- 已匹配影片或电视剧点击进入完整详情页后，顶栏新增“本地播放”按钮：当本地片库有对应文件时出现，点击直接用 IINA、VLC 或系统播放器播放该本地文件。&lt;/li&gt;&lt;li&gt;- “添加 NAS”升级为多种连接方式：可选择已挂载的网络卷目录，或直接填写 WebDAV、SFTP 连接填入账号密码接入。账号密码保存在 macOS 钥匙串，不落盘到片库配置。&lt;/li&gt;&lt;li&gt;- NAS 远程目录会被扫描并纳入本地片库；播放远程文件时先将文件取回本地临时目录再交给播放器。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-31-universal.zip" sparkle:version="31" sparkle:shortVersionString="0.8.3-test.15" length="6225299" type="application/octet-stream" sparkle:edSignature="thltnKQnfi4Yir23VaWtncELApt7VJa5iZ2zarQroR9MXVsNfVyQqlz/sb/EDgpAOvc2l0Odckv9GsLHP7nJDQ=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.14</title>
