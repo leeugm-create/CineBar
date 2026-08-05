@@ -8401,7 +8401,7 @@ extension View {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, recommendation, data, updates, whatsNew, support, about
+    case general, recommendation, data, updates, localLibrary, whatsNew, support, about
     var id: String { rawValue }
 
     var title: String {
@@ -8410,6 +8410,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .recommendation: return "推荐偏好"
         case .data: return "数据来源"
         case .updates: return "检查更新"
+        case .localLibrary: return "本地片库"
         case .whatsNew: return "新功能"
         case .support: return "支持"
         case .about: return "关于"
@@ -8422,6 +8423,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .recommendation: return "heart.text.square"
         case .data: return "server.rack"
         case .updates: return "arrow.triangle.2.circlepath"
+        case .localLibrary: return "externaldrive.fill"
         case .whatsNew: return "sparkles"
         case .support: return "cup.and.saucer.fill"
         case .about: return "info.circle"
@@ -8432,7 +8434,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 struct SettingsRootView: View {
     @ObservedObject var store: MovieStore
     @ObservedObject var updaterService: UpdaterService
+    @ObservedObject var localLibraryStore: LocalLibraryStore
     @State private var selection: SettingsSection = .general
+    @State private var showRemoteSetup = false
     @Environment(\.openURL) private var openURL
 
     private let regions = [
@@ -8475,6 +8479,7 @@ struct SettingsRootView: View {
                     case .recommendation: recommendationSettings
                     case .data: dataSettings
                     case .updates: updateSettings
+                    case .localLibrary: localLibrarySettings
                     case .whatsNew: whatsNew
                     case .support: support
                     case .about: about
@@ -8782,6 +8787,159 @@ struct SettingsRootView: View {
                 }
             }
         }
+    }
+
+    private var localLibrarySettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsCard {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("本地片库与 NAS").font(.headline)
+                    Text("在此添加和管理本地文件夹与 NAS 网络存储。NAS 影片会在本地片库中作为独立分项显示。")
+                        .font(.caption).foregroundStyle(.secondary)
+
+                    Divider()
+
+                    HStack {
+                        Text("本地文件夹").font(.subheadline.bold())
+                        Spacer()
+                        Button("添加文件夹", systemImage: "folder.badge.plus") {
+                            chooseLocalFolder()
+                        }
+                    }
+                    if localLibraryStore.folders.filter({ $0.remote == nil }).isEmpty {
+                        Text("尚未添加本地文件夹。").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        ForEach(localLibraryStore.folders.filter { $0.remote == nil }) { folder in
+                            HStack {
+                                Label(folder.displayName, systemImage: "externaldrive.fill")
+                                Spacer()
+                                Text(folder.pathHint).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+
+                    Divider()
+
+                    HStack {
+                        Text("NAS 连接").font(.subheadline.bold())
+                        Spacer()
+                        Button("添加 NAS", systemImage: "network") {
+                            showRemoteSetup = true
+                        }
+                        Button("挂载 SMB", systemImage: "internaldrive") {
+                            mountSMBGuide()
+                        }
+                    }
+                    let remoteFolders = localLibraryStore.folders.filter { $0.remote != nil }
+                    if remoteFolders.isEmpty {
+                        Text("尚未配置 NAS。").font(.caption).foregroundStyle(.secondary)
+                    } else {
+                        ForEach(remoteFolders) { folder in
+                            HStack {
+                                Label(folder.displayName, systemImage: "network")
+                                Spacer()
+                                Text(remoteStatusText(folder))
+                                    .font(.caption)
+                                    .foregroundStyle(remoteStatusColor(folder))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showRemoteSetup) {
+            LocalLibraryRemoteSetupView(
+                language: store.appLanguage,
+                onCancel: { showRemoteSetup = false },
+                onAddMounted: { url in
+                    showRemoteSetup = false
+                    try? localLibraryStore.addRemoteMount(url: url)
+                },
+                onAddRemote: { kind, host, port, usesTLS, rootPath, username, password, displayName in
+                    do {
+                        try localLibraryStore.addRemoteSource(
+                            kind: kind,
+                            host: host,
+                            port: port,
+                            usesTLS: usesTLS,
+                            rootPath: rootPath,
+                            username: username,
+                            password: password,
+                            displayName: displayName
+                        )
+                        showRemoteSetup = false
+                    } catch {
+                        showRemoteSetup = false
+                    }
+                }
+            )
+        }
+    }
+
+    private func chooseLocalFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.prompt = "添加"
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls {
+            try? localLibraryStore.addFolder(url: url)
+        }
+    }
+
+    /// SMB 引导：先打开系统的“连接服务器”让用户挂载共享目录，
+    /// 挂载完成后选择 /Volumes 下的对应卷目录添加。
+    private func mountSMBGuide() {
+        let alert = NSAlert()
+        alert.messageText = "挂载 SMB 网络共享"
+        alert.informativeText = """
+        1. 系统会打开“连接服务器”(smb://)。
+        2. 输入 NAS 的 SMB 地址（例如 smb://192.168.1.10/共享文件夹）并连接。
+        3. 挂载成功后，在访达找到该卷（/Volumes/…），点“选择已挂载目录”加入片库。
+        """
+        alert.addButton(withTitle: "选择已挂载目录")
+        alert.addButton(withTitle: "打开连接服务器")
+        alert.addButton(withTitle: "取消")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            chooseMountedVolume()
+        case .alertSecondButtonReturn:
+            openURL(URL(string: "smb://")!)
+        default:
+            break
+        }
+    }
+
+    private func chooseMountedVolume() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "添加"
+        if panel.runModal() == .OK, let url = panel.url {
+            try? localLibraryStore.addRemoteMount(url: url)
+        }
+    }
+
+    private func remoteStatusText(_ folder: LocalLibraryFolder) -> String {
+        guard let remote = folder.remote else { return "已添加" }
+        let pw = LocalLibraryKeychainCredential.load(
+            service: remote.keychainService,
+            account: remote.keychainAccount
+        )
+        let scheme = remote.kind == .sftp ? "sftp" : (remote.usesTLS ? "https" : "http")
+        let port = remote.port.map { ":\($0)" } ?? ""
+        return "\(scheme) \(remote.host)\(port)\(pw == nil ? " · 凭据缺失" : "")"
+    }
+
+    private func remoteStatusColor(_ folder: LocalLibraryFolder) -> Color {
+        guard let remote = folder.remote else { return .secondary }
+        let pw = LocalLibraryKeychainCredential.load(
+            service: remote.keychainService,
+            account: remote.keychainAccount
+        )
+        return pw == nil ? .orange : .secondary
     }
 
     private var whatsNew: some View {
@@ -10268,7 +10426,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             created.contentView = NSHostingView(
                 rootView: SettingsRootView(
                     store: store,
-                    updaterService: updaterService
+                    updaterService: updaterService,
+                    localLibraryStore: localLibraryStore
                 )
             )
             settingsWindow = created

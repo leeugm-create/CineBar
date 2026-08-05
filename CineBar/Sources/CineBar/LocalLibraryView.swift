@@ -115,12 +115,12 @@ struct LocalLibraryView: View {
     @Binding var searchText: String
     @Binding var categoryFilter: LocalLibraryCategoryFilter
     @Binding var statusFilter: LocalLibraryStatusFilter
+    @State private var sourceFolderID: UUID?
     @State private var actionMessage: String?
     @State private var failedPlaybackPath: String?
     @State private var matchSession: LocalLibraryMatchSession?
     @State private var fileDetailEntry: LocalLibraryEntry?
     @State private var pendingMatchEntry: LocalLibraryEntry?
-    @State private var showRemoteSetup = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -235,33 +235,6 @@ struct LocalLibraryView: View {
                 onDismiss: { fileDetailEntry = nil }
             )
         }
-        .sheet(isPresented: $showRemoteSetup) {
-            LocalLibraryRemoteSetupView(
-                language: movieStore.appLanguage,
-                onCancel: { showRemoteSetup = false },
-                onAddMounted: { url in
-                    showRemoteSetup = false
-                    try? store.addRemoteMount(url: url)
-                },
-                onAddRemote: { kind, host, port, usesTLS, rootPath, username, password, displayName in
-                    do {
-                        try store.addRemoteSource(
-                            kind: kind,
-                            host: host,
-                            port: port,
-                            usesTLS: usesTLS,
-                            rootPath: rootPath,
-                            username: username,
-                            password: password,
-                            displayName: displayName
-                        )
-                        showRemoteSetup = false
-                    } catch {
-                        self.actionMessage = localized("无法添加 NAS 目录。")
-                    }
-                }
-            )
-        }
     }
 
     private func presentPendingMatch() {
@@ -287,7 +260,7 @@ struct LocalLibraryView: View {
                 .help(localized("关闭片库"))
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Label(localized("本地片库"), systemImage: "externaldrive.fill")
+                    Label("CineBar", systemImage: "externaldrive.fill")
                         .font(.title3.bold())
                     Text(String(format: localized("已添加 %lld 个目录 · %lld 个视频"), store.folders.count, store.entries.count))
                         .font(.caption)
@@ -296,9 +269,6 @@ struct LocalLibraryView: View {
                 Spacer()
                 Button(localized("添加文件夹"), systemImage: "folder.badge.plus") {
                     chooseFolders()
-                }
-                Button(localized("添加 NAS"), systemImage: "network") {
-                    showRemoteSetup = true
                 }
                 Button {
                     Task { await store.refresh() }
@@ -337,6 +307,14 @@ struct LocalLibraryView: View {
 
     private var filterBar: some View {
         VStack(spacing: 8) {
+            Picker(localized("内容类型"), selection: $categoryFilter) {
+                ForEach(LocalLibraryCategoryFilter.allCases) { option in
+                    Text(option.title(language: movieStore.appLanguage))
+                        .tag(option)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
             HStack(spacing: 8) {
                 TextField(localized("搜索本地视频"), text: $searchText)
                     .textFieldStyle(.roundedBorder)
@@ -348,18 +326,27 @@ struct LocalLibraryView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(width: 110)
-            }
-            Picker(localized("内容类型"), selection: $categoryFilter) {
-                ForEach(LocalLibraryCategoryFilter.allCases) { option in
-                    Text(option.title(language: movieStore.appLanguage))
-                        .tag(option)
+                Picker(localized("来源"), selection: Binding(
+                    get: { sourceFolderID },
+                    set: { sourceFolderID = $0 }
+                )) {
+                    Text(localized("全部来源")).tag(UUID?.none)
+                    Text(localized("本地视频")).tag(LocalLibraryLocalTag.localUUID)
+                    ForEach(store.folders.filter { $0.remote != nil }) { folder in
+                        Text(folder.displayName).tag(Optional(folder.id))
+                    }
                 }
+                .pickerStyle(.menu)
+                .frame(width: 120)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+    }
+
+    /// 本地视频来源的固定标识（全部本地文件夹合为一个分项）。
+    private enum LocalLibraryLocalTag {
+        static let localUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     }
 
     private var scanDescription: String {
@@ -369,6 +356,14 @@ struct LocalLibraryView: View {
 
     private var filteredEntries: [LocalLibraryEntry] {
         store.entries.filter { entry in
+            if let sourceFolderID {
+                if sourceFolderID == LocalLibraryLocalTag.localUUID {
+                    guard let folder = store.folders.first(where: { $0.id == entry.folderID }),
+                          folder.remote == nil else { return false }
+                } else if entry.folderID != sourceFolderID {
+                    return false
+                }
+            }
             guard categoryFilter.includes(entry) else { return false }
             guard statusFilter.includes(entry) else { return false }
             let haystack = [entry.signature.fileName, entry.metadata?.title ?? ""]
