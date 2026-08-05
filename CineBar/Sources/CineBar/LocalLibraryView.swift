@@ -120,6 +120,7 @@ struct LocalLibraryView: View {
     @State private var matchSession: LocalLibraryMatchSession?
     @State private var fileDetailEntry: LocalLibraryEntry?
     @State private var pendingMatchEntry: LocalLibraryEntry?
+    @State private var showRemoteSetup = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -179,7 +180,13 @@ struct LocalLibraryView: View {
                                 },
                                 onDetail: { openDetails(for: entry) },
                                 onMatch: { findMatches(for: entry) },
-                                onRelocate: { relocate(entry) }
+                                onRelocate: { relocate(entry) },
+                                onSetCategory: {
+                                    store.setContentCategory(
+                                        entryID: entry.id,
+                                        category: $0
+                                    )
+                                }
                             )
                         }
                     }
@@ -228,6 +235,33 @@ struct LocalLibraryView: View {
                 onDismiss: { fileDetailEntry = nil }
             )
         }
+        .sheet(isPresented: $showRemoteSetup) {
+            LocalLibraryRemoteSetupView(
+                language: movieStore.appLanguage,
+                onCancel: { showRemoteSetup = false },
+                onAddMounted: { url in
+                    showRemoteSetup = false
+                    try? store.addRemoteMount(url: url)
+                },
+                onAddRemote: { kind, host, port, usesTLS, rootPath, username, password, displayName in
+                    do {
+                        try store.addRemoteSource(
+                            kind: kind,
+                            host: host,
+                            port: port,
+                            usesTLS: usesTLS,
+                            rootPath: rootPath,
+                            username: username,
+                            password: password,
+                            displayName: displayName
+                        )
+                        showRemoteSetup = false
+                    } catch {
+                        self.actionMessage = localized("无法添加 NAS 目录。")
+                    }
+                }
+            )
+        }
     }
 
     private func presentPendingMatch() {
@@ -264,7 +298,7 @@ struct LocalLibraryView: View {
                     chooseFolders()
                 }
                 Button(localized("添加 NAS"), systemImage: "network") {
-                    chooseRemoteMountFolder()
+                    showRemoteSetup = true
                 }
                 Button {
                     Task { await store.refresh() }
@@ -533,6 +567,8 @@ struct LocalLibraryView: View {
             return localized("所选文件不在已授权的文件夹中。")
         case .notAFile:
             return localized("所选项目不是文件。")
+        case .keychainFailed:
+            return localized("无法保存凭据到钥匙串。")
         }
     }
 }
@@ -635,6 +671,7 @@ private struct LocalLibraryEntryRow: View {
     let onDetail: () -> Void
     let onMatch: () -> Void
     let onRelocate: () -> Void
+    let onSetCategory: (LocalLibraryContentCategory) -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -689,6 +726,11 @@ private struct LocalLibraryEntryRow: View {
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
         .contentShape(RoundedRectangle(cornerRadius: 10))
         .onTapGesture { onDetail() }
+        .contextMenu {
+            Button(localized("电影")) { onSetCategory(.movie) }
+            Button(localized("电视剧")) { onSetCategory(.television) }
+            Button(localized("其他视频")) { onSetCategory(.other) }
+        }
     }
 
     @ViewBuilder
@@ -1270,6 +1312,122 @@ private struct LocalLibraryMatchSheet: View {
         searchState.cancel(entryID: session.entry.id)
         searchTask?.cancel()
         searchTask = nil
+    }
+
+    private func localized(_ key: String) -> String {
+        LocalLibraryLocalization.string(key, language: language)
+    }
+}
+
+/// NAS 添加入口：支持已挂载路径 / WebDAV / SFTP 三种方式。
+struct LocalLibraryRemoteSetupView: View {
+    enum Method: Hashable {
+        case mounted
+        case webDAV
+        case sftp
+    }
+
+    let language: AppLanguage
+    let onCancel: () -> Void
+    let onAddMounted: (URL) -> Void
+    let onAddRemote: (
+        LocalLibraryRemoteSource.Kind,
+        String,
+        Int?,
+        Bool,
+        String,
+        String,
+        String,
+        String
+    ) -> Void
+
+    @State private var method: Method = .mounted
+    @State private var host = ""
+    @State private var port = ""
+    @State private var usesTLS = true
+    @State private var rootPath = "/"
+    @State private var username = ""
+    @State private var password = ""
+    @State private var displayName = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.plain)
+                .help(localized("关闭"))
+                Spacer()
+                Text(localized("添加 NAS")).font(.title3.bold())
+                Spacer()
+                Color.clear.frame(width: 20, height: 20)
+            }
+
+            Picker(localized("连接方式"), selection: $method) {
+                Text(localized("已挂载目录")).tag(Method.mounted)
+                Text("WebDAV").tag(Method.webDAV)
+                Text("SFTP").tag(Method.sftp)
+            }
+            .pickerStyle(.segmented)
+
+            switch method {
+            case .mounted:
+                Text(localized("选择已在访达中挂载的网络卷目录（如 /Volumes/…）。"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Button(localized("选择已挂载目录")) { chooseMounted() }
+                    .buttonStyle(.borderedProminent)
+            case .webDAV, .sftp:
+                VStack(alignment: .leading, spacing: 10) {
+                    TextField(localized("名称（显示用）"), text: $displayName)
+                        .textFieldStyle(.roundedBorder)
+                    TextField(localized("主机地址（如 nas.local 或 192.168.1.10）"), text: $host)
+                        .textFieldStyle(.roundedBorder)
+                    HStack {
+                        TextField(localized("端口（可留空）"), text: $port)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: 140)
+                        if method == .webDAV {
+                            Toggle(localized("使用 HTTPS"), isOn: $usesTLS)
+                        }
+                    }
+                    TextField(localized("远程根路径（如 /dav 或 /）"), text: $rootPath)
+                        .textFieldStyle(.roundedBorder)
+                    TextField(localized("用户名"), text: $username)
+                        .textFieldStyle(.roundedBorder)
+                    SecureField(localized("密码"), text: $password)
+                        .textFieldStyle(.roundedBorder)
+                    Button(localized("添加并扫描")) { submit() }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(host.trimmingCharacters(in: .whitespaces).isEmpty || username.isEmpty || password.isEmpty)
+                }
+            }
+        }
+        .padding()
+        .frame(width: 480, height: 380)
+    }
+
+    private func chooseMounted() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = localized("添加")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        onAddMounted(url)
+    }
+
+    private func submit() {
+        let kind: LocalLibraryRemoteSource.Kind = method == .sftp ? .sftp : .webDAV
+        let intPort = Int(port.trimmingCharacters(in: .whitespaces))
+        let hostTrimmed = host.trimmingCharacters(in: .whitespaces)
+        let root = rootPath.isEmpty ? "/" : rootPath
+        let name = displayName.trimmingCharacters(in: .whitespaces).isEmpty
+            ? hostTrimmed
+            : displayName.trimmingCharacters(in: .whitespaces)
+        onAddRemote(kind, hostTrimmed, intPort, usesTLS, root, username, password, name)
     }
 
     private func localized(_ key: String) -> String {

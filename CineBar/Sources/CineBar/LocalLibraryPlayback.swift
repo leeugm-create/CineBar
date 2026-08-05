@@ -54,6 +54,53 @@ enum ExternalPlayerResolver {
     }
 }
 
+/// 根据影片/剧集的 TMDB id，从本地片库解析出可播放的文件 URL。
+/// 本地文件直接返回路径；远程文件先物化（下载）到本地临时目录再返回。
+enum LocalLibraryFileResolver {
+    /// 判断是否存在可播放的匹配文件（不含下载），用于决定按钮显隐。
+    @MainActor
+    static func hasAvailable(
+        in store: LocalLibraryStore,
+        metadataID: Int
+    ) -> Bool {
+        store.entries.contains {
+            $0.state == .available && $0.metadata?.id == metadataID
+        }
+    }
+
+    @MainActor
+    static func resolveFileURL(
+        in store: LocalLibraryStore,
+        metadataID: Int
+    ) async -> URL? {
+        guard let entry = store.entries.first(where: {
+            $0.state == .available && $0.metadata?.id == metadataID
+        }) else { return nil }
+        guard let folder = store.folders.first(where: { $0.id == entry.folderID }) else {
+            return nil
+        }
+        if let remote = folder.remote {
+            guard LocalLibraryFolderBookmark.isRemotePlaceholder(folder.bookmarkData) else {
+                return nil
+            }
+            guard let url = try? await LocalLibraryRemoteBackend.materialize(
+                source: remote,
+                relativePath: entry.relativePath
+            ) else { return nil }
+            return url.standardizedFileURL
+        }
+        guard let resolved = try? LocalLibraryFolderBookmark.resolve(folder.bookmarkData) else {
+            return nil
+        }
+        defer { resolved.stopAccessing() }
+        let fileURL = resolved.url.appendingPathComponent(entry.relativePath)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else {
+            return nil
+        }
+        return fileURL.standardizedFileURL
+    }
+}
+
 struct ExternalPlayerLauncher {
     private let applicationURLForBundleID: (String) -> URL?
     private let openWithApplication: ([URL], URL) async -> ExternalPlayerAttemptResult

@@ -6421,6 +6421,7 @@ struct MediaShareButton: View {
 struct MovieDetailView: View {
     @ObservedObject var store: MovieStore
     let movie: Movie
+    var onPlayLocalFile: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
     @State private var inlineTrailerKey: String?
     @State private var inlineTrailerTitle = ""
@@ -6467,6 +6468,17 @@ struct MovieDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help("重新加载影片详情")
+
+                if let onPlayLocalFile {
+                    Button {
+                        stopInlineTrailer()
+                        onPlayLocalFile()
+                    } label: {
+                        Label("本地播放", systemImage: "play.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help("播放本地片库中的该影片文件")
+                }
 
                 MediaShareButton(payload: sharePayload)
             }
@@ -7088,6 +7100,7 @@ struct EpisodeReminderMenu: View {
 struct TVDetailView: View {
     @ObservedObject var store: MovieStore
     let show: TVShow
+    var onPlayLocalFile: (() -> Void)? = nil
     @Environment(\.openURL) private var openURL
     @State private var inlineTrailerKey: String?
     @State private var inlineTrailerTitle = ""
@@ -7158,6 +7171,16 @@ struct TVDetailView: View {
                 }
                 .buttonStyle(.plain)
                 .help("重新加载电视剧详情")
+                if let onPlayLocalFile {
+                    Button {
+                        stopInlineTrailer()
+                        onPlayLocalFile()
+                    } label: {
+                        Label("本地播放", systemImage: "play.circle.fill")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .help("播放本地片库中的该剧集文件")
+                }
                 MediaShareButton(payload: sharePayload)
             }
             .padding()
@@ -9426,9 +9449,17 @@ struct ContentView: View {
             } else if let person = store.selectedPerson {
                 PersonDetailView(store: store, person: person)
             } else if let movie = store.selectedMovie {
-                MovieDetailView(store: store, movie: movie)
+                MovieDetailView(
+                    store: store,
+                    movie: movie,
+                    onPlayLocalFile: localPlayback(for: movie.id)
+                )
             } else if let show = store.selectedTVShow {
-                TVDetailView(store: store, show: show)
+                TVDetailView(
+                    store: store,
+                    show: show,
+                    onPlayLocalFile: localPlayback(for: show.id)
+                )
             } else if store.isShowingLocalLibrary {
                 LocalLibraryView(
                     store: localLibraryStore,
@@ -9473,6 +9504,22 @@ struct ContentView: View {
         }
         .onReceive(reminderCheckTimer) { _ in
             store.checkReleaseReminders()
+        }
+    }
+
+    /// 供大页详情播放本地片库中对应影片/剧集文件。无匹配文件时返回 nil（隐藏按钮）。
+    private func localPlayback(for mediaID: Int) -> (() -> Void)? {
+        guard LocalLibraryFileResolver.hasAvailable(in: localLibraryStore, metadataID: mediaID) else {
+            return nil
+        }
+        return {
+            Task { @MainActor in
+                guard let fileURL = await LocalLibraryFileResolver.resolveFileURL(
+                    in: self.localLibraryStore,
+                    metadataID: mediaID
+                ) else { return }
+                _ = await ExternalPlayerLauncher().open(fileURL: fileURL)
+            }
         }
     }
 

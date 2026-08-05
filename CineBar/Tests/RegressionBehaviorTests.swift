@@ -2161,6 +2161,92 @@ struct CineBarRegressionBehaviorTests {
         )
         precondition(manualOtherSuggestions.map(\.id) == [157336, 2])
         precondition(matchProbe.movieQueries.count == 3)
+
+        // —— 手动分类（右键）与远程源数据模型 ——
+        let manualCategoryDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarManualCategory-\(UUID().uuidString)")
+        let manualCategoryURL = manualCategoryDir.appendingPathComponent("LocalLibrary.json")
+        let manualFolder = LocalLibraryFolder(
+            id: UUID(),
+            displayName: "测试",
+            pathHint: "folder",
+            bookmarkData: Data([0x45, 0x46])
+        )
+        let manualEntry = LocalLibraryEntry(
+            id: UUID(),
+            folderID: manualFolder.id,
+            relativePath: "video.mp4",
+            signature: LocalLibraryFileSignature(
+                fileName: "video.mp4",
+                fileExtension: "mp4",
+                byteCount: 0,
+                modificationDate: nil,
+                resourceIdentifier: nil
+            ),
+            state: .available,
+            matchState: .unmatched,
+            metadata: nil,
+            isWatched: false,
+            isInWatchlist: false,
+            lastOpenedAt: nil,
+            contentCategory: .other
+        )
+        try! LocalLibraryPersistence(fileURL: manualCategoryURL).save(
+            LocalLibrarySnapshot(folders: [manualFolder], entries: [manualEntry])
+        )
+        let manualCategoryStore = LocalLibraryStore(fileURL: manualCategoryURL)
+        manualCategoryStore.setContentCategory(entryID: manualEntry.id, category: .movie)
+        precondition(manualCategoryStore.entries[0].contentCategory == .movie)
+        precondition(manualCategoryStore.entries[0].matchState == .suggested)
+        // 改回 other 应清除匹配并回落到 unmatched
+        manualCategoryStore.setContentCategory(entryID: manualEntry.id, category: .other)
+        precondition(manualCategoryStore.entries[0].contentCategory == .other)
+        precondition(manualCategoryStore.entries[0].matchState == .unmatched)
+        try? FileManager.default.removeItem(at: manualCategoryDir)
+
+        // 远程占位 bookmark 识别：本地 bookmark 不是远程占位
+        precondition(!LocalLibraryFolderBookmark.isRemotePlaceholder(Data([0x45, 0x46])))
+        let remotePlaceholder = Data([0x52, 0x45, 0x4D, 0x4F, 0x54, 0x45])
+            + (UUID().uuidString.data(using: .utf8)!)
+        precondition(LocalLibraryFolderBookmark.isRemotePlaceholder(remotePlaceholder))
+
+        // 远程源持久化（含 kind/凭据引用，不含明文密码）
+        let remoteSourceURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CineBarRemoteSource-\(UUID().uuidString).json")
+        let remoteFolder = LocalLibraryFolder(
+            id: UUID(),
+            displayName: "NAS",
+            pathHint: "nas:5006/dav",
+            bookmarkData: remotePlaceholder,
+            storeType: .remoteMount,
+            remote: LocalLibraryRemoteSource(
+                kind: .webDAV,
+                host: "nas.local",
+                port: 5006,
+                usesTLS: true,
+                rootPath: "/dav",
+                username: "user",
+                keychainService: "com.indiedev.cinebar.remote",
+                keychainAccount: "user@nas.local:5006",
+                displayName: "NAS"
+            )
+        )
+        do {
+            let data = try JSONEncoder().encode(
+                LocalLibrarySnapshot(folders: [remoteFolder], entries: [])
+            )
+            let decoded = try JSONDecoder().decode(
+                LocalLibrarySnapshot.self,
+                from: data
+            )
+            precondition(decoded.folders[0].storeType == .remoteMount)
+            precondition(decoded.folders[0].remote?.kind == .webDAV)
+            precondition(decoded.folders[0].remote?.username == "user")
+            precondition(decoded.folders[0].remote?.rootPath == "/dav")
+        } catch {
+            preconditionFailure("远程源编解码失败")
+        }
+        try? FileManager.default.removeItem(at: remoteSourceURL)
     }
 }
 
