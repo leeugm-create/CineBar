@@ -1,3 +1,4 @@
+import AVFoundation
 import Foundation
 
 struct LocalLibraryScanRoot: Hashable {
@@ -169,27 +170,59 @@ final class LocalLibraryScanner {
                         String(describing: $0)
                     }
                 )
-                let parsedFilename = LocalLibraryFilenameParser.parse(
-                    fileURL.lastPathComponent
+                // 方案C：文件名优先，无法判定时读取时长兜底
+                let existing = existingEntry(
+                    in: existing,
+                    folderID: root.folderID,
+                    relativePath: relativePath
                 )
+                let fileName = fileURL.lastPathComponent
+                var duration = existing?.durationSeconds
+                let classifierDecision: LocalLibraryMediaDecision
+                if LocalLibraryClassifier.confidence(fromFilename: fileName) == .decisive {
+                    classifierDecision = LocalLibraryClassifier.classify(fromFilename: fileName)
+                } else {
+                    let byteCount = Int64(values.fileSize ?? 0)
+                    // 小文件在合理码率下几乎不可能满足 1 小时影片底线，跳过网络/磁盘时长读取，
+                    // 缺省按 other 处理，避免为海量小片段付出读时长的开销。
+                    let shouldReadDuration = duration == nil && byteCount >= 300_000_000
+                    if shouldReadDuration {
+                        duration = Self.readDuration(from: fileURL)
+                    }
+                    classifierDecision = LocalLibraryClassifier.classify(
+                        fileName: fileName,
+                        physical: LocalLibraryPhysicalSignal(
+                            byteCount: byteCount,
+                            durationSeconds: duration
+                        )
+                    )
+                }
+                let contentCategory: LocalLibraryContentCategory
+                let matchState: LocalLibraryMatchState
+                switch classifierDecision {
+                case .movie:
+                    contentCategory = .movie
+                    matchState = .suggested
+                case .television:
+                    contentCategory = .television
+                    matchState = .suggested
+                case .other:
+                    contentCategory = .other
+                    matchState = .unmatched
+                }
                 let entry = LocalLibraryEntry(
-                    id: existingEntry(
-                        in: existing,
-                        folderID: root.folderID,
-                        relativePath: relativePath
-                    )?.id ?? UUID(),
+                    id: existing?.id ?? UUID(),
                     folderID: root.folderID,
                     relativePath: relativePath,
                     signature: signature,
                     state: .available,
-                    matchState: parsedFilename.isTrustedTitle
-                        ? .suggested
-                        : .unmatched,
+                    matchState: matchState,
                     metadata: nil,
                     isWatched: false,
                     isInWatchlist: false,
                     lastOpenedAt: nil,
-                    contentCategory: parsedFilename.category
+                    contentCategory: contentCategory,
+                    durationSeconds: duration
                 )
                 entriesByKey[LocalLibraryEntryMerge.key(
                     folderID: root.folderID,
@@ -223,12 +256,29 @@ final class LocalLibraryScanner {
         )
     }
 
+    /// 读取视频时长（秒）。失败/异常返回 nil。
+    /// 仅在文件名无法判定时调用，避免为每个文件支付 AVAsset 开销。
+    private static func readDuration(from fileURL: URL) -> Double? {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        let asset = AVURLAsset(url: fileURL)
+        let semaphore = DispatchSemaphore(value: 0)
+        var duration: Double?
+        let task = Task(priority: .utility) {
+            let seconds = try? await asset.load(.duration)
+            duration = seconds.map { CMTimeGetSeconds($0) }
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 60)
+        task.cancel()
+        guard let value = duration, value.isFinite, value > 0 else { return nil }
+        return value
+    }
+
     private static func existingEntry(
         in entries: [LocalLibraryEntry],
         folderID: UUID,
         relativePath: String
-    ) -> LocalLibraryEntry? {
-        let key = LocalLibraryEntryMerge.key(
+    ) -> LocalLibraryEntry? {        let key = LocalLibraryEntryMerge.key(
             folderID: folderID,
             relativePath: relativePath
         )
@@ -288,6 +338,7 @@ enum LocalLibraryRefreshMerger {
                 updatedEntry.relativePath = scannedEntry.relativePath
                 updatedEntry.signature = scannedEntry.signature
                 updatedEntry.state = .available
+                updatedEntry.durationSeconds = scannedEntry.durationSeconds
                 if oldEntry.metadata == nil,
                    oldEntry.matchState != .confirmed {
                     updatedEntry.contentCategory = scannedEntry.contentCategory

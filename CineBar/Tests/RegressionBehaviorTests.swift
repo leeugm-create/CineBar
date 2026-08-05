@@ -236,6 +236,76 @@ struct CineBarRegressionBehaviorTests {
         precondition(newFolderFilename.category == .other)
         precondition(!newFolderFilename.isTrustedTitle)
 
+        // 方案C：多维置信度分类器 —— 真实误判样本应改判 other
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "20220927_4ee819e797368e1c_379104934696_mp4_264_hd_taobao.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "20240629_247c474badbdfcc4_469876909661_137154554696673_published_mp4_264_hd_taobao.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "0bc35eaacaaaiiaiqgn35rsfb2odahuqaaia.f10002.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "kling_20260604_动作控制_让照片中的人物严格按_3844_0.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "kling_20260605_作品_这张照片很适合做成一_3769_0.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "2024_06_28_20_32_IMG_9285.MOV") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "dji_fly_20230527_115350_783_1685160038140_quickshot.MP4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "ScreenRecording_07-17-2026 16-27-46_1.MP4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "RPReplay_Final1682844639.MP4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "一棵大树，太阳升起延时，光影变幻光明梦想希望未来春天清晨夕阳_爱给网_aigei_com.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "6月4日.mp4") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "鎏金沙.mov") == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "video.mp4") == .other
+        )
+        // 真实影片仍应判定 movie
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "Interstellar.2014.2160p.mkv") == .movie
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "Pirate.Radio.2009.1080p.BluRay.x264.DTS-FGT.mkv") == .movie
+        )
+        precondition(
+            LocalLibraryClassifier.classify(fromFilename: "艾曼纽.1080p.BD中英双字[最新电影www.5266ys.com].mp4") == .movie
+        )
+        // 物理兜底：时长≥1小时归影片；无时长或不足1小时归 other
+        precondition(
+            LocalLibraryClassifier.classify(
+                fileName: "some-ambiguous-name.mkv",
+                physical: LocalLibraryPhysicalSignal(byteCount: 1_200_000_000, durationSeconds: 5400)
+            ) == .movie
+        )
+        precondition(
+            LocalLibraryClassifier.classify(
+                fileName: "some-ambiguous-name.mkv",
+                physical: LocalLibraryPhysicalSignal(byteCount: 60_000_000, durationSeconds: 1800)
+            ) == .other
+        )
+        precondition(
+            LocalLibraryClassifier.classify(
+                fileName: "some-ambiguous-name.mkv",
+                physical: LocalLibraryPhysicalSignal(byteCount: 1_200_000_000, durationSeconds: nil)
+            ) == .other
+        )
+
         let telemetryDefaultsName = "CineBarTelemetryRegressionTests-\(UUID().uuidString)"
         let telemetryDefaults = UserDefaults(suiteName: telemetryDefaultsName)!
         let fixedTelemetryDate = Date(timeIntervalSince1970: 1_754_214_400)
@@ -1097,7 +1167,7 @@ struct CineBarRegressionBehaviorTests {
             entries: [legacyMovieEntry]
         ))
         let migratedSnapshot = persistence.load()
-        precondition(migratedSnapshot.schemaVersion == 2)
+        precondition(migratedSnapshot.schemaVersion == 3)
         precondition(
             migratedSnapshot.entries.first?.contentCategory == .movie
         )

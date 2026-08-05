@@ -263,6 +263,9 @@ struct LocalLibraryView: View {
                 Button(localized("添加文件夹"), systemImage: "folder.badge.plus") {
                     chooseFolders()
                 }
+                Button(localized("添加 NAS"), systemImage: "network") {
+                    chooseRemoteMountFolder()
+                }
                 Button {
                     Task { await store.refresh() }
                 } label: {
@@ -359,6 +362,21 @@ struct LocalLibraryView: View {
         }
     }
 
+    private func chooseRemoteMountFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = localized("添加 NAS 目录")
+        panel.message = localized("选择已挂载的 NAS/网络卷目录（如 /Volumes/…），将识别为远程存储。")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try store.addRemoteMount(url: url)
+        } catch {
+            actionMessage = localized("无法添加 NAS 目录。")
+        }
+    }
+
     private func play(_ entry: LocalLibraryEntry) {
         guard entry.state == .available,
               let folder = store.folders.first(where: { $0.id == entry.folderID })
@@ -422,6 +440,12 @@ struct LocalLibraryView: View {
     }
 
     private func openDetails(for entry: LocalLibraryEntry) {
+        // 已匹配（有 metadata）→ 直接进入完整详情大页；未匹配 → 弹小框做匹配
+        if let metadata = entry.metadata {
+            if openExternalDetail(for: metadata) {
+                return
+            }
+        }
         fileDetailEntry = entry
     }
 
@@ -638,9 +662,15 @@ private struct LocalLibraryEntryRow: View {
             VStack(alignment: .trailing, spacing: 5) {
                 Button(localized("查看详情"), action: onDetail)
                     .buttonStyle(.borderedProminent)
-                Button(localized("播放"), systemImage: "play.fill", action: onPlay)
-                    .buttonStyle(.bordered)
-                    .disabled(entry.state != .available)
+                if entry.state == .available {
+                    Button(localized("播放"), systemImage: "play.fill", action: onPlay)
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                } else {
+                    Button(rowUnavailablePlayTitle, systemImage: "exclamationmark.triangle", action: onPlay)
+                        .buttonStyle(.bordered)
+                        .foregroundStyle(.secondary)
+                }
                 HStack(spacing: 4) {
                     Button(entry.isWatched ? localized("未看") : localized("已看"), action: onToggleWatched)
                     Button(entry.isInWatchlist ? localized("移除片单") : localized("加入片单"), action: onToggleWatchlist)
@@ -711,6 +741,14 @@ private struct LocalLibraryEntryRow: View {
         }
     }
 
+    private var rowUnavailablePlayTitle: String {
+        switch entry.state {
+        case .available: return localized("播放")
+        case .missing: return localized("文件已移动")
+        case .volumeUnavailable: return localized("卷未连接")
+        }
+    }
+
     private func localized(_ key: String) -> String {
         LocalLibraryLocalization.string(key, language: language)
     }
@@ -763,13 +801,26 @@ struct LocalLibraryFileDetailView: View {
                     }
 
                     HStack(spacing: 10) {
-                        Button {
-                            onPlay()
-                        } label: {
-                            Label(localized("播放"), systemImage: "play.fill")
+                        if entry.state == .available {
+                            Button {
+                                onPlay()
+                            } label: {
+                                Label(localized("播放"), systemImage: "play.fill")
+                            }
+                            .buttonStyle(.borderedProminent)
+                        } else {
+                            Button {
+                                onPlay()
+                            } label: {
+                                Label(
+                                    unavailablePlayTitle,
+                                    systemImage: unavailablePlayIcon
+                                )
+                            }
+                            .buttonStyle(.bordered)
+                            .foregroundStyle(.secondary)
+                            .help(playbackUnavailableReason)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(entry.state != .available)
 
                         if entry.matchState == .confirmed {
                             Button(localized("打开在线详情"), action: onOpenExternalDetail)
@@ -868,6 +919,26 @@ struct LocalLibraryFileDetailView: View {
             fromByteCount: entry.signature.byteCount,
             countStyle: .file
         )
+    }
+
+    private var unavailablePlayTitle: String {
+        switch entry.state {
+        case .available: return localized("播放")
+        case .missing: return localized("文件已移动")
+        case .volumeUnavailable: return localized("存储卷未连接")
+        }
+    }
+
+    private var unavailablePlayIcon: String {
+        entry.state == .available ? "play.fill" : "exclamationmark.triangle"
+    }
+
+    private var playbackUnavailableReason: String {
+        switch entry.state {
+        case .available: return ""
+        case .missing: return localized("找不到文件，可点击“重新定位文件”恢复。")
+        case .volumeUnavailable: return localized("存储卷未连接，连接后即可播放。")
+        }
     }
 
     private func selectableText(_ value: String) -> some View {

@@ -49,6 +49,7 @@ xcrun swiftc \
   -F "$sparkle_dir" \
   -framework Sparkle \
   -framework EventKit \
+  -framework AVFoundation \
   -Xlinker -rpath \
   -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \
@@ -62,6 +63,7 @@ xcrun swiftc \
   -F "$sparkle_dir" \
   -framework Sparkle \
   -framework EventKit \
+  -framework AVFoundation \
   -Xlinker -rpath \
   -Xlinker @executable_path/../Frameworks \
   "${swift_sources[@]}" \

@@ -23,6 +23,14 @@ enum LocalLibraryContentCategory: String, Codable, Hashable {
     case other
 }
 
+/// 文件夹的存储类型：本地目录 or 挂载的网络卷（NAS）。
+enum LocalLibraryStoreType: String, Codable, Hashable {
+    case local
+    case remoteMount
+
+    var isRemote: Bool { self == .remoteMount }
+}
+
 enum LocalLibraryCategoryFilter: CaseIterable, Identifiable {
     case all
     case movie
@@ -103,10 +111,11 @@ struct LocalLibraryEntry: Codable, Identifiable, Hashable {
     var isWatched: Bool
     var isInWatchlist: Bool
     var lastOpenedAt: Date?
+    var durationSeconds: Double?
 
     private enum CodingKeys: String, CodingKey {
         case id, folderID, relativePath, signature, state, matchState
-        case contentCategory, metadata, isWatched, isInWatchlist, lastOpenedAt
+        case contentCategory, metadata, isWatched, isInWatchlist, lastOpenedAt, durationSeconds
     }
 
     init(
@@ -120,7 +129,8 @@ struct LocalLibraryEntry: Codable, Identifiable, Hashable {
         isWatched: Bool,
         isInWatchlist: Bool,
         lastOpenedAt: Date?,
-        contentCategory: LocalLibraryContentCategory = .other
+        contentCategory: LocalLibraryContentCategory = .other,
+        durationSeconds: Double? = nil
     ) {
         self.id = id
         self.folderID = folderID
@@ -133,6 +143,7 @@ struct LocalLibraryEntry: Codable, Identifiable, Hashable {
         self.isWatched = isWatched
         self.isInWatchlist = isInWatchlist
         self.lastOpenedAt = lastOpenedAt
+        self.durationSeconds = durationSeconds
     }
 
     init(from decoder: Decoder) throws {
@@ -160,6 +171,10 @@ struct LocalLibraryEntry: Codable, Identifiable, Hashable {
         isWatched = try container.decode(Bool.self, forKey: .isWatched)
         isInWatchlist = try container.decode(Bool.self, forKey: .isInWatchlist)
         lastOpenedAt = try container.decodeIfPresent(Date.self, forKey: .lastOpenedAt)
+        durationSeconds = try container.decodeIfPresent(
+            Double.self,
+            forKey: .durationSeconds
+        )
     }
 }
 
@@ -168,6 +183,37 @@ struct LocalLibraryFolder: Codable, Identifiable, Hashable {
     var displayName: String
     var pathHint: String
     var bookmarkData: Data
+    var storeType: LocalLibraryStoreType
+
+    private enum CodingKeys: String, CodingKey {
+        case id, displayName, pathHint, bookmarkData, storeType
+    }
+
+    init(
+        id: UUID,
+        displayName: String,
+        pathHint: String,
+        bookmarkData: Data,
+        storeType: LocalLibraryStoreType = .local
+    ) {
+        self.id = id
+        self.displayName = displayName
+        self.pathHint = pathHint
+        self.bookmarkData = bookmarkData
+        self.storeType = storeType
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        pathHint = try container.decode(String.self, forKey: .pathHint)
+        bookmarkData = try container.decode(Data.self, forKey: .bookmarkData)
+        storeType = try container.decodeIfPresent(
+            LocalLibraryStoreType.self,
+            forKey: .storeType
+        ) ?? .local
+    }
 }
 
 struct LocalLibraryFolderBookmark: Hashable {
@@ -349,7 +395,7 @@ enum LocalLibraryEntryMerge {
 }
 
 struct LocalLibrarySnapshot: Codable, Hashable {
-    static let currentSchemaVersion = 2
+    static let currentSchemaVersion = 3
 
     var schemaVersion: Int
     var folders: [LocalLibraryFolder]
@@ -375,13 +421,24 @@ struct LocalLibrarySnapshot: Codable, Hashable {
                     : .television
                 continue
             }
-            let parsed = LocalLibraryFilenameParser.parse(
-                migratedEntries[index].signature.fileName
+            // 未确认匹配的条目：用分类器重判内容类型
+            let decision = LocalLibraryClassifier.classify(
+                fileName: migratedEntries[index].signature.fileName,
+                physical: LocalLibraryPhysicalSignal(
+                    byteCount: migratedEntries[index].signature.byteCount,
+                    durationSeconds: migratedEntries[index].durationSeconds
+                )
             )
-            migratedEntries[index].contentCategory = parsed.category
-            if parsed.isTrustedTitle,
-               migratedEntries[index].matchState == .unmatched {
+            switch decision {
+            case .movie:
+                migratedEntries[index].contentCategory = .movie
                 migratedEntries[index].matchState = .suggested
+            case .television:
+                migratedEntries[index].contentCategory = .television
+                migratedEntries[index].matchState = .suggested
+            case .other:
+                migratedEntries[index].contentCategory = .other
+                migratedEntries[index].matchState = .unmatched
             }
         }
         return LocalLibrarySnapshot(

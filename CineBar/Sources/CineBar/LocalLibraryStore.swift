@@ -44,6 +44,14 @@ final class LocalLibraryStore: ObservableObject {
     }
 
     func addFolder(url: URL) throws {
+        try addFolder(url: url, storeType: .local)
+    }
+
+    func addRemoteMount(url: URL) throws {
+        try addFolder(url: url, storeType: .remoteMount)
+    }
+
+    private func addFolder(url: URL, storeType: LocalLibraryStoreType) throws {
         let standardizedURL = url.standardizedFileURL
         let bookmark = try LocalLibraryFolderBookmark.make(from: standardizedURL)
         if let existingIndex = matchingFolderIndex(at: standardizedURL) {
@@ -51,6 +59,7 @@ final class LocalLibraryStore: ObservableObject {
             updatedFolders[existingIndex].displayName = standardizedURL.lastPathComponent
             updatedFolders[existingIndex].pathHint = bookmark.pathHint
             updatedFolders[existingIndex].bookmarkData = bookmark.bookmarkData
+            updatedFolders[existingIndex].storeType = storeType
             try persistence.save(LocalLibrarySnapshot(
                 folders: updatedFolders,
                 entries: entries
@@ -63,7 +72,8 @@ final class LocalLibraryStore: ObservableObject {
             id: UUID(),
             displayName: standardizedURL.lastPathComponent,
             pathHint: bookmark.pathHint,
-            bookmarkData: bookmark.bookmarkData
+            bookmarkData: bookmark.bookmarkData,
+            storeType: storeType
         )
         let updatedFolders = folders + [folder]
         try persistence.save(LocalLibrarySnapshot(
