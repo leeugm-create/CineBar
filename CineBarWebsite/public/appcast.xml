@@ -5,16 +5,22 @@
     <link>https://cinebar.cc/appcast.xml</link>
     <description>CineBar signed application updates</description>
     <item>
+      <title>CineBar 0.8.3-test.13</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.13 · Build 29&lt;/li&gt;&lt;li&gt;- 本地片库中“未命名”“无标题”“新建文件夹”“新建视频”“Untitled”等占位文件名不再被误判为电影或电视剧，统一归入“其他视频”分类。&lt;/li&gt;&lt;li&gt;- 本地片库条目现在支持整行点击：点击任意位置直接打开文件详情。&lt;/li&gt;&lt;li&gt;- 文件详情页新增封面海报、标题、年份与类型信息，并增加“播放”按钮，可直接用 IINA、VLC 或系统播放器播放该文件。&lt;/li&gt;&lt;li&gt;- 已确认匹配的条目在详情页可直接打开在线完整资料；未匹配条目保留“匹配影片或电视剧”入口。&lt;/li&gt;&lt;li&gt;- 刷新片库后，未匹配的占位文件名会自动按新规则重新归类，已确认匹配的条目不受影响。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-29-universal.zip"
+        sparkle:version="29"
+        sparkle:shortVersionString="0.8.3-test.13"
+        length="5937513"
+        type="application/octet-stream"
+        sparkle:edSignature="/wIYgsxxLod0/34ei7+EZr0JiXgLZ3QohkFwxzRVCDgxD8YrUDr1ShHjAPKLJJ8FSDc+hP4LEnbY8OQTGYlBBg=="/>
+    </item>
+<item>
       <title>CineBar 0.8.3-test.12</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.12 · Build 28&lt;/li&gt;&lt;li&gt;- 自动匹配建议和手动搜索现在共用可取消请求；关闭、确认或新请求会阻止迟到结果覆盖当前条目。&lt;/li&gt;&lt;li&gt;- 同名候选现在优先选择与文件名年份一致的版本，再沿用评分、标题和 ID 的确定性排序。&lt;/li&gt;&lt;li&gt;- TMDB 缺少上映或首播日期时，只要 ID 和标题有效，确认后的电影或电视剧仍可打开现有完整详情。&lt;/li&gt;&lt;li&gt;- 保留 Build 27 与更早版本的不可变归档和 appcast 历史条目。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-28-universal.zip"
-        sparkle:version="28"
-        sparkle:shortVersionString="0.8.3-test.12"
-        length="6010619"
-        type="application/octet-stream"
-        sparkle:edSignature="iwzWZKc2nXeLDEF+tt3DsOGS5WmoeFSSUeJew6BnoZ+B/IgFRREbHZum5X5ivzXIB3WTnUBmCPjgL3YZapF2Ag=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-28-universal.zip" sparkle:version="28" sparkle:shortVersionString="0.8.3-test.12" length="6010619" type="application/octet-stream" sparkle:edSignature="iwzWZKc2nXeLDEF+tt3DsOGS5WmoeFSSUeJew6BnoZ+B/IgFRREbHZum5X5ivzXIB3WTnUBmCPjgL3YZapF2Ag=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.11</title>
