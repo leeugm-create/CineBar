@@ -8437,6 +8437,8 @@ struct SettingsRootView: View {
     @ObservedObject var localLibraryStore: LocalLibraryStore
     @State private var selection: SettingsSection = .general
     @State private var showRemoteSetup = false
+    @State private var discoveredNAS: [LocalLibraryDiscoveredNAS] = []
+    @State private var isScanningNAS = false
     @Environment(\.openURL) private var openURL
 
     private let regions = [
@@ -8844,6 +8846,43 @@ struct SettingsRootView: View {
                             }
                         }
                     }
+
+                    Divider()
+
+                    HStack {
+                        Text("自动发现").font(.subheadline.bold())
+                        Spacer()
+                        if isScanningNAS {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Button("扫描局域网 NAS", systemImage: "antenna.radiowaves.left.and.right") {
+                                Task { await scanNAS() }
+                            }
+                        }
+                    }
+                    if discoveredNAS.isEmpty {
+                        if !isScanningNAS {
+                            Text("点击上方按钮扫描局域网内可连接的 NAS。")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } else {
+                        ForEach(discoveredNAS) { nas in
+                            HStack(spacing: 10) {
+                                Image(systemName: "server.rack")
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(nas.displayName).font(.body)
+                                    Text(subtitle(for: nas))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Button("一键连接") {
+                                    connectDiscoveredNAS(nas)
+                                }
+                                .buttonStyle(.borderedProminent)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -8940,6 +8979,57 @@ struct SettingsRootView: View {
             account: remote.keychainAccount
         )
         return pw == nil ? .orange : .secondary
+    }
+
+    private func scanNAS() async {
+        isScanningNAS = true
+        discoveredNAS = await LocalLibraryNASDiscovery.scan(timeout: 3)
+        isScanningNAS = false
+    }
+
+    private func subtitle(for nas: LocalLibraryDiscoveredNAS) -> String {
+        var parts: [String] = []
+        parts.append(nas.host)
+        if let brand = nas.brand {
+            parts.append(brand.displayName)
+        }
+        parts.append("SMB :\(nas.port)")
+        return parts.joined(separator: " · ")
+    }
+
+    private func connectDiscoveredNAS(_ nas: LocalLibraryDiscoveredNAS) {
+        // 优先：若系统已挂载该 NAS 卷，直接按挂载路径加入。
+        if let mounted = LocalLibraryNASDiscovery.mountedVolumeURL(
+            host: nas.host,
+            port: nas.port
+        ) {
+            try? localLibraryStore.addRemoteMount(url: mounted)
+            return
+        }
+        // 未挂载：尝试用 SMB 打开系统挂载对话框，用户确认后返回该卷。
+        mountDiscoveredNAS(nas)
+    }
+
+    private func mountDiscoveredNAS(_ nas: LocalLibraryDiscoveredNAS) {
+        let share = nas.smbShareHints.first ?? "share"
+        let url = URL(string: "smb://\(nas.host)/\(share)")
+        let alert = NSAlert()
+        alert.messageText = "连接 \(nas.displayName)"
+        alert.informativeText = "将通过系统 SMB 连接到 \(nas.host)。若需要账号，系统会提示输入。连接成功后请选择挂载卷加入片库。"
+        alert.addButton(withTitle: "用 SMB 连接")
+        alert.addButton(withTitle: "选择已挂载目录")
+        alert.addButton(withTitle: "取消")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            if let url {
+                openURL(url)
+            }
+            chooseMountedVolume()
+        case .alertSecondButtonReturn:
+            chooseMountedVolume()
+        default:
+            break
+        }
     }
 
     private var whatsNew: some View {

@@ -2247,6 +2247,38 @@ struct CineBarRegressionBehaviorTests {
             preconditionFailure("远程源编解码失败")
         }
         try? FileManager.default.removeItem(at: remoteSourceURL)
+
+        // —— NAS 品牌识别 ——
+        precondition(
+            LocalLibraryNASDiscovery.recognizeBrand(
+                hostname: "mynas.local",
+                serviceType: "_smb._tcp"
+            ) == nil
+        )
+        precondition(
+            LocalLibraryNASDiscovery.recognizeBrand(
+                hostname: "diskstation.local",
+                serviceType: "_smb._tcp"
+            ) == .synology
+        )
+        precondition(
+            LocalLibraryNASDiscovery.recognizeBrand(
+                hostname: "UGREENnas.local",
+                serviceType: "_smb._tcp"
+            ) == .ugreen
+        )
+        precondition(
+            LocalLibraryNASDiscovery.recognizeBrand(
+                hostname: "tpnas-qnap.local",
+                serviceType: "_smb._tcp"
+            ) == .qnap
+        )
+        // 绿联默认 SMB 共享名
+        precondition(NASBrand.ugreen.defaultSMBShare == "共享")
+        // 品牌展示名非空
+        for brand in [NASBrand.ugreen, .synology, .qnap] {
+            precondition(!brand.displayName.isEmpty)
+        }
     }
 }
 
