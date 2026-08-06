@@ -8401,7 +8401,7 @@ extension View {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, recommendation, data, updates, localLibrary, whatsNew, support, about
+    case general, recommendation, data, localLibrary, info, support
     var id: String { rawValue }
 
     var title: String {
@@ -8409,11 +8409,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: return "通用"
         case .recommendation: return "推荐偏好"
         case .data: return "数据来源"
-        case .updates: return "检查更新"
         case .localLibrary: return "本地片库"
-        case .whatsNew: return "新功能"
+        case .info: return "关于"
         case .support: return "支持"
-        case .about: return "关于"
         }
     }
 
@@ -8422,11 +8420,9 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .general: return "gearshape"
         case .recommendation: return "heart.text.square"
         case .data: return "server.rack"
-        case .updates: return "arrow.triangle.2.circlepath"
         case .localLibrary: return "externaldrive.fill"
-        case .whatsNew: return "sparkles"
+        case .info: return "info.circle"
         case .support: return "cup.and.saucer.fill"
-        case .about: return "info.circle"
         }
     }
 }
@@ -8480,11 +8476,9 @@ struct SettingsRootView: View {
                     case .general: generalSettings
                     case .recommendation: recommendationSettings
                     case .data: dataSettings
-                    case .updates: updateSettings
                     case .localLibrary: localLibrarySettings
-                    case .whatsNew: whatsNew
+                    case .info: infoSettings
                     case .support: support
-                    case .about: about
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -8767,30 +8761,6 @@ struct SettingsRootView: View {
         }
     }
 
-    private var updateSettings: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            settingsCard {
-                Toggle("启动时自动检查更新", isOn: Binding(
-                    get: {
-                        updaterService.automaticallyChecksForUpdates
-                    },
-                    set: {
-                        updaterService.automaticallyChecksForUpdates = $0
-                    }
-                ))
-                HStack {
-                    Text("更新包会在安装前验证 CineBar 的独立签名。")
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Button("立即检查") {
-                        updaterService.checkForUpdates()
-                    }
-                    .disabled(!updaterService.canCheckForUpdates)
-                }
-            }
-        }
-    }
-
     private var localLibrarySettings: some View {
         VStack(alignment: .leading, spacing: 14) {
             settingsCard {
@@ -9032,58 +9002,118 @@ struct SettingsRootView: View {
         }
     }
 
-    private var whatsNew: some View {
-        settingsCard {
-            HStack {
-                VStack(alignment: .leading) {
-                    Text("CineBar 0.8.3-test.12").font(.title3.bold())
-                    Text("Build 28 · 2026 年 8 月 5 日")
-                        .font(.caption).foregroundStyle(.secondary)
+    /// 合并“新功能 / 关于 / 检查更新”为一栏。
+    private var infoSettings: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            settingsCard {
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("CineBar 0.8.3-test.15").font(.title3.bold())
+                        Text("Build 33 · 2026 年 8 月").font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
                 }
-                Spacer()
-                Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
-            }
-            Divider()
-            featureRow("自动匹配在关闭、确认或新请求时会立即取消")
-            featureRow("同名候选会优先选择与文件年份一致的版本")
-            featureRow("缺少上映日期的有效匹配也可以打开完整详情")
-        }
-    }
+                HStack {
+                    Text("自动检查更新")
+                    Spacer()
+                    Toggle("", isOn: Binding(
+                        get: { updaterService.automaticallyChecksForUpdates },
+                        set: { updaterService.automaticallyChecksForUpdates = $0 }
+                    ))
+                    .labelsHidden()
 
-    private var support: some View {
-        settingsCard {
-            Image(systemName: "cup.and.saucer.fill")
-                .font(.system(size: 54)).foregroundStyle(.orange)
-            Text("支持 CineBar").font(.title2.bold())
-            Text("CineBar 承诺完全免费、无广告、无订阅。若它为你省下了寻找影片的时间，欢迎支持我们一杯咖啡，让项目继续更新。")
-                .foregroundStyle(.secondary)
-            Button {
-                if let url = store.supportURL { openURL(url) }
-            } label: {
-                Label("Buy me a coffee", systemImage: "cup.and.saucer.fill")
-                    .frame(minWidth: 180)
+                    if updaterService.canCheckForUpdates {
+                        Button("检查更新") {
+                            updaterService.checkForUpdates()
+                        }
+                    }
+                }
+                Text("更新包会在安装前验证 CineBar 的独立签名。")
+                    .font(.caption).foregroundStyle(.secondary)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(store.supportURL == nil)
-            if store.supportURL == nil {
-                Text("支持链接尚未配置，按钮会在正式版接入后启用。")
+            settingsCard {
+                Text("本版本新增").font(.subheadline.bold())
+                featureRow("本地片库多维智能分类、手动分类与本地播放")
+                featureRow("局域网 NAS 自动发现，多协议（WebDAV/SFTP/SMB）接入")
+                featureRow("已匹配影片进详情页可播放对应本地文件")
+            }
+            settingsCard {
+                Text("关于").font(.subheadline.bold())
+                Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("OMDb 内容按非商业许可使用；观看平台信息由 JustWatch 提供。")
+                    .font(.caption).foregroundStyle(.secondary)
+                Link("电视剧播出时间由 TVMaze 提供（CC BY-SA）",
+                     destination: URL(string: "https://www.tvmaze.com")!)
+                Text("商业化前须分别确认各数据源授权。")
                     .font(.caption).foregroundStyle(.secondary)
             }
         }
     }
-
-    private var about: some View {
-        settingsCard {
-            Text("CineBar 0.8.3-test.12（Build 28）").font(.headline)
-            Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
-            Text("OMDb 内容按非商业许可使用；观看平台信息由 JustWatch 提供。")
-            Link(
-                "电视剧播出时间由 TVMaze 提供（CC BY-SA）",
-                destination: URL(string: "https://www.tvmaze.com")!
-            )
-            Text("商业化前须分别确认各数据源授权。")
+    private var support: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsCard {
+                    Image(systemName: "cup.and.saucer.fill")
+                        .font(.system(size: 54)).foregroundStyle(.orange)
+                    Text("支持 CineBar").font(.title2.bold())
+                    Text("CineBar 承诺完全免费、无广告、无订阅。若它为你省下了寻找影片的时间，欢迎支持我们一杯咖啡，让项目继续更新。")
+                        .foregroundStyle(.secondary)
+                    Button {
+                        if let url = store.supportURL { openURL(url) }
+                    } label: {
+                        Label("PayPal 打赏", systemImage: "creditcard")
+                            .frame(minWidth: 180)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .disabled(store.supportURL == nil)
+                }
+                settingsCard {
+                    Text("国内扫码打赏").font(.headline)
+                    HStack(spacing: 16) {
+                        qrCodeCard(title: "微信", imageName: "wxpay")
+                        qrCodeCard(title: "支付宝", imageName: "alipay")
+                    }
+                    Text("使用手机微信或支付宝扫描上方二维码即可打赏。")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
+    }
+
+    private func qrCodeCard(title: String, imageName: String) -> some View {
+        VStack(spacing: 8) {
+            let image = donationImage(named: imageName)
+            if let image {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 140, height: 140)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(.quaternary)
+                    Text("待配置")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(width: 140, height: 140)
+            }
+            Text(title).font(.subheadline)
+        }
+    }
+
+    private func donationImage(named name: String) -> NSImage? {
+        if let url = Bundle.main.url(forResource: name, withExtension: "png") {
+            return NSImage(contentsOf: url)
+        }
+        if let url = Bundle.main.url(forResource: name, withExtension: "jpg") {
+            return NSImage(contentsOf: url)
+        }
+        return nil
     }
 
     private func featureRow(_ text: String) -> some View {

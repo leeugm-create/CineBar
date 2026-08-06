@@ -86,6 +86,12 @@ cp "$app_source_dir/Assets/CineBar.icns" \
   "$contents_dir/Resources/CineBar.icns"
 cp "$app_source_dir/Assets/MenuBarIcon-template.png" \
   "$contents_dir/Resources/MenuBarIcon-template.png"
+for donation_image in wxpay alipay; do
+  if [[ -f "$app_source_dir/Assets/$donation_image.png" ]]; then
+    cp "$app_source_dir/Assets/$donation_image.png" \
+      "$contents_dir/Resources/$donation_image.png"
+  fi
+done
 ditto "$sparkle_dir/Sparkle.framework" \
   "$contents_dir/Frameworks/Sparkle.framework"
 xattr -cr "$contents_dir/Frameworks/Sparkle.framework"
