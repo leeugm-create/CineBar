@@ -2204,6 +2204,48 @@ struct CineBarRegressionBehaviorTests {
         precondition(manualCategoryStore.entries[0].matchState == .unmatched)
         try? FileManager.default.removeItem(at: manualCategoryDir)
 
+        // —— 豆瓣评分匹配 ——
+        let doubanItems = [
+            DoubanSearchItem(
+                id: 1292001,
+                title: "海上钢琴师 La leggenda del pianista sull'oceano",
+                rating: DoubanRatingData(value: 9.3, starCount: 4.5, count: 1893386),
+                abstract: "1998 / 意大利 / 剧情 音乐 / 朱塞佩·托纳多雷 / 蒂姆·罗宾斯",
+                url: "https://movie.douban.com/subject/1292001/"
+            ),
+            DoubanSearchItem(
+                id: 1291546,
+                title: "海斯夫人",
+                rating: DoubanRatingData(value: 6.1, starCount: 3.0, count: 1000),
+                abstract: "2001 / 中国",
+                url: "https://movie.douban.com/subject/1291546/"
+            )
+        ]
+        let matched = DoubanRatingClient.match(
+            items: doubanItems,
+            title: "海上钢琴师",
+            year: 1998
+        )
+        precondition(matched?.doubanID == 1292001)
+        precondition(matched?.score == 9.3)
+        precondition(matched?.title == "海上钢琴师 La leggenda del pianista sull'oceano")
+
+        // 年份不匹配的重名项应被优先精确匹配
+        let noYearMatch = DoubanRatingClient.match(
+            items: doubanItems,
+            title: "海上钢琴师",
+            year: 2020
+        )
+        precondition(noYearMatch?.doubanID == 1292001)
+
+        // 完全不同的标题返回 nil
+        let none = DoubanRatingClient.match(
+            items: doubanItems,
+            title: "流浪地球",
+            year: 2019
+        )
+        precondition(none == nil)
+
     }
 }
 

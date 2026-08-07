@@ -3030,6 +3030,7 @@ final class MovieStore: ObservableObject {
     @Published var isLoadingStills = false
     @Published var showMovieStills = false
     @Published var externalRatings: [MovieRating] = []
+    @Published var doubanRating: MovieRating?
     @Published var isLoadingRatings = false
     @Published var showCatalog = false
     @Published var showTVCatalog = false
@@ -4344,6 +4345,7 @@ final class MovieStore: ObservableObject {
         movieStills = []
         showMovieStills = false
         externalRatings = []
+        doubanRating = nil
         loadCommunityRating(mediaType: .movie, mediaID: movie.id)
         guard movie.id > 0, hasToken else { return }
 
@@ -4428,6 +4430,10 @@ final class MovieStore: ObservableObject {
         }
 
         loadExternalRatings(movieID: movie.id)
+        loadDoubanRating(
+            title: movie.title,
+            year: Self.year(from: movie.releaseDate)
+        )
         loadStills(movieID: movie.id)
     }
 
@@ -4702,6 +4708,11 @@ final class MovieStore: ObservableObject {
         expandedSeasonNumber = nil
         seasonEpisodes = [:]
         loadCommunityRating(mediaType: .tv, mediaID: show.id)
+        doubanRating = nil
+        loadDoubanRating(
+            title: show.name,
+            year: Self.year(from: show.firstAirDate)
+        )
         guard show.id > 0, hasToken else { return }
 
         isLoadingTVDetails = true
@@ -4890,6 +4901,9 @@ final class MovieStore: ObservableObject {
                 note: "\(movie.voteCount) 人"
             )
         ] + externalRatings
+        if let doubanRating {
+            result.append(doubanRating)
+        }
         if let communityRating {
             result.append(
                 MovieRating(
@@ -4923,6 +4937,9 @@ final class MovieStore: ObservableObject {
                 note: "\(show.voteCount) 人"
             )
         ]
+        if let doubanRating {
+            result.append(doubanRating)
+        }
         if let communityRating {
             result.append(
                 MovieRating(
@@ -4967,6 +4984,45 @@ final class MovieStore: ObservableObject {
                 externalRatings = []
             }
             isLoadingRatings = false
+        }
+    }
+
+    /// 从 "YYYY-MM-DD" 或 "YYYY" 取出年份。
+    private static func year(from dateText: String?) -> Int? {
+        guard let dateText, dateText.count >= 4,
+              let year = Int(dateText.prefix(4)) else { return nil }
+        return year
+    }
+
+    /// 按需抓取豆瓣评分并写入 doubanRating；失败或未匹配时置 nil，静默降级。
+    private static var doubanCache: [String: MovieRating?] = [:]
+
+    private func loadDoubanRating(title: String, year: Int?) {
+        let key = "\(title)\(year.map { "|\($0)" } ?? "")"
+        if let cached = Self.doubanCache[key] {
+            doubanRating = cached
+            return
+        }
+        Task {
+            let client = DoubanRatingClient()
+            let result: MovieRating?
+            do {
+                if let hit = try await client.search(title: title, year: year) {
+                    var valueText = String(format: "%.1f", hit.score)
+                    valueText += " / 10"
+                    result = MovieRating(
+                        source: "豆瓣",
+                        value: valueText,
+                        note: hit.voteCount.map { "\($0) 人" } ?? ""
+                    )
+                } else {
+                    result = nil
+                }
+            } catch {
+                result = nil
+            }
+            Self.doubanCache[key] = result
+            doubanRating = result
         }
     }
 
@@ -5262,6 +5318,7 @@ struct RatingBadge: View {
     private var accent: Color {
         switch rating.source {
         case "TMDB": return .green
+        case "豆瓣": return .teal
         case "IMDb": return .yellow
         case "烂番茄": return .red
         case "Metacritic": return .blue
