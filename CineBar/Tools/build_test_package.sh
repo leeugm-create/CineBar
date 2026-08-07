@@ -119,6 +119,7 @@ cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
 if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
   cp -R "$app_source_dir/ReleaseNotes" "$delivery_dir/"
+  cp -R "$app_source_dir/ReleaseNotes" "$contents_dir/Resources/ReleaseNotes"
 fi
 
 mkdir -p "$dist_dir"

@@ -9766,9 +9766,8 @@ struct SettingsRootView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             settingsCard {
-                Text("本版本新增").font(.subheadline.bold())
-                featureRow("本地片库多维智能分类、手动分类与本地播放")
-                featureRow("局域网内多协议 NAS 已移除，专注本地片库")
+                Text("版本更新记录").font(.subheadline.bold())
+                VersionHistoryCard()
             }
             settingsCard {
                 Text("关于").font(.subheadline.bold())
@@ -9860,6 +9859,90 @@ struct SettingsRootView: View {
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .cineGlass(cornerRadius: 14)
+    }
+}
+
+/// 单个版本发布说明条目。
+struct VersionHistoryEntry: Identifiable {
+    let version: Int
+    let title: String
+    let notes: [String]
+    var id: Int { version }
+}
+
+/// 从 app bundle 的 ReleaseNotes 目录读取所有版本记录（按构建号降序）。
+enum VersionHistoryLoader {
+    static func loadAll() -> [VersionHistoryEntry] {
+        guard let url = Bundle.main.resourceURL?
+            .appendingPathComponent("ReleaseNotes", isDirectory: true)
+        else { return [] }
+        let manager = FileManager.default
+        guard let urls = try? manager.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: nil
+        ) else { return [] }
+        let txtFiles = urls.filter { $0.pathExtension == "txt" }
+        let parsed = txtFiles.compactMap(parse(file:))
+        return parsed.sorted { $0.version > $1.version }
+    }
+
+    static func parse(file url: URL) -> VersionHistoryEntry? {
+        guard let content = try? String(
+            contentsOf: url,
+            encoding: .utf8
+        ) else { return nil }
+        let lines = content.split(separator: "\n").map(String.init)
+        let title = lines.first ?? url.lastPathComponent
+        let notes = lines.dropFirst()
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { $0.hasPrefix("-") }
+            .map {
+                $0.dropFirst().trimmingCharacters(in: .whitespaces)
+            }
+            .filter { !$0.isEmpty }
+        return VersionHistoryEntry(
+            version: buildNumber(from: url.lastPathComponent),
+            title: title,
+            notes: notes
+        )
+    }
+
+    static func buildNumber(from filename: String) -> Int {
+        let parts = filename.split(separator: "-")
+        guard let lastText = parts.last else { return 0 }
+        return Int(lastText.dropLast(4)) ?? 0  // "Build-42.txt" → 42
+    }
+}
+
+/// 设置-检查更新里的"版本更新记录"卡片。
+struct VersionHistoryCard: View {
+    private let entries = VersionHistoryLoader.loadAll()
+
+    var body: some View {
+        Group {
+            if entries.isEmpty {
+                Text("未找到版本记录")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(entries) { entry in
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(entry.title)
+                            .font(.caption.bold())
+                            .foregroundStyle(.primary)
+                        ForEach(entry.notes, id: \.self) { note in
+                            Label(note, systemImage: "checkmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        if entry.id != entries[0].id {
+                            Divider().padding(.vertical, 5)
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
+            }
+        }
     }
 }
 
