@@ -5,16 +5,22 @@
     <link>https://cinebar.cc/appcast.xml</link>
     <description>CineBar signed application updates</description>
     <item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 40&lt;/li&gt;&lt;li&gt;- 海报卡悬停互动还原 Apple TV 风格：鼠标进入时卡片轻微抬起、放大并跟随指针视差倾斜 3D 立体感。&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;关于&amp;quot;改为&amp;quot;检查更新&amp;quot;入口，版本号与构建号改为自动读取，不再显示过期信息。&lt;/li&gt;&lt;li&gt;- 全球累计票房在中文界面按实时汇率换算为人民币显示（汇率 24 小时刷新，暂不可用时自动回退美元）。&lt;/li&gt;&lt;li&gt;- 修复豆瓣评分与预告片时有时无的问题：请求改为串行节流，遇到豆瓣限流自动退避重试，命中率明显提升。&lt;/li&gt;&lt;li&gt;- 即将上映日期按豆瓣校正：如在中文环境下把《机器人总动员》错误的首映日期修正为实际的上映日期。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-40-universal.zip"
+        sparkle:version="40"
+        sparkle:shortVersionString="0.8.3"
+        length="6845350"
+        type="application/octet-stream"
+        sparkle:edSignature="RBDU4vLjwhRqQfCOWKeIT2L7ShQfUkpbqSqA0lHVcJ7eUjOjQKqhk9eZ+SMB+JF/7v32gCahHDYOLlM4vXzQCA=="/>
+    </item>
+<item>
       <title>CineBar 0.8.3-test.15</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 39&lt;/li&gt;&lt;li&gt;- 主列表与我的片单改为双列海报卡片网格，浏览效率更高。&lt;/li&gt;&lt;li&gt;- 详情页豆瓣预告升级为带控制条的播放器：支持暂停/播放、音量、进度、全屏与画中画。&lt;/li&gt;&lt;li&gt;- 豆瓣预告加载失败时不再无响应，会显示失败原因与重试按钮。&lt;/li&gt;&lt;li&gt;- 主页卡片评分精简：去掉星形图标与 &amp;quot;/10&amp;quot;，仅保留分数，并排显示在片名行、靠右对齐海报；来源移入悬停提示。&lt;/li&gt;&lt;li&gt;- 主列表卡片移除爱心按钮，收藏入口保留在详情页与我的片单。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-39-universal.zip"
-        sparkle:version="39"
-        sparkle:shortVersionString="0.8.3-test.15"
-        length="6773079"
-        type="application/octet-stream"
-        sparkle:edSignature="POIH5polql7hFb8OaVkJz8/Hhvw2UnMs4GQ0yU7pn6m4N3Iq+LCefBRxd8JB6YpSjicsLvx/l/zsOZddgXC3AQ=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-39-universal.zip" sparkle:version="39" sparkle:shortVersionString="0.8.3-test.15" length="6773079" type="application/octet-stream" sparkle:edSignature="POIH5polql7hFb8OaVkJz8/Hhvw2UnMs4GQ0yU7pn6m4N3Iq+LCefBRxd8JB6YpSjicsLvx/l/zsOZddgXC3AQ=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
