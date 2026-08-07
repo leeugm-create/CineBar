@@ -80,6 +80,17 @@ final class LocalLibraryScanner {
     ) -> LocalLibraryScanResult {
         let fileManager = FileManager.default
         var entriesByKey: [String: LocalLibraryEntry] = [:]
+        // 预构建 existing 字典，避免扫描每个文件时线性搜索整个数组（O(N²)→O(N)）
+        var existingByKey: [String: LocalLibraryEntry] = [:]
+        for entry in existing {
+            let key = LocalLibraryEntryMerge.key(
+                folderID: entry.folderID,
+                relativePath: entry.relativePath
+            )
+            if existingByKey[key] == nil {
+                existingByKey[key] = entry
+            }
+        }
         var availableFolderIDs = Set<UUID>()
         var unavailableFolderIDs = Set<UUID>()
         var staleFolderIDs = Set<UUID>()
@@ -171,11 +182,10 @@ final class LocalLibraryScanner {
                     }
                 )
                 // 方案C：文件名优先，无法判定时读取时长兜底
-                let existing = existingEntry(
-                    in: existing,
+                let existing = existingByKey[LocalLibraryEntryMerge.key(
                     folderID: root.folderID,
                     relativePath: relativePath
-                )
+                )]
                 let fileName = fileURL.lastPathComponent
                 var duration = existing?.durationSeconds
                 let classifierDecision: LocalLibraryMediaDecision
@@ -268,26 +278,10 @@ final class LocalLibraryScanner {
             duration = seconds.map { CMTimeGetSeconds($0) }
             semaphore.signal()
         }
-        _ = semaphore.wait(timeout: .now() + 60)
+        _ = semaphore.wait(timeout: .now() + 8)
         task.cancel()
         guard let value = duration, value.isFinite, value > 0 else { return nil }
         return value
-    }
-
-    private static func existingEntry(
-        in entries: [LocalLibraryEntry],
-        folderID: UUID,
-        relativePath: String
-    ) -> LocalLibraryEntry? {        let key = LocalLibraryEntryMerge.key(
-            folderID: folderID,
-            relativePath: relativePath
-        )
-        return entries.first {
-            LocalLibraryEntryMerge.key(
-                folderID: $0.folderID,
-                relativePath: $0.relativePath
-            ) == key
-        }
     }
 
     private static func relativePath(of fileURL: URL, from rootURL: URL) -> String {
