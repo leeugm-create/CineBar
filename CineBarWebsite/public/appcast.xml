@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 45&lt;/li&gt;&lt;li&gt;- 安装包精简：现在安装目录只包含 CineBar.app 和一份精简安装说明，去掉多余的历史版本说明与构建清单，解压更清爽。&lt;/li&gt;&lt;li&gt;- 保留 Build 44 修复的完整代码签名，可正常安装运行。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 46&lt;/li&gt;&lt;li&gt;- 调整海报卡片光影效果：鼠标移到卡片时，改为一层淡而柔和的光晕照亮画面（光斑随鼠标位置移动，明显更弱、无方块边缘感），观感更自然。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-45-universal.zip"
-        sparkle:version="45"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-46-universal.zip"
+        sparkle:version="46"
         sparkle:shortVersionString="0.8.3"
-        length="6854971"
+        length="6856122"
         type="application/octet-stream"
-        sparkle:edSignature="10+wCnrP3aMLZgi+5LvqQi/Bzuy1pJ+Y7HL0pSiH0p6TA6F6zGn/dik19dMOSPF3s75gOlaSeR3EDyiljhpqBw=="/>
+        sparkle:edSignature="lDxTwj9H6IpW1by9bS4w5EvuMHHwPcVsxe6SdhsGTKt1OOfuQT92wHK+xqGMGUCUnuYKnravi6EyHdUyg0d2Dw=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 45&lt;/li&gt;&lt;li&gt;- 安装包精简：现在安装目录只包含 CineBar.app 和一份精简安装说明，去掉多余的历史版本说明与构建清单，解压更清爽。&lt;/li&gt;&lt;li&gt;- 保留 Build 44 修复的完整代码签名，可正常安装运行。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-45-universal.zip" sparkle:version="45" sparkle:shortVersionString="0.8.3" length="6854971" type="application/octet-stream" sparkle:edSignature="10+wCnrP3aMLZgi+5LvqQi/Bzuy1pJ+Y7HL0pSiH0p6TA6F6zGn/dik19dMOSPF3s75gOlaSeR3EDyiljhpqBw=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
