@@ -5608,17 +5608,17 @@ struct MovieCardView: View {
 
                     RadialGradient(
                         colors: [
-                            .white.opacity(0.30),
+                            .white.opacity(0.20),
                             .white.opacity(0.0)
                         ],
                         center: .center,
                         startRadius: 0,
-                        endRadius: max(proxy.size.width, proxy.size.height)
+                        endRadius: 75
                     )
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(width: 150, height: 150)
                     .offset(
-                        x: hoverOffset.width * 0.45,
-                        y: hoverOffset.height * 0.45
+                        x: hoverOffset.width * 0.4,
+                        y: hoverOffset.height * 0.4
                     )
                     .opacity(isHovering ? 1 : 0)
                     .blendMode(.plusLighter)
@@ -5767,17 +5767,17 @@ struct TVCardView: View {
 
                     RadialGradient(
                         colors: [
-                            .white.opacity(0.30),
+                            .white.opacity(0.20),
                             .white.opacity(0.0)
                         ],
                         center: .center,
                         startRadius: 0,
-                        endRadius: max(proxy.size.width, proxy.size.height)
+                        endRadius: 75
                     )
-                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(width: 150, height: 150)
                     .offset(
-                        x: hoverOffset.width * 0.45,
-                        y: hoverOffset.height * 0.45
+                        x: hoverOffset.width * 0.4,
+                        y: hoverOffset.height * 0.4
                     )
                     .opacity(isHovering ? 1 : 0)
                     .blendMode(.plusLighter)
