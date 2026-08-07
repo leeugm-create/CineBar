@@ -115,7 +115,6 @@ struct LocalLibraryView: View {
     @Binding var searchText: String
     @Binding var categoryFilter: LocalLibraryCategoryFilter
     @Binding var statusFilter: LocalLibraryStatusFilter
-    @State private var sourceFolderID: UUID?
     @State private var actionMessage: String?
     @State private var failedPlaybackPath: String?
     @State private var matchSession: LocalLibraryMatchSession?
@@ -326,27 +325,10 @@ struct LocalLibraryView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(width: 110)
-                Picker(localized("来源"), selection: Binding(
-                    get: { sourceFolderID },
-                    set: { sourceFolderID = $0 }
-                )) {
-                    Text(localized("全部来源")).tag(UUID?.none)
-                    Text(localized("本地视频")).tag(LocalLibraryLocalTag.localUUID)
-                    ForEach(store.folders.filter { $0.remote != nil }) { folder in
-                        Text(folder.displayName).tag(Optional(folder.id))
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(width: 120)
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
-    }
-
-    /// 本地视频来源的固定标识（全部本地文件夹合为一个分项）。
-    private enum LocalLibraryLocalTag {
-        static let localUUID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
     }
 
     private var scanDescription: String {
@@ -356,14 +338,6 @@ struct LocalLibraryView: View {
 
     private var filteredEntries: [LocalLibraryEntry] {
         store.entries.filter { entry in
-            if let sourceFolderID {
-                if sourceFolderID == LocalLibraryLocalTag.localUUID {
-                    guard let folder = store.folders.first(where: { $0.id == entry.folderID }),
-                          folder.remote == nil else { return false }
-                } else if entry.folderID != sourceFolderID {
-                    return false
-                }
-            }
             guard categoryFilter.includes(entry) else { return false }
             guard statusFilter.includes(entry) else { return false }
             let haystack = [entry.signature.fileName, entry.metadata?.title ?? ""]
@@ -388,21 +362,6 @@ struct LocalLibraryView: View {
             } catch {
                 actionMessage = localized("无法添加文件夹。")
             }
-        }
-    }
-
-    private func chooseRemoteMountFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = localized("添加 NAS 目录")
-        panel.message = localized("选择已挂载的 NAS/网络卷目录（如 /Volumes/…），将识别为远程存储。")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        do {
-            try store.addRemoteMount(url: url)
-        } catch {
-            actionMessage = localized("无法添加 NAS 目录。")
         }
     }
 
@@ -562,8 +521,6 @@ struct LocalLibraryView: View {
             return localized("所选文件不在已授权的文件夹中。")
         case .notAFile:
             return localized("所选项目不是文件。")
-        case .keychainFailed:
-            return localized("无法保存凭据到钥匙串。")
         }
     }
 }
@@ -1314,118 +1271,3 @@ private struct LocalLibraryMatchSheet: View {
     }
 }
 
-/// NAS 添加入口：支持已挂载路径 / WebDAV / SFTP 三种方式。
-struct LocalLibraryRemoteSetupView: View {
-    enum Method: Hashable {
-        case mounted
-        case webDAV
-        case sftp
-    }
-
-    let language: AppLanguage
-    let onCancel: () -> Void
-    let onAddMounted: (URL) -> Void
-    let onAddRemote: (
-        LocalLibraryRemoteSource.Kind,
-        String,
-        Int?,
-        Bool,
-        String,
-        String,
-        String,
-        String
-    ) -> Void
-
-    @State private var method: Method = .mounted
-    @State private var host = ""
-    @State private var port = ""
-    @State private var usesTLS = true
-    @State private var rootPath = "/"
-    @State private var username = ""
-    @State private var password = ""
-    @State private var displayName = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                }
-                .buttonStyle(.plain)
-                .help(localized("关闭"))
-                Spacer()
-                Text(localized("添加 NAS")).font(.title3.bold())
-                Spacer()
-                Color.clear.frame(width: 20, height: 20)
-            }
-
-            Picker(localized("连接方式"), selection: $method) {
-                Text(localized("已挂载目录")).tag(Method.mounted)
-                Text("WebDAV").tag(Method.webDAV)
-                Text("SFTP").tag(Method.sftp)
-            }
-            .pickerStyle(.segmented)
-
-            switch method {
-            case .mounted:
-                Text(localized("选择已在访达中挂载的网络卷目录（如 /Volumes/…）。"))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Button(localized("选择已挂载目录")) { chooseMounted() }
-                    .buttonStyle(.borderedProminent)
-            case .webDAV, .sftp:
-                VStack(alignment: .leading, spacing: 10) {
-                    TextField(localized("名称（显示用）"), text: $displayName)
-                        .textFieldStyle(.roundedBorder)
-                    TextField(localized("主机地址（如 nas.local 或 192.168.1.10）"), text: $host)
-                        .textFieldStyle(.roundedBorder)
-                    HStack {
-                        TextField(localized("端口（可留空）"), text: $port)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: 140)
-                        if method == .webDAV {
-                            Toggle(localized("使用 HTTPS"), isOn: $usesTLS)
-                        }
-                    }
-                    TextField(localized("远程根路径（如 /dav 或 /）"), text: $rootPath)
-                        .textFieldStyle(.roundedBorder)
-                    TextField(localized("用户名"), text: $username)
-                        .textFieldStyle(.roundedBorder)
-                    SecureField(localized("密码"), text: $password)
-                        .textFieldStyle(.roundedBorder)
-                    Button(localized("添加并扫描")) { submit() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(host.trimmingCharacters(in: .whitespaces).isEmpty || username.isEmpty || password.isEmpty)
-                }
-            }
-        }
-        .padding()
-        .frame(width: 480, height: 380)
-    }
-
-    private func chooseMounted() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = localized("添加")
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-        onAddMounted(url)
-    }
-
-    private func submit() {
-        let kind: LocalLibraryRemoteSource.Kind = method == .sftp ? .sftp : .webDAV
-        let intPort = Int(port.trimmingCharacters(in: .whitespaces))
-        let hostTrimmed = host.trimmingCharacters(in: .whitespaces)
-        let root = rootPath.isEmpty ? "/" : rootPath
-        let name = displayName.trimmingCharacters(in: .whitespaces).isEmpty
-            ? hostTrimmed
-            : displayName.trimmingCharacters(in: .whitespaces)
-        onAddRemote(kind, hostTrimmed, intPort, usesTLS, root, username, password, name)
-    }
-
-    private func localized(_ key: String) -> String {
-        LocalLibraryLocalization.string(key, language: language)
-    }
-}

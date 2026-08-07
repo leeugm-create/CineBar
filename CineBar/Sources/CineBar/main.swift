@@ -8436,9 +8436,6 @@ struct SettingsRootView: View {
     @ObservedObject var updaterService: UpdaterService
     @ObservedObject var localLibraryStore: LocalLibraryStore
     @State private var selection: SettingsSection = .general
-    @State private var showRemoteSetup = false
-    @State private var discoveredNAS: [LocalLibraryDiscoveredNAS] = []
-    @State private var isScanningNAS = false
     @Environment(\.openURL) private var openURL
 
     private let regions = [
@@ -8795,8 +8792,8 @@ struct SettingsRootView: View {
         VStack(alignment: .leading, spacing: 14) {
             settingsCard {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("本地片库与 NAS").font(.headline)
-                    Text("在此添加和管理本地文件夹与 NAS 网络存储。NAS 影片会在本地片库中作为独立分项显示。")
+                    Text("本地片库").font(.headline)
+                    Text("在此添加和管理本地文件夹，扫描后可在本地片库中浏览与播放视频。")
                         .font(.caption).foregroundStyle(.secondary)
 
                     Divider()
@@ -8808,10 +8805,10 @@ struct SettingsRootView: View {
                             chooseLocalFolder()
                         }
                     }
-                    if localLibraryStore.folders.filter({ $0.remote == nil }).isEmpty {
+                    if localLibraryStore.folders.isEmpty {
                         Text("尚未添加本地文件夹。").font(.caption).foregroundStyle(.secondary)
                     } else {
-                        ForEach(localLibraryStore.folders.filter { $0.remote == nil }) { folder in
+                        ForEach(localLibraryStore.folders) { folder in
                             HStack {
                                 Label(folder.displayName, systemImage: "externaldrive.fill")
                                 Spacer()
@@ -8819,99 +8816,8 @@ struct SettingsRootView: View {
                             }
                         }
                     }
-
-                    Divider()
-
-                    HStack {
-                        Text("NAS 连接").font(.subheadline.bold())
-                        Spacer()
-                        Button("添加 NAS", systemImage: "network") {
-                            showRemoteSetup = true
-                        }
-                        Button("挂载 SMB", systemImage: "internaldrive") {
-                            mountSMBGuide()
-                        }
-                    }
-                    let remoteFolders = localLibraryStore.folders.filter { $0.remote != nil }
-                    if remoteFolders.isEmpty {
-                        Text("尚未配置 NAS。").font(.caption).foregroundStyle(.secondary)
-                    } else {
-                        ForEach(remoteFolders) { folder in
-                            HStack {
-                                Label(folder.displayName, systemImage: "network")
-                                Spacer()
-                                Text(remoteStatusText(folder))
-                                    .font(.caption)
-                                    .foregroundStyle(remoteStatusColor(folder))
-                            }
-                        }
-                    }
-
-                    Divider()
-
-                    HStack {
-                        Text("自动发现").font(.subheadline.bold())
-                        Spacer()
-                        if isScanningNAS {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Button("扫描局域网 NAS", systemImage: "antenna.radiowaves.left.and.right") {
-                                Task { await scanNAS() }
-                            }
-                        }
-                    }
-                    if discoveredNAS.isEmpty {
-                        if !isScanningNAS {
-                            Text("点击上方按钮扫描局域网内可连接的 NAS。")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                    } else {
-                        ForEach(discoveredNAS) { nas in
-                            HStack(spacing: 10) {
-                                Image(systemName: "server.rack")
-                                    .foregroundStyle(.orange)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(nas.displayName).font(.body)
-                                    Text(subtitle(for: nas))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Button("一键连接") {
-                                    connectDiscoveredNAS(nas)
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                        }
-                    }
                 }
             }
-        }
-        .sheet(isPresented: $showRemoteSetup) {
-            LocalLibraryRemoteSetupView(
-                language: store.appLanguage,
-                onCancel: { showRemoteSetup = false },
-                onAddMounted: { url in
-                    showRemoteSetup = false
-                    try? localLibraryStore.addRemoteMount(url: url)
-                },
-                onAddRemote: { kind, host, port, usesTLS, rootPath, username, password, displayName in
-                    do {
-                        try localLibraryStore.addRemoteSource(
-                            kind: kind,
-                            host: host,
-                            port: port,
-                            usesTLS: usesTLS,
-                            rootPath: rootPath,
-                            username: username,
-                            password: password,
-                            displayName: displayName
-                        )
-                        showRemoteSetup = false
-                    } catch {
-                        showRemoteSetup = false
-                    }
-                }
-            )
         }
     }
 
@@ -8924,111 +8830,6 @@ struct SettingsRootView: View {
         guard panel.runModal() == .OK else { return }
         for url in panel.urls {
             try? localLibraryStore.addFolder(url: url)
-        }
-    }
-
-    /// SMB 引导：先打开系统的“连接服务器”让用户挂载共享目录，
-    /// 挂载完成后选择 /Volumes 下的对应卷目录添加。
-    private func mountSMBGuide() {
-        let alert = NSAlert()
-        alert.messageText = "挂载 SMB 网络共享"
-        alert.informativeText = """
-        1. 系统会打开“连接服务器”(smb://)。
-        2. 输入 NAS 的 SMB 地址（例如 smb://192.168.1.10/共享文件夹）并连接。
-        3. 挂载成功后，在访达找到该卷（/Volumes/…），点“选择已挂载目录”加入片库。
-        """
-        alert.addButton(withTitle: "选择已挂载目录")
-        alert.addButton(withTitle: "打开连接服务器")
-        alert.addButton(withTitle: "取消")
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            chooseMountedVolume()
-        case .alertSecondButtonReturn:
-            openURL(URL(string: "smb://")!)
-        default:
-            break
-        }
-    }
-
-    private func chooseMountedVolume() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "添加"
-        if panel.runModal() == .OK, let url = panel.url {
-            try? localLibraryStore.addRemoteMount(url: url)
-        }
-    }
-
-    private func remoteStatusText(_ folder: LocalLibraryFolder) -> String {
-        guard let remote = folder.remote else { return "已添加" }
-        let pw = LocalLibraryKeychainCredential.load(
-            service: remote.keychainService,
-            account: remote.keychainAccount
-        )
-        let scheme = remote.kind == .sftp ? "sftp" : (remote.usesTLS ? "https" : "http")
-        let port = remote.port.map { ":\($0)" } ?? ""
-        return "\(scheme) \(remote.host)\(port)\(pw == nil ? " · 凭据缺失" : "")"
-    }
-
-    private func remoteStatusColor(_ folder: LocalLibraryFolder) -> Color {
-        guard let remote = folder.remote else { return .secondary }
-        let pw = LocalLibraryKeychainCredential.load(
-            service: remote.keychainService,
-            account: remote.keychainAccount
-        )
-        return pw == nil ? .orange : .secondary
-    }
-
-    private func scanNAS() async {
-        isScanningNAS = true
-        discoveredNAS = await LocalLibraryNASDiscovery.scan(timeout: 3)
-        isScanningNAS = false
-    }
-
-    private func subtitle(for nas: LocalLibraryDiscoveredNAS) -> String {
-        var parts: [String] = []
-        parts.append(nas.host)
-        if let brand = nas.brand {
-            parts.append(brand.displayName)
-        }
-        parts.append("SMB :\(nas.port)")
-        return parts.joined(separator: " · ")
-    }
-
-    private func connectDiscoveredNAS(_ nas: LocalLibraryDiscoveredNAS) {
-        // 优先：若系统已挂载该 NAS 卷，直接按挂载路径加入。
-        if let mounted = LocalLibraryNASDiscovery.mountedVolumeURL(
-            host: nas.host,
-            port: nas.port
-        ) {
-            try? localLibraryStore.addRemoteMount(url: mounted)
-            return
-        }
-        // 未挂载：尝试用 SMB 打开系统挂载对话框，用户确认后返回该卷。
-        mountDiscoveredNAS(nas)
-    }
-
-    private func mountDiscoveredNAS(_ nas: LocalLibraryDiscoveredNAS) {
-        let share = nas.smbShareHints.first ?? "share"
-        let url = URL(string: "smb://\(nas.host)/\(share)")
-        let alert = NSAlert()
-        alert.messageText = "连接 \(nas.displayName)"
-        alert.informativeText = "将通过系统 SMB 连接到 \(nas.host)。若需要账号，系统会提示输入。连接成功后请选择挂载卷加入片库。"
-        alert.addButton(withTitle: "用 SMB 连接")
-        alert.addButton(withTitle: "选择已挂载目录")
-        alert.addButton(withTitle: "取消")
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            if let url {
-                openURL(url)
-            }
-            chooseMountedVolume()
-        case .alertSecondButtonReturn:
-            chooseMountedVolume()
-        default:
-            break
         }
     }
 
@@ -9761,11 +9562,11 @@ struct ContentView: View {
             return nil
         }
         return {
-            Task { @MainActor in
-                guard let fileURL = await LocalLibraryFileResolver.resolveFileURL(
-                    in: self.localLibraryStore,
-                    metadataID: mediaID
-                ) else { return }
+            guard let fileURL = LocalLibraryFileResolver.resolveFileURL(
+                in: self.localLibraryStore,
+                metadataID: mediaID
+            ) else { return }
+            Task {
                 _ = await ExternalPlayerLauncher().open(fileURL: fileURL)
             }
         }

@@ -72,22 +72,12 @@ enum LocalLibraryFileResolver {
     static func resolveFileURL(
         in store: LocalLibraryStore,
         metadataID: Int
-    ) async -> URL? {
+    ) -> URL? {
         guard let entry = store.entries.first(where: {
             $0.state == .available && $0.metadata?.id == metadataID
         }) else { return nil }
         guard let folder = store.folders.first(where: { $0.id == entry.folderID }) else {
             return nil
-        }
-        if let remote = folder.remote {
-            guard LocalLibraryFolderBookmark.isRemotePlaceholder(folder.bookmarkData) else {
-                return nil
-            }
-            guard let url = try? await LocalLibraryRemoteBackend.materialize(
-                source: remote,
-                relativePath: entry.relativePath
-            ) else { return nil }
-            return url.standardizedFileURL
         }
         guard let resolved = try? LocalLibraryFolderBookmark.resolve(folder.bookmarkData) else {
             return nil

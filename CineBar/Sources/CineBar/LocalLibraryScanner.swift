@@ -6,14 +6,12 @@ struct LocalLibraryScanRoot: Hashable {
     let url: URL?
     let bookmarkData: Data?
     let displayName: String
-    let remote: LocalLibraryRemoteSource?
 
     init(folderID: UUID, url: URL, displayName: String) {
         self.folderID = folderID
         self.url = url
         self.bookmarkData = nil
         self.displayName = displayName
-        self.remote = nil
     }
 
     init(folderID: UUID, bookmarkData: Data, displayName: String) {
@@ -21,18 +19,7 @@ struct LocalLibraryScanRoot: Hashable {
         self.url = nil
         self.bookmarkData = bookmarkData
         self.displayName = displayName
-        self.remote = nil
     }
-
-    init(remote: LocalLibraryRemoteSource, displayName: String, folderID: UUID) {
-        self.folderID = folderID
-        self.url = nil
-        self.bookmarkData = nil
-        self.displayName = displayName
-        self.remote = remote
-    }
-
-    var isRemote: Bool { remote != nil }
 }
 
 struct LocalLibraryScanProgress: Hashable {
@@ -74,44 +61,15 @@ final class LocalLibraryScanner {
         existing: [LocalLibraryEntry],
         progress: @escaping @Sendable (LocalLibraryScanProgress) -> Void
     ) async -> LocalLibraryScanResult {
-        let localRoots = roots.filter { !$0.isRemote }
-        let remoteRoots = roots.filter { $0.isRemote }
-        return await withTaskGroup(of: LocalLibraryScanResult.self) { group in
+        await withTaskGroup(of: LocalLibraryScanResult.self) { group in
             group.addTask(priority: .utility) {
                 Self.scanSynchronously(
-                    roots: localRoots,
+                    roots: roots,
                     existing: existing,
                     progress: progress
                 )
             }
-            if !remoteRoots.isEmpty {
-                group.addTask(priority: .utility) {
-                    await Self.scanRemoteRoots(
-                        roots: remoteRoots,
-                        existing: existing,
-                        progress: progress
-                    )
-                }
-            }
-            var entries: [LocalLibraryEntry] = []
-            var availableFolderIDs = Set<UUID>()
-            var unavailableFolderIDs = Set<UUID>()
-            var staleFolderIDs = Set<UUID>()
-            var wasCancelled = false
-            for await result in group {
-                entries.append(contentsOf: result.entries)
-                availableFolderIDs.formUnion(result.availableFolderIDs)
-                unavailableFolderIDs.formUnion(result.unavailableFolderIDs)
-                staleFolderIDs.formUnion(result.staleFolderIDs)
-                wasCancelled = wasCancelled || result.wasCancelled
-            }
-            return LocalLibraryScanResult(
-                entries: entries,
-                availableFolderIDs: availableFolderIDs,
-                unavailableFolderIDs: unavailableFolderIDs,
-                staleFolderIDs: staleFolderIDs,
-                wasCancelled: wasCancelled
-            )
+            return await group.next()!
         }
     }
 
@@ -296,158 +254,6 @@ final class LocalLibraryScanner {
             staleFolderIDs: staleFolderIDs,
             wasCancelled: wasCancelled
         )
-    }
-
-    /// 扫描远程（NAS）根目录。递归枚举媒体文件并构建条目。
-    private static func scanRemoteRoots(
-        roots: [LocalLibraryScanRoot],
-        existing: [LocalLibraryEntry],
-        progress: @escaping @Sendable (LocalLibraryScanProgress) -> Void
-    ) async -> LocalLibraryScanResult {
-        var entriesByKey: [String: LocalLibraryEntry] = [:]
-        var availableFolderIDs = Set<UUID>()
-        var unavailableFolderIDs = Set<UUID>()
-        var wasCancelled = false
-
-        let supportedExtensions: Set<String> = [
-            "mp4", "m4v", "mov", "mkv", "avi", "webm", "ts", "m2ts"
-        ]
-
-        for root in roots {
-            guard let remote = root.remote else { continue }
-            var filesFound = 0
-            var visited = 0
-            do {
-                try await enumerateRemote(
-                    source: remote,
-                    relativePath: "",
-                    existing: existing,
-                    folderID: root.folderID,
-                    supportedExtensions: supportedExtensions,
-                    entriesByKey: &entriesByKey,
-                    visited: &visited,
-                    filesFound: &filesFound
-                )
-                availableFolderIDs.insert(root.folderID)
-            } catch {
-                unavailableFolderIDs.insert(root.folderID)
-            }
-            progress(LocalLibraryScanProgress(
-                folderID: root.folderID,
-                displayName: root.displayName,
-                filesVisited: visited,
-                mediaFilesFound: filesFound
-            ))
-            if Task.isCancelled {
-                wasCancelled = true
-                break
-            }
-        }
-
-        return LocalLibraryScanResult(
-            entries: entriesByKey.values.sorted {
-                LocalLibraryEntryMerge.key(
-                    folderID: $0.folderID,
-                    relativePath: $0.relativePath
-                ) < LocalLibraryEntryMerge.key(
-                    folderID: $1.folderID,
-                    relativePath: $1.relativePath
-                )
-            },
-            availableFolderIDs: availableFolderIDs,
-            unavailableFolderIDs: unavailableFolderIDs,
-            staleFolderIDs: [],
-            wasCancelled: wasCancelled
-        )
-    }
-
-    private static func enumerateRemote(
-        source: LocalLibraryRemoteSource,
-        relativePath: String,
-        existing: [LocalLibraryEntry],
-        folderID: UUID,
-        supportedExtensions: Set<String>,
-        entriesByKey: inout [String: LocalLibraryEntry],
-        visited: inout Int,
-        filesFound: inout Int
-    ) async throws {
-        if Task.isCancelled { throw CancellationError() }
-        let items = try await LocalLibraryRemoteBackend.list(
-            source: source,
-            relativePath: relativePath
-        )
-        for item in items {
-            visited += 1
-            if item.isDirectory {
-                let childPath = relativePath.isEmpty
-                    ? item.name
-                    : "\(relativePath)/\(item.name)"
-                try await enumerateRemote(
-                    source: source,
-                    relativePath: childPath,
-                    existing: existing,
-                    folderID: folderID,
-                    supportedExtensions: supportedExtensions,
-                    entriesByKey: &entriesByKey,
-                    visited: &visited,
-                    filesFound: &filesFound
-                )
-                continue
-            }
-            let fileExtension = (item.name as NSString).pathExtension.lowercased()
-            guard supportedExtensions.contains(fileExtension) else { continue }
-            let signature = LocalLibraryFileSignature(
-                fileName: item.name,
-                fileExtension: fileExtension,
-                byteCount: item.byteCount,
-                modificationDate: nil,
-                resourceIdentifier: nil
-            )
-            let childPath = relativePath.isEmpty
-                ? item.name
-                : "\(relativePath)/\(item.name)"
-            let decision = LocalLibraryClassifier.classify(fromFilename: item.name)
-            let contentCategory: LocalLibraryContentCategory
-            let matchState: LocalLibraryMatchState
-            switch decision {
-            case .movie:
-                contentCategory = .movie
-                matchState = .suggested
-            case .television:
-                contentCategory = .television
-                matchState = .suggested
-            case .other:
-                contentCategory = .other
-                matchState = .unmatched
-            }
-            let existingID = existing.first {
-                LocalLibraryEntryMerge.key(
-                    folderID: folderID,
-                    relativePath: childPath
-                ) == LocalLibraryEntryMerge.key(
-                    folderID: $0.folderID,
-                    relativePath: $0.relativePath
-                )
-            }?.id
-            let entry = LocalLibraryEntry(
-                id: existingID ?? UUID(),
-                folderID: folderID,
-                relativePath: childPath,
-                signature: signature,
-                state: .available,
-                matchState: matchState,
-                metadata: nil,
-                isWatched: false,
-                isInWatchlist: false,
-                lastOpenedAt: nil,
-                contentCategory: contentCategory
-            )
-            entriesByKey[LocalLibraryEntryMerge.key(
-                folderID: folderID,
-                relativePath: childPath
-            )] = entry
-            filesFound += 1
-        }
     }
 
     /// 读取视频时长（秒）。失败/异常返回 nil。

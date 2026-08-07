@@ -23,14 +23,6 @@ enum LocalLibraryContentCategory: String, Codable, Hashable {
     case other
 }
 
-/// 文件夹的存储类型：本地目录 or 挂载的网络卷（NAS）。
-enum LocalLibraryStoreType: String, Codable, Hashable {
-    case local
-    case remoteMount
-
-    var isRemote: Bool { self == .remoteMount }
-}
-
 enum LocalLibraryCategoryFilter: CaseIterable, Identifiable {
     case all
     case movie
@@ -183,27 +175,21 @@ struct LocalLibraryFolder: Codable, Identifiable, Hashable {
     var displayName: String
     var pathHint: String
     var bookmarkData: Data
-    var storeType: LocalLibraryStoreType
-    var remote: LocalLibraryRemoteSource?
 
     private enum CodingKeys: String, CodingKey {
-        case id, displayName, pathHint, bookmarkData, storeType, remote
+        case id, displayName, pathHint, bookmarkData
     }
 
     init(
         id: UUID,
         displayName: String,
         pathHint: String,
-        bookmarkData: Data,
-        storeType: LocalLibraryStoreType = .local,
-        remote: LocalLibraryRemoteSource? = nil
+        bookmarkData: Data
     ) {
         self.id = id
         self.displayName = displayName
         self.pathHint = pathHint
         self.bookmarkData = bookmarkData
-        self.storeType = storeType
-        self.remote = remote
     }
 
     init(from decoder: Decoder) throws {
@@ -212,14 +198,6 @@ struct LocalLibraryFolder: Codable, Identifiable, Hashable {
         displayName = try container.decode(String.self, forKey: .displayName)
         pathHint = try container.decode(String.self, forKey: .pathHint)
         bookmarkData = try container.decode(Data.self, forKey: .bookmarkData)
-        storeType = try container.decodeIfPresent(
-            LocalLibraryStoreType.self,
-            forKey: .storeType
-        ) ?? .local
-        remote = try container.decodeIfPresent(
-            LocalLibraryRemoteSource.self,
-            forKey: .remote
-        )
     }
 }
 
@@ -252,14 +230,6 @@ struct LocalLibraryFolderBookmark: Hashable {
             isStale: isStale,
             startedAccessing: url.startAccessingSecurityScopedResource()
         )
-    }
-
-    /// 判断 bookmark 是否是远程源的占位标记（非真实文件 bookmark）。
-    static func isRemotePlaceholder(_ bookmarkData: Data) -> Bool {
-        guard bookmarkData.count >= 6,
-              Array(bookmarkData.prefix(6)) == [0x52, 0x45, 0x4D, 0x4F, 0x54, 0x45]
-        else { return false }
-        return true
     }
 }
 

@@ -44,67 +44,6 @@ final class LocalLibraryStore: ObservableObject {
     }
 
     func addFolder(url: URL) throws {
-        try addFolder(url: url, storeType: .local)
-    }
-
-    func addRemoteMount(url: URL) throws {
-        try addFolder(url: url, storeType: .remoteMount)
-    }
-
-    /// 添加远程（NAS）文件夹：WebDAV 或 SFTP。密码存入 Keychain。
-    func addRemoteSource(
-        kind: LocalLibraryRemoteSource.Kind,
-        host: String,
-        port: Int?,
-        usesTLS: Bool,
-        rootPath: String,
-        username: String,
-        password: String,
-        displayName: String
-    ) throws {
-        let service = "com.indiedev.cinebar.remote"
-        let account = username + "@" + host + (port.map { ":\($0)" } ?? "")
-        do {
-            try LocalLibraryKeychainCredential.store(
-                service: service,
-                account: account,
-                password: password
-            )
-        } catch {
-            throw LocalLibraryStoreError.keychainFailed
-        }
-        let remote = LocalLibraryRemoteSource(
-            kind: kind,
-            host: host,
-            port: port,
-            usesTLS: usesTLS,
-            rootPath: rootPath,
-            username: username,
-            keychainService: service,
-            keychainAccount: account,
-            displayName: displayName
-        )
-        let remoteID = UUID()
-        var bookmarkPlaceholder = Data([0x52, 0x45, 0x4D, 0x4F, 0x54, 0x45])
-        bookmarkPlaceholder.append(remoteID.uuidString.data(using: .utf8) ?? Data())
-        let folder = LocalLibraryFolder(
-            id: remoteID,
-            displayName: displayName,
-            pathHint: "\(host)\(port.map { ":\($0)" } ?? "")/\(rootPath)",
-            bookmarkData: bookmarkPlaceholder,
-            storeType: .remoteMount,
-            remote: remote
-        )
-        let updatedFolders = folders + [folder]
-        try persistence.save(LocalLibrarySnapshot(
-            folders: updatedFolders,
-            entries: entries
-        ))
-        folders = updatedFolders
-        message = nil
-    }
-
-    private func addFolder(url: URL, storeType: LocalLibraryStoreType) throws {
         let standardizedURL = url.standardizedFileURL
         let bookmark = try LocalLibraryFolderBookmark.make(from: standardizedURL)
         if let existingIndex = matchingFolderIndex(at: standardizedURL) {
@@ -112,7 +51,6 @@ final class LocalLibraryStore: ObservableObject {
             updatedFolders[existingIndex].displayName = standardizedURL.lastPathComponent
             updatedFolders[existingIndex].pathHint = bookmark.pathHint
             updatedFolders[existingIndex].bookmarkData = bookmark.bookmarkData
-            updatedFolders[existingIndex].storeType = storeType
             try persistence.save(LocalLibrarySnapshot(
                 folders: updatedFolders,
                 entries: entries
@@ -125,8 +63,7 @@ final class LocalLibraryStore: ObservableObject {
             id: UUID(),
             displayName: standardizedURL.lastPathComponent,
             pathHint: bookmark.pathHint,
-            bookmarkData: bookmark.bookmarkData,
-            storeType: storeType
+            bookmarkData: bookmark.bookmarkData
         )
         let updatedFolders = folders + [folder]
         try persistence.save(LocalLibrarySnapshot(
@@ -243,13 +180,6 @@ final class LocalLibraryStore: ObservableObject {
         guard !isScanning else { return }
         let roots = folders.compactMap { folder -> LocalLibraryScanRoot? in
             guard folderIDs.contains(folder.id) else { return nil }
-            if let remote = folder.remote {
-                return LocalLibraryScanRoot(
-                    remote: remote,
-                    displayName: folder.displayName,
-                    folderID: folder.id
-                )
-            }
             return LocalLibraryScanRoot(
                 folderID: folder.id,
                 bookmarkData: folder.bookmarkData,
@@ -375,5 +305,4 @@ enum LocalLibraryStoreError: Error, Equatable {
     case signatureMismatch
     case fileOutsideAuthorizedFolders
     case notAFile
-    case keychainFailed
 }
