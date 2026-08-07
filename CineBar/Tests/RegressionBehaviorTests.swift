@@ -973,6 +973,76 @@ struct CineBarRegressionBehaviorTests {
         precondition(televisionRatings.last?.source == "我的评分")
         precondition(televisionRatings.last?.value == "9.5/10")
 
+        // —— 评分体系：豆瓣排第一、可携带跳转 URL ——
+        let doubanRatingStore = MovieStore()
+        doubanRatingStore.appLanguage = .zhCN
+        doubanRatingStore.setDoubanRatingForTesting(
+            MovieRating(
+                source: "豆瓣",
+                value: "9.3/10",
+                note: "221.3万人",
+                url: URL(string: "https://movie.douban.com/subject/1292001/")!
+            )
+        )
+        let rankedMovieRatings = doubanRatingStore.ratings(for: Movie.demo[0])
+        precondition(rankedMovieRatings.first?.source == "豆瓣")
+        precondition(rankedMovieRatings.first?.value == "9.3/10")
+        precondition(
+            rankedMovieRatings.first?.url?.absoluteString ==
+                "https://movie.douban.com/subject/1292001/"
+        )
+        precondition(
+            doubanRatingStore.listRating(for: Movie.demo[0])?.value == "9.3/10"
+        )
+
+        // 列表行评分语言切换：zh-CN 走豆瓣，其他语言走 IMDb，缺省回退 TMDB
+        let englishListStore = MovieStore()
+        englishListStore.appLanguage = .enUS
+        englishListStore.setExternalRatingsForTesting(
+            movieID: Movie.demo[0].id,
+            ratings: [
+                MovieRating(
+                    source: "IMDb",
+                    value: "8.6/10",
+                    note: "214.8万",
+                    url: URL(string: "https://www.imdb.com/title/tt0816692/")!
+                ),
+                MovieRating(
+                    source: "烂番茄",
+                    value: "73%",
+                    note: "397",
+                    url: URL(
+                        string: "https://www.rottentomatoes.com/search?q=Interstellar"
+                    )!
+                )
+            ]
+        )
+        precondition(
+            englishListStore.listRating(for: Movie.demo[0])?.source == "IMDb"
+        )
+        precondition(
+            englishListStore.listRatingCount(for: Movie.demo[0]) == "214.8万"
+        )
+        englishListStore.appLanguage = .zhCN
+        precondition(
+            englishListStore.listRating(for: Movie.demo[0])?.source == "TMDB"
+        )
+        precondition(
+            englishListStore.listRating(for: Movie.demo[0])?.url == nil
+        )
+
+        // RatingBadge 的跳转 URL 原样保留
+        let badgeRating = MovieRating(
+            source: "豆瓣",
+            value: "9.3/10",
+            note: "221.3万人",
+            url: URL(string: "https://movie.douban.com/subject/1292001/")!
+        )
+        precondition(badgeRating.url != nil)
+        precondition(
+            badgeRating.url?.absoluteString.contains("douban.com") == true
+        )
+
         let slider = RatingNSSlider()
         precondition(slider.minValue == 0)
         precondition(slider.maxValue == 10)

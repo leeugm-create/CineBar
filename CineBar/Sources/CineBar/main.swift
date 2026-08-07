@@ -5127,6 +5127,30 @@ final class MovieStore: ObservableObject {
         "\(title)\(year.map { "|\($0)" } ?? "")"
     }
 
+    #if CINEBAR_TEST
+    /// 测试辅助：注入豆瓣评分（与 apply 相同的写入路径）。
+    func setDoubanRatingForTesting(_ rating: MovieRating) {
+        doubanRating = rating
+        doubanSubjectID = 1_292_001
+        doubanPageURL = rating.url
+        listDoubanRatings[
+            Self.doubanKey(
+                title: Movie.demo[0].title,
+                year: Self.year(from: Movie.demo[0].releaseDate)
+            )
+        ] = rating
+    }
+
+    /// 测试辅助：注入外部评分（IMDb/烂番茄）与跳转 URL。
+    func setExternalRatingsForTesting(
+        movieID: Int,
+        ratings: [MovieRating]
+    ) {
+        externalRatings = ratings
+        listExternalRatings[String(movieID)] = ratings
+    }
+    #endif
+
     // MARK: - 列表行评分（按语言切换首选来源）
 
     private var listRatingLoadKeys: Set<String> = []
