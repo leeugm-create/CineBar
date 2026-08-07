@@ -17,10 +17,7 @@ build_manifest=$("$script_dir/check_build_provenance.sh" \
   CineBar/PkgInfo \
   CineBar/Assets \
   CineBar/ReleaseNotes \
-  CineBar/INSTALL.md \
-  CineBar/README.md \
-  CineBar/请先阅读-测试版安装说明.html \
-  CineBar/请先阅读-测试版安装说明.txt \
+  CineBar/README.txt \
   CineBar/Tools/build_test_package.sh \
   CineBar/Tools/check_build_provenance.sh)
 "$script_dir/fetch_sparkle.sh"
@@ -121,7 +118,7 @@ codesign --verify --deep --strict "$app_bundle"
 mkdir -p "$dist_dir"
 rm -f "$output_zip"
 # 安装包只保留应用本体和一份精简安装说明。
-cp "$app_source_dir/安装说明.txt" "$delivery_dir/"
+cp "$app_source_dir/README.txt" "$delivery_dir/"
 ditto -c -k --sequesterRsrc --keepParent "$delivery_dir" "$output_zip"
 
 echo "Created $output_zip"
