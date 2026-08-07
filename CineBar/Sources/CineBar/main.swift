@@ -1523,6 +1523,7 @@ struct MovieRating: Identifiable, Hashable {
     let source: String
     let value: String
     let note: String
+    var url: URL? = nil
     var id: String { source }
 }
 
@@ -2761,7 +2762,10 @@ struct OMDbClient {
     let apiKey: String
     let proxyBaseURL: String?
 
-    func ratings(imdbID: String) async throws -> [MovieRating] {
+    func ratings(
+        imdbID: String,
+        title: String? = nil
+    ) async throws -> [MovieRating] {
         let proxy = DataProxyConfiguration.normalizedBaseURL(proxyBaseURL)
         let endpointSet: ServiceEndpointSet
         if let proxy {
@@ -2814,15 +2818,49 @@ struct OMDbClient {
         return (result.ratings ?? []).compactMap { rating in
             switch rating.source {
             case "Internet Movie Database":
-                return MovieRating(source: "IMDb", value: rating.value, note: "用户评分")
+                var url: URL?
+                if !imdbID.isEmpty {
+                    url = URL(string: "https://www.imdb.com/title/\(imdbID)/")
+                }
+                return MovieRating(
+                    source: "IMDb",
+                    value: rating.value,
+                    note: "用户评分",
+                    url: url
+                )
             case "Rotten Tomatoes":
-                return MovieRating(source: "烂番茄", value: rating.value, note: "影评人分")
+                return MovieRating(
+                    source: "烂番茄",
+                    value: rating.value,
+                    note: "影评人分",
+                    url: Self.searchURL(
+                        base: "https://www.rottentomatoes.com/search",
+                        query: title ?? imdbID
+                    )
+                )
             case "Metacritic":
-                return MovieRating(source: "Metacritic", value: rating.value, note: "媒体评分")
+                return MovieRating(
+                    source: "Metacritic",
+                    value: rating.value,
+                    note: "媒体评分",
+                    url: Self.searchURL(
+                        base: "https://www.metacritic.com/search/movie/",
+                        query: title ?? imdbID
+                    )
+                )
             default:
                 return nil
             }
         }
+    }
+
+    private static func searchURL(base: String, query: String) -> URL? {
+        guard !query.isEmpty,
+              var components = URLComponents(string: base) else { return nil }
+        components.queryItems = [
+            URLQueryItem(name: "q", value: query)
+        ]
+        return components.url
     }
 }
 
@@ -3032,6 +3070,8 @@ final class MovieStore: ObservableObject {
     @Published var externalRatings: [MovieRating] = []
     @Published var doubanRating: MovieRating?
     @Published var isLoadingRatings = false
+    @Published private(set) var listDoubanRatings: [String: MovieRating] = [:]
+    @Published private(set) var listExternalRatings: [String: [MovieRating]] = [:]
     @Published var showCatalog = false
     @Published var showTVCatalog = false
     @Published var selectedShelf: MovieShelf?
@@ -4894,16 +4934,18 @@ final class MovieStore: ObservableObject {
     }
 
     func ratings(for movie: Movie) -> [MovieRating] {
-        var result = [
+        var result: [MovieRating] = []
+        if let doubanRating {
+            result.append(doubanRating)
+        }
+        result.append(
             MovieRating(
                 source: "TMDB",
                 value: String(format: "%.1f/10", movie.voteAverage),
                 note: "\(movie.voteCount) 人"
             )
-        ] + externalRatings
-        if let doubanRating {
-            result.append(doubanRating)
-        }
+        )
+        result += externalRatings
         if let communityRating {
             result.append(
                 MovieRating(
@@ -4930,16 +4972,17 @@ final class MovieStore: ObservableObject {
     }
 
     func ratings(for show: TVShow) -> [MovieRating] {
-        var result = [
+        var result: [MovieRating] = []
+        if let doubanRating {
+            result.append(doubanRating)
+        }
+        result.append(
             MovieRating(
                 source: "TMDB",
                 value: String(format: "%.1f/10", show.voteAverage),
                 note: "\(show.voteCount) 人"
             )
-        ]
-        if let doubanRating {
-            result.append(doubanRating)
-        }
+        )
         if let communityRating {
             result.append(
                 MovieRating(
@@ -4994,26 +5037,45 @@ final class MovieStore: ObservableObject {
         return year
     }
 
+    /// 豆瓣抓取命中：评分 + 页面跳转信息。
+    private struct DoubanHit {
+        let rating: MovieRating
+        let subjectID: Int
+        let pageURL: URL
+    }
+
     /// 按需抓取豆瓣评分并写入 doubanRating；失败或未匹配时置 nil，静默降级。
-    private static var doubanCache: [String: MovieRating?] = [:]
+    private static var doubanCache: [String: DoubanHit?] = [:]
+
+    @Published private(set) var doubanSubjectID: Int?
+    @Published private(set) var doubanPageURL: URL?
+    @Published private(set) var isLoadingDoubanTrailers = false
+    @Published private(set) var doubanTrailers: [DoubanTrailerItem] = []
 
     private func loadDoubanRating(title: String, year: Int?) {
         let key = "\(title)\(year.map { "|\($0)" } ?? "")"
         if let cached = Self.doubanCache[key] {
-            doubanRating = cached
+            apply(hit: cached, title: title, year: year)
             return
         }
         Task {
             let client = DoubanRatingClient()
-            let result: MovieRating?
+            let result: DoubanHit?
             do {
                 if let hit = try await client.search(title: title, year: year) {
                     var valueText = String(format: "%.1f", hit.score)
                     valueText += " / 10"
-                    result = MovieRating(
-                        source: "豆瓣",
-                        value: valueText,
-                        note: hit.voteCount.map { "\($0) 人" } ?? ""
+                    result = DoubanHit(
+                        rating: MovieRating(
+                            source: "豆瓣",
+                            value: valueText,
+                            note: hit.voteCount.map { "\($0) 人" } ?? "",
+                            url: URL(string: hit.pageURL)
+                        ),
+                        subjectID: hit.doubanID,
+                        pageURL: URL(string: hit.pageURL) ?? URL(
+                            string: "https://movie.douban.com/subject/\(hit.doubanID)/"
+                        )!
                     )
                 } else {
                     result = nil
@@ -5022,7 +5084,240 @@ final class MovieStore: ObservableObject {
                 result = nil
             }
             Self.doubanCache[key] = result
-            doubanRating = result
+            await MainActor.run {
+                apply(hit: result, title: title, year: year)
+            }
+        }
+    }
+
+    private func apply(hit: DoubanHit?, title: String, year: Int?) {
+        doubanRating = hit?.rating
+        doubanSubjectID = hit?.subjectID
+        doubanPageURL = hit?.pageURL
+        if let hit {
+            let mediaKey = Self.doubanKey(title: title, year: year)
+            listDoubanRatings[mediaKey] = hit.rating
+        }
+        if appLanguage == .zhCN {
+            loadDoubanTrailers(subjectID: hit?.subjectID ?? 0)
+        } else {
+            doubanTrailers = []
+        }
+    }
+
+    /// 简体中文预告：按豆瓣 subjectID 拉取预告片卡表。
+    func loadDoubanTrailers(subjectID: Int) {
+        guard appLanguage == .zhCN, subjectID > 0 else {
+            doubanTrailers = []
+            return
+        }
+        if isLoadingDoubanTrailers, !doubanTrailers.isEmpty { return }
+        isLoadingDoubanTrailers = true
+        Task {
+            let result = try? await DoubanTrailerClient()
+                .trailers(subjectID: subjectID)
+            await MainActor.run {
+                doubanTrailers = result ?? []
+                isLoadingDoubanTrailers = false
+            }
+        }
+    }
+
+    private static func doubanKey(title: String, year: Int?) -> String {
+        "\(title)\(year.map { "|\($0)" } ?? "")"
+    }
+
+    // MARK: - 列表行评分（按语言切换首选来源）
+
+    private var listRatingLoadKeys: Set<String> = []
+
+    /// 首页/列表行展示的评分：zh-CN 用豆瓣，其他语言用 IMDb/烂番茄，缺省回退 TMDB。
+    func listRating(for movie: Movie) -> MovieRating? {
+        let key = Self.doubanKey(
+            title: movie.title,
+            year: Self.year(from: movie.releaseDate)
+        )
+        if appLanguage == .zhCN {
+            if let douban = listDoubanRatings[key] {
+                return douban
+            }
+        } else if let external = listExternalRatings[String(movie.id)] {
+            if let imdb = external.first(where: { $0.source == "IMDb" }) {
+                return imdb
+            }
+            if let rotten = external.first(where: { $0.source == "烂番茄" }) {
+                return rotten
+            }
+        }
+        return MovieRating(
+            source: "TMDB",
+            value: String(format: "%.1f/10", movie.voteAverage),
+            note: "\(movie.voteCount) 人"
+        )
+    }
+
+    /// 首页/列表行展示的评分（剧集版）。
+    func listRating(for show: TVShow) -> MovieRating? {
+        let key = Self.doubanKey(
+            title: show.name,
+            year: Self.year(from: show.firstAirDate)
+        )
+        if appLanguage == .zhCN {
+            if let douban = listDoubanRatings[key] {
+                return douban
+            }
+        } else if let external = listExternalRatings[String(show.id)] {
+            if let imdb = external.first(where: { $0.source == "IMDb" }) {
+                return imdb
+            }
+            if let rotten = external.first(where: { $0.source == "烂番茄" }) {
+                return rotten
+            }
+        }
+        return MovieRating(
+            source: "TMDB",
+            value: String(format: "%.1f/10", show.voteAverage),
+            note: "\(show.voteCount) 人"
+        )
+    }
+
+    /// 列表行评分右下角的人数文本。
+    func listRatingCount(for movie: Movie) -> String? {
+        let key = Self.doubanKey(
+            title: movie.title,
+            year: Self.year(from: movie.releaseDate)
+        )
+        if appLanguage == .zhCN {
+            return listDoubanRatings[key]?.note
+        }
+        if let external = listExternalRatings[String(movie.id)],
+           let first = external.first(where: { $0.source == "IMDb" })
+            ?? external.first(where: { $0.source == "烂番茄" }) {
+            return first.note
+        }
+        return movie.voteCount > 0 ? "\(movie.voteCount)人" : nil
+    }
+
+    /// 列表行评分右下角的人数文本（剧集版）。
+    func listRatingCount(for show: TVShow) -> String? {
+        let key = Self.doubanKey(
+            title: show.name,
+            year: Self.year(from: show.firstAirDate)
+        )
+        if appLanguage == .zhCN {
+            return listDoubanRatings[key]?.note
+        }
+        if let external = listExternalRatings[String(show.id)],
+           let first = external.first(where: { $0.source == "IMDb" })
+            ?? external.first(where: { $0.source == "烂番茄" }) {
+            return first.note
+        }
+        return show.voteCount > 0 ? "\(show.voteCount)人" : nil
+    }
+
+    /// 行可见时触发加载首选评分（带去重，每个条目只请求一次）。
+    func ensureListRating(for movie: Movie) {
+        let key = Self.doubanKey(
+            title: movie.title,
+            year: Self.year(from: movie.releaseDate)
+        )
+        if appLanguage == .zhCN {
+            guard listDoubanRatings[key] == nil,
+                  !listRatingLoadKeys.contains(key) else { return }
+            listRatingLoadKeys.insert(key)
+            Task {
+                let client = DoubanRatingClient()
+                if let hit = try? await client.search(
+                    title: movie.title,
+                    year: Self.year(from: movie.releaseDate)
+                ) {
+                    var valueText = String(format: "%.1f", hit.score)
+                    valueText += " / 10"
+                    let rating = MovieRating(
+                        source: "豆瓣",
+                        value: valueText,
+                        note: hit.voteCount.map { "\($0) 人" } ?? "",
+                        url: URL(string: hit.pageURL)
+                    )
+                    await MainActor.run {
+                        listDoubanRatings[key] = rating
+                    }
+                }
+            }
+        } else {
+            let idKey = String(movie.id)
+            guard listExternalRatings[idKey] == nil,
+                  !listRatingLoadKeys.contains(idKey),
+                  hasOMDbKey else { return }
+            listRatingLoadKeys.insert(idKey)
+            Task {
+                let client = TMDBClient(
+                    token: token,
+                    language: appLanguage.apiCode
+                )
+                guard let ids = try? await client.externalIDs(movieID: movie.id),
+                      let imdbID = ids.imdbID, !imdbID.isEmpty else { return }
+                let ratings = try? await OMDbClient(
+                    apiKey: omdbKey,
+                    proxyBaseURL: dataProxyURL
+                ).ratings(imdbID: imdbID, title: movie.title)
+                await MainActor.run {
+                    listExternalRatings[idKey] = ratings ?? []
+                }
+            }
+        }
+    }
+
+    /// 行可见时触发加载首选评分（剧集版）。
+    func ensureListRating(for show: TVShow) {
+        let key = Self.doubanKey(
+            title: show.name,
+            year: Self.year(from: show.firstAirDate)
+        )
+        if appLanguage == .zhCN {
+            guard listDoubanRatings[key] == nil,
+                  !listRatingLoadKeys.contains(key) else { return }
+            listRatingLoadKeys.insert(key)
+            Task {
+                let client = DoubanRatingClient()
+                if let hit = try? await client.search(
+                    title: show.name,
+                    year: Self.year(from: show.firstAirDate)
+                ) {
+                    var valueText = String(format: "%.1f", hit.score)
+                    valueText += " / 10"
+                    let rating = MovieRating(
+                        source: "豆瓣",
+                        value: valueText,
+                        note: hit.voteCount.map { "\($0) 人" } ?? "",
+                        url: URL(string: hit.pageURL)
+                    )
+                    await MainActor.run {
+                        listDoubanRatings[key] = rating
+                    }
+                }
+            }
+        } else {
+            let idKey = String(show.id)
+            guard listExternalRatings[idKey] == nil,
+                  !listRatingLoadKeys.contains(idKey),
+                  hasOMDbKey else { return }
+            listRatingLoadKeys.insert(idKey)
+            Task {
+                let client = TMDBClient(
+                    token: token,
+                    language: appLanguage.apiCode
+                )
+                guard let ids = try? await client.tvExternalIDs(showID: show.id),
+                      let imdbID = ids.imdbID, !imdbID.isEmpty else { return }
+                let ratings = try? await OMDbClient(
+                    apiKey: omdbKey,
+                    proxyBaseURL: dataProxyURL
+                ).ratings(imdbID: imdbID, title: show.name)
+                await MainActor.run {
+                    listExternalRatings[idKey] = ratings ?? []
+                }
+            }
         }
     }
 
@@ -5250,6 +5545,7 @@ enum MovieRowPresentation {
 }
 
 struct MovieRow: View {
+    @ObservedObject var store: MovieStore
     let movie: Movie
     var upcomingRelease: UpcomingReleasePresentation? = nil
 
@@ -5280,12 +5576,15 @@ struct MovieRow: View {
                     .textSelection(.enabled)
 
                 HStack(spacing: 8) {
-                    Label(String(format: "%.1f", movie.voteAverage), systemImage: "star.fill")
-                        .foregroundStyle(.orange)
+                    if let rating = store.listRating(for: movie) {
+                        Label(rating.value, systemImage: "star.fill")
+                            .foregroundStyle(.orange)
+                            .help(rating.source)
+                    }
                     Text(movie.year)
                         .foregroundStyle(.secondary)
-                    if movie.voteCount > 0 {
-                        Text("\(movie.voteCount)人")
+                    if let count = store.listRatingCount(for: movie) {
+                        Text(count)
                             .foregroundStyle(.tertiary)
                     }
                 }
@@ -5309,11 +5608,15 @@ struct MovieRow: View {
                 copyToPasteboard(movie.title)
             }
         }
+        .onAppear {
+            store.ensureListRating(for: movie)
+        }
     }
 }
 
 struct RatingBadge: View {
     let rating: MovieRating
+    @Environment(\.openURL) private var openURL
 
     private var accent: Color {
         switch rating.source {
@@ -5326,7 +5629,7 @@ struct RatingBadge: View {
         }
     }
 
-    var body: some View {
+    private var label: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(rating.source)
                 .font(.caption2.bold())
@@ -5341,6 +5644,25 @@ struct RatingBadge: View {
         .padding(.vertical, 8)
         .frame(minWidth: 94, alignment: .leading)
         .background(accent.opacity(0.09), in: RoundedRectangle(cornerRadius: 9))
+    }
+
+    var body: some View {
+        if let url = rating.url {
+            Button {
+                openURL(url)
+            } label: {
+                label.overlay(alignment: .topTrailing) {
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(3)
+                }
+            }
+            .buttonStyle(.plain)
+            .help("打开评分来源页面")
+        } else {
+            label
+        }
     }
 }
 
@@ -6240,6 +6562,132 @@ struct MainlandTrailerFallbackView: View {
     }
 }
 
+/// 简体中文环境的预告片：豆瓣预告卡片式，点击卡片后用原生播放器播放。
+struct DoubanTrailerSection: View {
+    @ObservedObject var store: MovieStore
+    let title: String
+    @State private var playingURL: URL?
+    @State private var playingTitle = ""
+
+    private var trailerList: [DoubanTrailerItem] {
+        store.doubanTrailers
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let playingURL {
+                VStack(alignment: .leading, spacing: 7) {
+                    HStack {
+                        Text(playingTitle)
+                            .font(.caption.bold())
+                            .lineLimit(1)
+                        Spacer()
+                        Button {
+                            stop()
+                        } label: {
+                            Label("停止", systemImage: "stop.fill")
+                        }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                    }
+                    DoubanTrailerPlayerView(url: playingURL)
+                        .frame(height: 245)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+                .padding(8)
+                .background(
+                    Color.black.opacity(0.92),
+                    in: RoundedRectangle(cornerRadius: 12)
+                )
+            }
+
+            if store.isLoadingDoubanTrailers {
+                ProgressView("正在获取豆瓣预告…")
+                    .controlSize(.small)
+            } else if trailerList.isEmpty {
+                Text("暂无豆瓣预告")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 10) {
+                        ForEach(trailerList) { item in
+                            Button {
+                                play(item)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 5) {
+                                    ZStack(alignment: .center) {
+                                        AsyncImage(url: item.thumbnailURL) { phase in
+                                            switch phase {
+                                            case .success(let image):
+                                                image.resizable().scaledToFill()
+                                            case .failure:
+                                                Color.secondary.opacity(0.12)
+                                            default:
+                                                ProgressView()
+                                            }
+                                        }
+                                        .frame(width: 220, height: 124)
+                                        .background(Color.secondary.opacity(0.08))
+                                        .clipShape(
+                                            RoundedRectangle(cornerRadius: 9)
+                                        )
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 30))
+                                            .foregroundStyle(.white, .black.opacity(0.35))
+                                    }
+                                    HStack(spacing: 5) {
+                                        Text(item.title)
+                                            .font(.caption.bold())
+                                            .lineLimit(1)
+                                        if !item.durationText.isEmpty {
+                                            Text(item.durationText)
+                                                .font(.caption2)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .help("播放豆瓣预告")
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+                Text("预告片来自豆瓣，实际可用性以豆瓣页面为准。")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .onDisappear { stop() }
+    }
+
+    private func play(_ item: DoubanTrailerItem) {
+        Task {
+            if let url = try? await DoubanTrailerClient()
+                .playbackURL(trailerID: item.id) {
+                await MainActor.run {
+                    playingURL = url
+                    playingTitle = item.title
+                    NotificationCenter.default.post(
+                        name: .cineBarMediaPlaybackDidChange,
+                        object: true
+                    )
+                }
+            }
+        }
+    }
+
+    private func stop() {
+        playingURL = nil
+        playingTitle = ""
+        NotificationCenter.default.post(
+            name: .cineBarMediaPlaybackDidChange,
+            object: false
+        )
+    }
+}
+
 enum TrailerPlaybackMode: Equatable {
     case floating
     case fullScreen
@@ -6553,26 +7001,6 @@ struct MovieDetailView: View {
                                     .font(.title2.bold())
                                     .textSelection(.enabled)
                                 Button {
-                                    store.toggleReleaseReminder(for: movie)
-                                } label: {
-                                    Image(
-                                        systemName: store.hasReleaseReminder(
-                                            mediaType: .movie,
-                                            mediaID: movie.id
-                                        )
-                                            ? "bell.fill"
-                                            : "bell"
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.orange)
-                                .help(
-                                    detailReleaseDate == nil
-                                        ? "设置定档提醒"
-                                        : "设置上映提醒"
-                                )
-                                .disabled(movie.id <= 0)
-                                Button {
                                     store.toggleWatchlist(movie)
                                 } label: {
                                     Image(
@@ -6704,126 +7132,133 @@ struct MovieDetailView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("影片预告").font(.headline)
-                        if let inlineTrailerKey {
-                            VStack(alignment: .leading, spacing: 7) {
-                                HStack {
-                                    Text(inlineTrailerTitle)
-                                        .font(.caption.bold())
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Button {
-                                        stopInlineTrailer()
-                                    } label: {
-                                        Label("停止", systemImage: "stop.fill")
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .controlSize(.small)
-                                }
-                                YouTubePlayerView(videoKey: inlineTrailerKey)
-                                    .frame(height: 245)
-                                    .clipShape(
-                                        RoundedRectangle(
-                                            cornerRadius: 10,
-                                            style: .continuous
-                                        )
-                                    )
-                            }
-                            .padding(8)
-                            .background(
-                                Color.black.opacity(0.92),
-                                in: RoundedRectangle(cornerRadius: 12)
+                        if store.appLanguage == .zhCN {
+                            DoubanTrailerSection(
+                                store: store,
+                                title: movie.title
                             )
-                        }
-                        if store.isLoadingTrailers {
-                            ProgressView("正在获取影片预告…")
-                                .controlSize(.small)
-                        } else if store.trailers.isEmpty {
-                            Text("暂无官方预告")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                         } else {
-                            ForEach(store.trailers.prefix(3)) { trailer in
-                                if trailer.watchURL != nil {
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        HStack(spacing: 8) {
-                                            Image(systemName: "play.rectangle.fill")
-                                                .foregroundStyle(.red)
-                                            Text(
-                                                trailer.displayName(
-                                                    language: store.appLanguage
-                                                )
-                                            )
-                                                .lineLimit(1)
-                                            Spacer()
-                                            if trailer.official {
-                                                Text("官方")
-                                                    .font(.caption2.bold())
-                                                    .foregroundStyle(.secondary)
-                                            }
+                            if let inlineTrailerKey {
+                                VStack(alignment: .leading, spacing: 7) {
+                                    HStack {
+                                        Text(inlineTrailerTitle)
+                                            .font(.caption.bold())
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Button {
+                                            stopInlineTrailer()
+                                        } label: {
+                                            Label("停止", systemImage: "stop.fill")
                                         }
-
-                                        HStack {
-                                            Spacer()
-                                            Button(
-                                                inlineTrailerKey == trailer.key
-                                                    ? "停止小屏"
-                                                    : "小屏播放"
-                                            ) {
-                                                if inlineTrailerKey == trailer.key {
-                                                    stopInlineTrailer()
-                                                } else {
-                                                    TrailerPlaybackController.shared.close()
-                                                    inlineTrailerKey = trailer.key
-                                                    inlineTrailerTitle = trailer.displayName(
+                                        .buttonStyle(.borderless)
+                                        .controlSize(.small)
+                                    }
+                                    YouTubePlayerView(videoKey: inlineTrailerKey)
+                                        .frame(height: 245)
+                                        .clipShape(
+                                            RoundedRectangle(
+                                                cornerRadius: 10,
+                                                style: .continuous
+                                            )
+                                        )
+                                }
+                                .padding(8)
+                                .background(
+                                    Color.black.opacity(0.92),
+                                    in: RoundedRectangle(cornerRadius: 12)
+                                )
+                            }
+                            if store.isLoadingTrailers {
+                                ProgressView("正在获取影片预告…")
+                                    .controlSize(.small)
+                            } else if store.trailers.isEmpty {
+                                Text("暂无官方预告")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(store.trailers.prefix(3)) { trailer in
+                                    if trailer.watchURL != nil {
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            HStack(spacing: 8) {
+                                                Image(systemName: "play.rectangle.fill")
+                                                    .foregroundStyle(.red)
+                                                Text(
+                                                    trailer.displayName(
                                                         language: store.appLanguage
                                                     )
-                                                    NotificationCenter.default.post(
-                                                        name: .cineBarMediaPlaybackDidChange,
-                                                        object: true
-                                                    )
+                                                )
+                                                    .lineLimit(1)
+                                                Spacer()
+                                                if trailer.official {
+                                                    Text("官方")
+                                                        .font(.caption2.bold())
+                                                        .foregroundStyle(.secondary)
                                                 }
                                             }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            Button("浮窗播放") {
-                                                stopInlineTrailer()
-                                                TrailerPlaybackController.shared.show(
-                                                    videoKey: trailer.key,
-                                                    title: trailer.displayName(
-                                                        language: store.appLanguage
-                                                    ),
-                                                    mode: .floating
-                                                )
+
+                                            HStack {
+                                                Spacer()
+                                                Button(
+                                                    inlineTrailerKey == trailer.key
+                                                        ? "停止小屏"
+                                                        : "小屏播放"
+                                                ) {
+                                                    if inlineTrailerKey == trailer.key {
+                                                        stopInlineTrailer()
+                                                    } else {
+                                                        TrailerPlaybackController.shared.close()
+                                                        inlineTrailerKey = trailer.key
+                                                        inlineTrailerTitle = trailer.displayName(
+                                                            language: store.appLanguage
+                                                        )
+                                                        NotificationCenter.default.post(
+                                                            name: .cineBarMediaPlaybackDidChange,
+                                                            object: true
+                                                        )
+                                                    }
+                                                }
+                                                .buttonStyle(.bordered)
+                                                .controlSize(.small)
+                                                Button("浮窗播放") {
+                                                    stopInlineTrailer()
+                                                    TrailerPlaybackController.shared.show(
+                                                        videoKey: trailer.key,
+                                                        title: trailer.displayName(
+                                                            language: store.appLanguage
+                                                        ),
+                                                        mode: .floating
+                                                    )
+                                                }
+                                                .buttonStyle(.bordered)
+                                                .controlSize(.small)
+                                                Button("全屏播放") {
+                                                    stopInlineTrailer()
+                                                    TrailerPlaybackController.shared.show(
+                                                        videoKey: trailer.key,
+                                                        title: trailer.displayName(
+                                                            language: store.appLanguage
+                                                        ),
+                                                        mode: .fullScreen
+                                                    )
+                                                }
+                                                .buttonStyle(.borderedProminent)
+                                                .controlSize(.small)
                                             }
-                                            .buttonStyle(.bordered)
-                                            .controlSize(.small)
-                                            Button("全屏播放") {
-                                                stopInlineTrailer()
-                                                TrailerPlaybackController.shared.show(
-                                                    videoKey: trailer.key,
-                                                    title: trailer.displayName(
-                                                        language: store.appLanguage
-                                                    ),
-                                                    mode: .fullScreen
-                                                )
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                            .controlSize(.small)
                                         }
+                                        .font(.callout)
+                                        .padding(10)
+                                        .background(
+                                            Color.secondary.opacity(0.08),
+                                            in: RoundedRectangle(cornerRadius: 9)
+                                        )
                                     }
-                                    .font(.callout)
-                                    .padding(10)
-                                    .background(
-                                        Color.secondary.opacity(0.08),
-                                        in: RoundedRectangle(cornerRadius: 9)
-                                    )
                                 }
                             }
+                            MainlandTrailerFallbackView(
+                                title: movie.title,
+                                language: store.appLanguage
+                            )
                         }
-                        MainlandTrailerFallbackView(
-                            title: movie.title,
-                            language: store.appLanguage
-                        )
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -6997,6 +7432,7 @@ struct TVPosterView: View {
 }
 
 struct TVShowRow: View {
+    @ObservedObject var store: MovieStore
     let show: TVShow
     var airingLabel: String? = nil
 
@@ -7013,11 +7449,11 @@ struct TVShowRow: View {
                     .font(.headline)
                     .lineLimit(1)
                 HStack(spacing: 10) {
-                    Label(
-                        String(format: "%.1f", show.voteAverage),
-                        systemImage: "star.fill"
-                    )
-                    .foregroundStyle(.orange)
+                    if let rating = store.listRating(for: show) {
+                        Label(rating.value, systemImage: "star.fill")
+                            .foregroundStyle(.orange)
+                            .help(rating.source)
+                    }
                     Text(show.year)
                         .foregroundStyle(.secondary)
                 }
@@ -7033,6 +7469,9 @@ struct TVShowRow: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 9)
+        .onAppear {
+            store.ensureListRating(for: show)
+        }
     }
 }
 
@@ -7254,27 +7693,6 @@ struct TVDetailView: View {
                                     .font(.title2.bold())
                                     .textSelection(.enabled)
                                 Button {
-                                    store.toggleReleaseReminder(for: show)
-                                } label: {
-                                    Image(
-                                        systemName: store.hasReleaseReminder(
-                                            mediaType: .television,
-                                            mediaID: show.id
-                                        )
-                                            ? "bell.fill"
-                                            : "bell"
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .foregroundStyle(.orange)
-                                .help(
-                                    (store.tvDetails?.firstAirDate ??
-                                        show.firstAirDate) == nil
-                                        ? "设置定档提醒"
-                                        : "设置首播提醒"
-                                )
-                                .disabled(show.id <= 0)
-                                Button {
                                     store.toggleWatchlist(show)
                                 } label: {
                                     Image(
@@ -7453,16 +7871,10 @@ struct TVDetailView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                     Spacer()
-                                    EpisodeReminderMenu(
-                                        store: store,
-                                        show: show,
-                                        episode: episode
-                                    )
                                 }
                             }
                             if let season = upcomingSeason,
                                let airDate = season.airDate {
-                                let seasonSubID = "S\(season.seasonNumber)"
                                 HStack {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text("下一季 · \(season.name)")
@@ -7472,27 +7884,6 @@ struct TVDetailView: View {
                                             .foregroundStyle(.secondary)
                                     }
                                     Spacer()
-                                    Button {
-                                        store.toggleSeasonReminder(
-                                            show: show,
-                                            season: season
-                                        )
-                                    } label: {
-                                        Label(
-                                            store.hasReleaseReminder(
-                                                mediaType: .tvSeason,
-                                                mediaID: show.id,
-                                                subID: seasonSubID
-                                            ) ? "已提醒" : "提醒",
-                                            systemImage: store.hasReleaseReminder(
-                                                mediaType: .tvSeason,
-                                                mediaID: show.id,
-                                                subID: seasonSubID
-                                            ) ? "bell.fill" : "bell"
-                                        )
-                                    }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
                                 }
                             }
                         }
@@ -7502,113 +7893,120 @@ struct TVDetailView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("预告片").font(.headline)
-                        if let inlineTrailerKey {
-                            VStack(alignment: .leading, spacing: 7) {
-                                HStack {
-                                    Text(inlineTrailerTitle)
-                                        .font(.caption.bold())
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Button {
-                                        stopInlineTrailer()
-                                    } label: {
-                                        Label("停止", systemImage: "stop.fill")
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .controlSize(.small)
-                                }
-                                YouTubePlayerView(videoKey: inlineTrailerKey)
-                                    .frame(height: 245)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            }
-                            .padding(8)
-                            .background(
-                                Color.black.opacity(0.92),
-                                in: RoundedRectangle(cornerRadius: 12)
+                        if store.appLanguage == .zhCN {
+                            DoubanTrailerSection(
+                                store: store,
+                                title: show.name
                             )
-                        }
-                        if store.isLoadingTVDetails && store.tvTrailers.isEmpty {
-                            ProgressView("正在获取预告片…").controlSize(.small)
-                        } else if store.tvTrailers.isEmpty {
-                            Text("暂无官方预告")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                         } else {
-                            ForEach(store.tvTrailers.prefix(3)) { trailer in
-                                VStack(alignment: .leading, spacing: 8) {
+                            if let inlineTrailerKey {
+                                VStack(alignment: .leading, spacing: 7) {
                                     HStack {
-                                        Image(systemName: "play.rectangle.fill")
-                                            .foregroundStyle(.red)
-                                        Text(trailer.displayName(language: store.appLanguage))
+                                        Text(inlineTrailerTitle)
+                                            .font(.caption.bold())
                                             .lineLimit(1)
                                         Spacer()
-                                        if trailer.official {
-                                            Text("官方")
-                                                .font(.caption2.bold())
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                    HStack {
-                                        Spacer()
-                                        Button(
-                                            inlineTrailerKey == trailer.key
-                                                ? "停止小屏"
-                                                : "小屏播放"
-                                        ) {
-                                            if inlineTrailerKey == trailer.key {
-                                                stopInlineTrailer()
-                                            } else {
-                                                TrailerPlaybackController.shared.close()
-                                                inlineTrailerKey = trailer.key
-                                                inlineTrailerTitle = trailer.displayName(
-                                                    language: store.appLanguage
-                                                )
-                                                NotificationCenter.default.post(
-                                                    name: .cineBarMediaPlaybackDidChange,
-                                                    object: true
-                                                )
-                                            }
-                                        }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        Button("浮窗播放") {
+                                        Button {
                                             stopInlineTrailer()
-                                            TrailerPlaybackController.shared.show(
-                                                videoKey: trailer.key,
-                                                title: trailer.displayName(
-                                                    language: store.appLanguage
-                                                ),
-                                                mode: .floating
-                                            )
+                                        } label: {
+                                            Label("停止", systemImage: "stop.fill")
                                         }
-                                        .buttonStyle(.bordered)
-                                        .controlSize(.small)
-                                        Button("全屏播放") {
-                                            stopInlineTrailer()
-                                            TrailerPlaybackController.shared.show(
-                                                videoKey: trailer.key,
-                                                title: trailer.displayName(
-                                                    language: store.appLanguage
-                                                ),
-                                                mode: .fullScreen
-                                            )
-                                        }
-                                        .buttonStyle(.borderedProminent)
+                                        .buttonStyle(.borderless)
                                         .controlSize(.small)
                                     }
+                                    YouTubePlayerView(videoKey: inlineTrailerKey)
+                                        .frame(height: 245)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
                                 }
-                                .font(.callout)
-                                .padding(10)
+                                .padding(8)
                                 .background(
-                                    Color.secondary.opacity(0.08),
-                                    in: RoundedRectangle(cornerRadius: 9)
+                                    Color.black.opacity(0.92),
+                                    in: RoundedRectangle(cornerRadius: 12)
                                 )
                             }
+                            if store.isLoadingTVDetails && store.tvTrailers.isEmpty {
+                                ProgressView("正在获取预告片…").controlSize(.small)
+                            } else if store.tvTrailers.isEmpty {
+                                Text("暂无官方预告")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(store.tvTrailers.prefix(3)) { trailer in
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack {
+                                            Image(systemName: "play.rectangle.fill")
+                                                .foregroundStyle(.red)
+                                            Text(trailer.displayName(language: store.appLanguage))
+                                                .lineLimit(1)
+                                            Spacer()
+                                            if trailer.official {
+                                                Text("官方")
+                                                    .font(.caption2.bold())
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                        }
+                                        HStack {
+                                            Spacer()
+                                            Button(
+                                                inlineTrailerKey == trailer.key
+                                                    ? "停止小屏"
+                                                    : "小屏播放"
+                                            ) {
+                                                if inlineTrailerKey == trailer.key {
+                                                    stopInlineTrailer()
+                                                } else {
+                                                    TrailerPlaybackController.shared.close()
+                                                    inlineTrailerKey = trailer.key
+                                                    inlineTrailerTitle = trailer.displayName(
+                                                        language: store.appLanguage
+                                                    )
+                                                    NotificationCenter.default.post(
+                                                        name: .cineBarMediaPlaybackDidChange,
+                                                        object: true
+                                                    )
+                                                }
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            Button("浮窗播放") {
+                                                stopInlineTrailer()
+                                                TrailerPlaybackController.shared.show(
+                                                    videoKey: trailer.key,
+                                                    title: trailer.displayName(
+                                                        language: store.appLanguage
+                                                    ),
+                                                    mode: .floating
+                                                )
+                                            }
+                                            .buttonStyle(.bordered)
+                                            .controlSize(.small)
+                                            Button("全屏播放") {
+                                                stopInlineTrailer()
+                                                TrailerPlaybackController.shared.show(
+                                                    videoKey: trailer.key,
+                                                    title: trailer.displayName(
+                                                        language: store.appLanguage
+                                                    ),
+                                                    mode: .fullScreen
+                                                )
+                                            }
+                                            .buttonStyle(.borderedProminent)
+                                            .controlSize(.small)
+                                        }
+                                    }
+                                    .font(.callout)
+                                    .padding(10)
+                                    .background(
+                                        Color.secondary.opacity(0.08),
+                                        in: RoundedRectangle(cornerRadius: 9)
+                                    )
+                                }
+                            }
+                            MainlandTrailerFallbackView(
+                                title: show.name,
+                                language: store.appLanguage
+                            )
                         }
-                        MainlandTrailerFallbackView(
-                            title: show.name,
-                            language: store.appLanguage
-                        )
                     }
 
                     VStack(alignment: .leading, spacing: 8) {
@@ -7744,16 +8142,6 @@ struct TVDetailView: View {
                                                             .lineLimit(4)
                                                         }
                                                         Spacer(minLength: 4)
-                                                        if let airDate =
-                                                            episode.airDate,
-                                                           airDate >= todayText {
-                                                            EpisodeReminderMenu(
-                                                                store: store,
-                                                                show: show,
-                                                                episode: episode
-                                                                    .reminderSummary
-                                                            )
-                                                        }
                                                     }
                                                     .padding(.vertical, 5)
                                                     Divider()
@@ -8070,7 +8458,7 @@ struct PersonDetailView: View {
                                     Button {
                                         store.select(movie)
                                     } label: {
-                                        MovieRow(movie: movie)
+                                        MovieRow(store: store, movie: movie)
                                     }
                                     .buttonStyle(.plain)
                                     Button {
@@ -8106,7 +8494,7 @@ struct PersonDetailView: View {
                                     Button {
                                         store.selectTV(show)
                                     } label: {
-                                        TVShowRow(show: show)
+                                        TVShowRow(store: store, show: show)
                                     }
                                     .buttonStyle(.plain)
                                     Button {
@@ -9968,7 +10356,7 @@ struct ContentView: View {
                                     Button {
                                         store.select(movie)
                                     } label: {
-                                        MovieRow(movie: movie)
+                                        MovieRow(store: store, movie: movie)
                                     }
                                     .buttonStyle(.plain)
                                     Button {
@@ -9993,7 +10381,7 @@ struct ContentView: View {
                                     Button {
                                         store.selectTV(show)
                                     } label: {
-                                        TVShowRow(show: show)
+                                        TVShowRow(store: store, show: show)
                                     }
                                     .buttonStyle(.plain)
                                     Button {
@@ -10015,6 +10403,7 @@ struct ContentView: View {
                                     store.select(movie)
                                 } label: {
                                     MovieRow(
+                                        store: store,
                                         movie: movie,
                                         upcomingRelease: MovieRowPresentation.upcomingRelease(
                                             section: store.movieBrowseSection,
@@ -10090,6 +10479,7 @@ struct ContentView: View {
                                     store.selectTV(show)
                                 } label: {
                                     TVShowRow(
+                                        store: store,
                                         show: show,
                                         airingLabel:
                                             store.tvBrowseSection == .airingToday
