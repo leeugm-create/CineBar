@@ -11100,6 +11100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var autoHideTimer: Timer?
     private var activityMonitor: Any?
     private var isMediaPlaybackActive = false
+    private var updateBadgeView: NSView?
+    private var updateBadgeCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         _ = updaterService
@@ -11140,6 +11142,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             button.action = #selector(togglePanel)
         }
         self.statusItem = statusItem
+
+        updateBadgeCancellable = updaterService.$hasUpdateAvailable
+            .receive(on: RunLoop.main)
+            .sink { [weak self] hasUpdate in
+                self?.setUpdateBadge(visible: hasUpdate)
+            }
+        updaterService.startSilentUpdateChecks()
 
         let panel = CineBarPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
@@ -11327,6 +11336,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             autoHideTimer?.invalidate()
         } else {
             scheduleAutoHide()
+        }
+    }
+
+    /// 菜单栏图标右上角蓝色圆点：有可用更新时显示，点击可跳转检查。
+    private func setUpdateBadge(visible: Bool) {
+        guard let button = statusItem?.button else { return }
+        button.toolTip = visible
+            ? "CineBar · 发现新版本，点击图标查看"
+            : "CineBar · 找到下一部好片"
+        if visible {
+            guard updateBadgeView == nil else { return }
+            let badge = NSView(frame: NSRect(x: 0, y: 0, width: 10, height: 10))
+            badge.wantsLayer = true
+            badge.layer?.backgroundColor = NSColor.systemBlue.cgColor
+            badge.layer?.cornerRadius = 5
+            badge.layer?.borderWidth = 1
+            badge.layer?.borderColor = NSColor.white.cgColor
+            badge.translatesAutoresizingMaskIntoConstraints = false
+            button.addSubview(badge)
+            NSLayoutConstraint.activate([
+                badge.topAnchor.constraint(
+                    equalTo: button.topAnchor,
+                    constant: 3
+                ),
+                badge.trailingAnchor.constraint(
+                    equalTo: button.trailingAnchor,
+                    constant: -3
+                ),
+                badge.widthAnchor.constraint(equalToConstant: 10),
+                badge.heightAnchor.constraint(equalToConstant: 10)
+            ])
+            updateBadgeView = badge
+        } else {
+            updateBadgeView?.removeFromSuperview()
+            updateBadgeView = nil
         }
     }
 
