@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 42&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;检查更新&amp;quot;页面新增&amp;quot;版本更新记录&amp;quot;：完整展示从最初到当前每个版本的具体改动，方便回顾每次更新内容。&lt;/li&gt;&lt;li&gt;- 版本记录随安装包自带，无需联网即可查看。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 43&lt;/li&gt;&lt;li&gt;- 菜单栏更新提示蓝点缩小并去除白色描边，视觉更轻量。&lt;/li&gt;&lt;li&gt;- 有可用更新时，点击菜单栏图标直接进入更新安装，不再只是提示。&lt;/li&gt;&lt;li&gt;- 海报卡片新增高光效果：鼠标移到卡片时高光随鼠标位置移动，观感更生动。&lt;/li&gt;&lt;li&gt;- 票房说明去掉&amp;quot;按美元汇率换算&amp;quot;，仅显示人民币。&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;支持&amp;quot;页简化：移除 PayPal 与扫码，改为&amp;quot;前往支持页&amp;quot;按钮，点击跳转官网支持页。&lt;/li&gt;&lt;li&gt;- 预告片改用豆瓣新版接口，播放更为稳定，可直接获取视频源。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-42-universal.zip"
-        sparkle:version="42"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-43-universal.zip"
+        sparkle:version="43"
         sparkle:shortVersionString="0.8.3"
-        length="6908021"
+        length="6890598"
         type="application/octet-stream"
-        sparkle:edSignature="NlNFlPITl/EFSB3SxIgZh5Y6L/WvQpYPrJNLJuC4WHJ9APCrYOzWK/vPcL9wEd9Mr/oHC5kDuhlnHWkAiOrzBA=="/>
+        sparkle:edSignature="ffVR3tZX/XEcpdIl1EkdRl6vsW5DPxW4HrpOSndE5wygvvQg96aFTGwp4m0fiXe8gQlf/GlT+h++W2ddpmgpDQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 42&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;检查更新&amp;quot;页面新增&amp;quot;版本更新记录&amp;quot;：完整展示从最初到当前每个版本的具体改动，方便回顾每次更新内容。&lt;/li&gt;&lt;li&gt;- 版本记录随安装包自带，无需联网即可查看。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-42-universal.zip" sparkle:version="42" sparkle:shortVersionString="0.8.3" length="6908021" type="application/octet-stream" sparkle:edSignature="NlNFlPITl/EFSB3SxIgZh5Y6L/WvQpYPrJNLJuC4WHJ9APCrYOzWK/vPcL9wEd9Mr/oHC5kDuhlnHWkAiOrzBA=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
