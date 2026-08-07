@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 44&lt;/li&gt;&lt;li&gt;- 修复安装包签名问题：此前版本号更新记录在签名之后才写入应用包，导致代码签名失效、首次打开提示&amp;quot;已损坏&amp;quot;。现已在签名前写入完整记录，签名校验通过，可正常安装运行。&lt;/li&gt;&lt;li&gt;- 保留 Build 43 的全部改进（缩小的更新蓝点、点击图标直达更新、海报高光、人民币票房说明、官网支持页入口、更稳定的豆瓣预告片接口）。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 45&lt;/li&gt;&lt;li&gt;- 安装包精简：现在安装目录只包含 CineBar.app 和一份精简安装说明，去掉多余的历史版本说明与构建清单，解压更清爽。&lt;/li&gt;&lt;li&gt;- 保留 Build 44 修复的完整代码签名，可正常安装运行。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-44-universal.zip"
-        sparkle:version="44"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-45-universal.zip"
+        sparkle:version="45"
         sparkle:shortVersionString="0.8.3"
-        length="6894533"
+        length="6854971"
         type="application/octet-stream"
-        sparkle:edSignature="ziHkJZvNLUW2Je2oyEtmmoCetRNbhFY/vqztvrWtLYPZpWxuxjTsOP+dgT12qfCe3706jrfHbTjdcaOIeAeeAg=="/>
+        sparkle:edSignature="10+wCnrP3aMLZgi+5LvqQi/Bzuy1pJ+Y7HL0pSiH0p6TA6F6zGn/dik19dMOSPF3s75gOlaSeR3EDyiljhpqBw=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 44&lt;/li&gt;&lt;li&gt;- 修复安装包签名问题：此前版本号更新记录在签名之后才写入应用包，导致代码签名失效、首次打开提示&amp;quot;已损坏&amp;quot;。现已在签名前写入完整记录，签名校验通过，可正常安装运行。&lt;/li&gt;&lt;li&gt;- 保留 Build 43 的全部改进（缩小的更新蓝点、点击图标直达更新、海报高光、人民币票房说明、官网支持页入口、更稳定的豆瓣预告片接口）。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-44-universal.zip" sparkle:version="44" sparkle:shortVersionString="0.8.3" length="6894533" type="application/octet-stream" sparkle:edSignature="ziHkJZvNLUW2Je2oyEtmmoCetRNbhFY/vqztvrWtLYPZpWxuxjTsOP+dgT12qfCe3706jrfHbTjdcaOIeAeeAg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
