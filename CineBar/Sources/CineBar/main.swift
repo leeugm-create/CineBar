@@ -3876,6 +3876,9 @@ final class MovieStore: ObservableObject {
                 canLoadMoreMovieBrowse = result.page < result.totalPages
                 selectedShelf = nil
                 message = "\(section.title) · \(result.movies.count) 部"
+                if section == .upcoming, appLanguage == .zhCN {
+                    correctUpcomingDatesWithDouban()
+                }
             } catch {
                 recordServiceDiagnostic(
                     service: "data",
@@ -3897,6 +3900,45 @@ final class MovieStore: ObservableObject {
                 }
             }
             isLoading = false
+        }
+    }
+
+    /// 即将上映：拉豆瓣 coming 列表，按标题匹配覆盖中国大陆上映日期。
+    /// TMDB 某些影片在中国大陆有多个日期条目（首映 / 重映），
+    /// /movie/upcoming 可能因地区时序选出错误日期（如机器人总动员 4/16 vs 重映 8/19）。
+    /// 豆瓣列表只含未来上映，用它校正 localizedReleaseDate 更贴近用户。
+    func correctUpcomingDatesWithDouban() {
+        Task {
+            let items = (try? await DoubanComingClient().coming()) ?? []
+            guard !items.isEmpty else { return }
+            let byDate: [String: [DoubanComingItem]] = Dictionary(
+                grouping: items,
+                by: { $0.displayDate }
+            )
+            await MainActor.run {
+                let sortedDates = byDate.keys.sorted()
+                for date in sortedDates {
+                    let candidates = byDate[date] ?? []
+                    for item in candidates {
+                        let normalized = DoubanRatingClient.normalize(item.title)
+                        guard !normalized.isEmpty else { continue }
+                        for idx in movies.indices {
+                            let movieTitle = DoubanRatingClient.normalize(movies[idx].title)
+                            guard movieTitle == normalized ||
+                                  movieTitle.contains(normalized) ||
+                                  normalized.contains(movieTitle) else { continue }
+                            // 仅当 TMDB 日期缺失或不同才覆盖为豆瓣日期（当年）。
+                            let doubanFull = DoubanComingDate.fullDate(item.displayDate)
+                            guard let doubanFull else { continue }
+                            if movies[idx].localizedReleaseDate != doubanFull {
+                                var corrected = movies[idx]
+                                corrected.localizedReleaseDate = doubanFull
+                                movies[idx] = corrected
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -5494,38 +5536,16 @@ struct PosterView: View {
 
 /// 双列网格卡片：大图海报 + 片名 + 评分 + 简介（方案 B）。
 /// 按用户确认：去掉年份与评分人数，简介最多 2 行，点击进详情。
+/// 海报带类 Apple TV 的鼠标视差 3D 交互。
 struct MovieCardView: View {
     @ObservedObject var store: MovieStore
     let movie: Movie
+    @State private var isHovering = false
+    @State private var hoverOffset = CGSize.zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Group {
-                if let url = movie.posterURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        case .failure:
-                            cardPlaceholder
-                        default:
-                            ZStack {
-                                Color.secondary.opacity(0.12)
-                                ProgressView().controlSize(.small)
-                            }
-                        }
-                    }
-                } else {
-                    cardPlaceholder
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .aspectRatio(2 / 3, contentMode: .fit)
-            .clipped()
-            .clipShape(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-            )
-
+            cardPoster
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(movie.title)
@@ -5559,6 +5579,90 @@ struct MovieCardView: View {
         }
     }
 
+    private var cardPoster: some View {
+        ZStack {
+            GeometryReader { proxy in
+                ZStack {
+                    Group {
+                        if let url = movie.posterURL {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image.resizable().scaledToFill()
+                                case .failure:
+                                    cardPlaceholder
+                                default:
+                                    ZStack {
+                                        Color.secondary.opacity(0.12)
+                                        ProgressView().controlSize(.small)
+                                    }
+                                }
+                            }
+                        } else {
+                            cardPlaceholder
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(2 / 3, contentMode: .fit)
+                    .clipped()
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .shadow(
+                    color: .black.opacity(isHovering ? 0.30 : 0.10),
+                    radius: isHovering ? 16 : 8,
+                    y: isHovering ? 8 : 4
+                )
+                .scaleEffect(isHovering ? 1.03 : 1.0)
+                .rotation3DEffect(
+                    .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.4
+                )
+                .rotation3DEffect(
+                    .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                    axis: (x: 1, y: 0, z: 0),
+                    perspective: 0.4
+                )
+                .animation(
+                    .easeOut(duration: 0.18),
+                    value: hoverOffset
+                )
+                .animation(
+                    .easeOut(duration: 0.35),
+                    value: isHovering
+                )
+                .onContinuousHover(coordinateSpace: .local) { phase in
+                    switch phase {
+                    case .active(let location):
+                        isHovering = true
+                        hoverOffset = CGSize(
+                            width: location.x - proxy.size.width / 2,
+                            height: location.y - proxy.size.height / 2
+                        )
+                    case .ended:
+                        isHovering = false
+                        hoverOffset = .zero
+                    }
+                }
+            }
+        }
+        .aspectRatio(2 / 3, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
+        guard isHovering, size.width > 0, size.height > 0 else { return 0 }
+        let maxDegrees: CGFloat = 10
+        let normalized = isYaw
+            ? hoverOffset.width / (size.width / 2)
+            : -hoverOffset.height / (size.height / 2)
+        return max(-maxDegrees, min(maxDegrees, normalized * maxDegrees))
+    }
+
     private var cardPlaceholder: some View {
         ZStack {
             LinearGradient(
@@ -5577,35 +5681,12 @@ struct MovieCardView: View {
 struct TVCardView: View {
     @ObservedObject var store: MovieStore
     let show: TVShow
+    @State private var isHovering = false
+    @State private var hoverOffset = CGSize.zero
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Group {
-                if let url = show.posterURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFill()
-                        case .failure:
-                            cardPlaceholder
-                        default:
-                            ZStack {
-                                Color.secondary.opacity(0.12)
-                                ProgressView().controlSize(.small)
-                            }
-                        }
-                    }
-                } else {
-                    cardPlaceholder
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .aspectRatio(2 / 3, contentMode: .fit)
-            .clipped()
-            .clipShape(
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
-            )
-
+            cardPoster
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(show.name)
@@ -5637,6 +5718,90 @@ struct TVCardView: View {
         .onAppear {
             store.ensureListRating(for: show)
         }
+    }
+
+    private var cardPoster: some View {
+        ZStack {
+            GeometryReader { proxy in
+                ZStack {
+                    Group {
+                        if let url = show.posterURL {
+                            AsyncImage(url: url) { phase in
+                                switch phase {
+                                case .success(let image):
+                                    image.resizable().scaledToFill()
+                                case .failure:
+                                    cardPlaceholder
+                                default:
+                                    ZStack {
+                                        Color.secondary.opacity(0.12)
+                                        ProgressView().controlSize(.small)
+                                    }
+                                }
+                            }
+                        } else {
+                            cardPlaceholder
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .aspectRatio(2 / 3, contentMode: .fit)
+                    .clipped()
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .shadow(
+                    color: .black.opacity(isHovering ? 0.30 : 0.10),
+                    radius: isHovering ? 16 : 8,
+                    y: isHovering ? 8 : 4
+                )
+                .scaleEffect(isHovering ? 1.03 : 1.0)
+                .rotation3DEffect(
+                    .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.4
+                )
+                .rotation3DEffect(
+                    .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                    axis: (x: 1, y: 0, z: 0),
+                    perspective: 0.4
+                )
+                .animation(
+                    .easeOut(duration: 0.18),
+                    value: hoverOffset
+                )
+                .animation(
+                    .easeOut(duration: 0.35),
+                    value: isHovering
+                )
+                .onContinuousHover(coordinateSpace: .local) { phase in
+                    switch phase {
+                    case .active(let location):
+                        isHovering = true
+                        hoverOffset = CGSize(
+                            width: location.x - proxy.size.width / 2,
+                            height: location.y - proxy.size.height / 2
+                        )
+                    case .ended:
+                        isHovering = false
+                        hoverOffset = .zero
+                    }
+                }
+            }
+        }
+        .aspectRatio(2 / 3, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
+        guard isHovering, size.width > 0, size.height > 0 else { return 0 }
+        let maxDegrees: CGFloat = 10
+        let normalized = isYaw
+            ? hoverOffset.width / (size.width / 2)
+            : -hoverOffset.height / (size.height / 2)
+        return max(-maxDegrees, min(maxDegrees, normalized * maxDegrees))
     }
 
     private var cardPlaceholder: some View {
@@ -6139,13 +6304,78 @@ struct CastMemberCard: View {
 struct BoxOfficeView: View {
     let financials: MovieFinancials?
     let isLoading: Bool
+    var language: AppLanguage = .zhCN
+    @State private var usdToCNY: Double?
+    @State private var rateIsStale = false
+
+    private static let rateCacheKey = "usd-cny-rate"
+    private static let rateCacheDateKey = "usd-cny-rate-date"
+    private static let rateRefreshInterval: TimeInterval = 24 * 60 * 60
 
     private func currency(_ value: Int64) -> String {
+        if language == .zhCN, let rate = usdToCNY {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .currency
+            formatter.currencyCode = "CNY"
+            formatter.maximumFractionDigits = 0
+            let converted = Double(value) * rate
+            return formatter.string(from: NSNumber(value: converted)) ?? "¥\(Int(converted))"
+        }
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "USD"
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: value)) ?? "$\(value)"
+    }
+
+    private func loadUSDCNYRate() {
+        guard language == .zhCN else {
+            usdToCNY = nil
+            return
+        }
+        let defaults = UserDefaults.standard
+        if let cached = defaults.object(forKey: Self.rateCacheKey) as? Double,
+           let date = defaults.object(forKey: Self.rateCacheDateKey) as? Date,
+           Date().timeIntervalSince(date) < Self.rateRefreshInterval {
+            usdToCNY = cached
+            rateIsStale = false
+            return
+        }
+        Task {
+            let rate = await fetchUSDCNYRate()
+            await MainActor.run {
+                usdToCNY = rate
+                rateIsStale = rate == nil
+                if let rate {
+                    defaults.set(rate, forKey: Self.rateCacheKey)
+                    defaults.set(Date(), forKey: Self.rateCacheDateKey)
+                }
+            }
+        }
+    }
+
+    private func fetchUSDCNYRate() async -> Double? {
+        let sources = [
+            URL(string: "https://open.er-api.com/v6/latest/USD")!,
+            URL(string: "https://api.frankfurter.app/latest?from=USD&to=CNY")!
+        ]
+        for source in sources {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: source)
+                if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                    if let rates = json["rates"] as? [String: Any],
+                       let rate = rates["CNY"] as? Double {
+                        return rate
+                    }
+                    if let rate = json["rate"] as? Double {
+                        return rate
+                    }
+                }
+            } catch {
+                continue
+            }
+        }
+        return nil
     }
 
     var body: some View {
@@ -6169,12 +6399,21 @@ struct BoxOfficeView: View {
                 }
             }
             Spacer()
-            Text("美元 · 非实时")
+            Text(unitFootnote)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
         .padding(10)
         .cineGlass(cornerRadius: 10)
+        .task(id: language) {
+            loadUSDCNYRate()
+        }
+    }
+
+    private var unitFootnote: String {
+        guard language == .zhCN else { return "美元 · 非实时" }
+        if rateIsStale { return "人民币 · 汇率暂不可用" }
+        return "人民币 · 按美元汇率换算"
     }
 }
 
@@ -7284,7 +7523,8 @@ struct MovieDetailView: View {
 
                     BoxOfficeView(
                         financials: store.financials,
-                        isLoading: store.isLoadingFinancials
+                        isLoading: store.isLoadingFinancials,
+                        language: store.appLanguage
                     )
 
                     MovieFactsView(
@@ -9080,7 +9320,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .recommendation: return "推荐偏好"
         case .data: return "数据来源"
         case .localLibrary: return "本地片库"
-        case .info: return "关于"
+        case .info: return "检查更新"
         case .support: return "支持"
         }
     }
@@ -9108,6 +9348,28 @@ struct SettingsRootView: View {
         ("CN", "中国大陆"), ("HK", "中国香港"), ("TW", "中国台湾"),
         ("US", "美国"), ("GB", "英国"), ("JP", "日本"), ("KR", "韩国")
     ]
+
+    private static var shortVersion: String {
+        Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "0.8.3-test.15"
+    }
+
+    private static var buildNumber: String {
+        Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String ?? "0"
+    }
+
+    private static var displayVersion: String {
+        shortVersion
+    }
+
+    private static var buildDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy 年 M 月"
+        return formatter.string(from: Date())
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -9479,8 +9741,8 @@ struct SettingsRootView: View {
             settingsCard {
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("CineBar 0.8.3-test.15").font(.title3.bold())
-                        Text("Build 38 · 2026 年 8 月").font(.caption).foregroundStyle(.secondary)
+                        Text("CineBar \(Self.displayVersion)").font(.title3.bold())
+                        Text("Build \(Self.buildNumber) · \(Self.buildDate)").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
@@ -9494,11 +9756,11 @@ struct SettingsRootView: View {
                     ))
                     .labelsHidden()
 
-                    if updaterService.canCheckForUpdates {
-                        Button("检查更新") {
-                            updaterService.checkForUpdates()
-                        }
+                    Button("检查更新") {
+                        updaterService.checkForUpdates()
                     }
+                    .disabled(!updaterService.canCheckForUpdates)
+                    .opacity(updaterService.canCheckForUpdates ? 1 : 0.5)
                 }
                 Text("更新包会在安装前验证 CineBar 的独立签名。")
                     .font(.caption).foregroundStyle(.secondary)
