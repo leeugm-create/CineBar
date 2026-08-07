@@ -29,7 +29,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.8.3</string>
 	<key>CFBundleVersion</key>
-	<string>42</string>
+	<string>43</string>
 	<key>CineBarCommunityBackupURLs</key>
 	<array/>
 	<key>CineBarCommunityPublicKey</key>
@@ -45,7 +45,7 @@
 	<key>CineBarShareURL</key>
 	<string>https://share.cinebar.cc</string>
 	<key>CineBarSupportURL</key>
-	<string>https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=VVVZUSU9QUJBW&amp;currency_code=USD</string>
+	<string>https://cinebar.cc/support</string>
 	<key>CineBarTelemetryURL</key>
 	<string>https://telemetry.cinebar.cc/v1/telemetry/install</string>
 	<key>LSMinimumSystemVersion</key>

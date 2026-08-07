@@ -5605,6 +5605,24 @@ struct MovieCardView: View {
                     .frame(maxWidth: .infinity)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipped()
+
+                    RadialGradient(
+                        colors: [
+                            .white.opacity(0.30),
+                            .white.opacity(0.0)
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: max(proxy.size.width, proxy.size.height)
+                    )
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .offset(
+                        x: hoverOffset.width * 0.45,
+                        y: hoverOffset.height * 0.45
+                    )
+                    .opacity(isHovering ? 1 : 0)
+                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipShape(
@@ -5746,6 +5764,24 @@ struct TVCardView: View {
                     .frame(maxWidth: .infinity)
                     .aspectRatio(2 / 3, contentMode: .fit)
                     .clipped()
+
+                    RadialGradient(
+                        colors: [
+                            .white.opacity(0.30),
+                            .white.opacity(0.0)
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: max(proxy.size.width, proxy.size.height)
+                    )
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .offset(
+                        x: hoverOffset.width * 0.45,
+                        y: hoverOffset.height * 0.45
+                    )
+                    .opacity(isHovering ? 1 : 0)
+                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
                 }
                 .frame(width: proxy.size.width, height: proxy.size.height)
                 .clipShape(
@@ -6412,8 +6448,7 @@ struct BoxOfficeView: View {
 
     private var unitFootnote: String {
         guard language == .zhCN else { return "美元 · 非实时" }
-        if rateIsStale { return "人民币 · 汇率暂不可用" }
-        return "人民币 · 按美元汇率换算"
+        return "人民币"
     }
 }
 
@@ -7115,31 +7150,16 @@ struct DoubanTrailerSection: View {
 
     private func play(_ item: DoubanTrailerItem) {
         playErrorMessage = nil
-        Task {
-            do {
-                guard let url = try await DoubanTrailerClient()
-                    .playbackURL(trailerID: item.id) else {
-                    await MainActor.run {
-                        playErrorMessage =
-                            "该预告未能获取到可用源，可能已失效，请换一条重试"
-                    }
-                    return
-                }
-                await MainActor.run {
-                    playingURL = url
-                    playingTitle = item.title
-                    NotificationCenter.default.post(
-                        name: .cineBarMediaPlaybackDidChange,
-                        object: true
-                    )
-                }
-            } catch {
-                await MainActor.run {
-                    playErrorMessage =
-                        "预告加载失败（\(error.localizedDescription)），请重试"
-                }
-            }
+        guard let url = item.playbackURL else {
+            playErrorMessage = "该预告未能获取到可用源，可能已失效，请换一条重试"
+            return
         }
+        playingURL = url
+        playingTitle = item.title
+        NotificationCenter.default.post(
+            name: .cineBarMediaPlaybackDidChange,
+            object: true
+        )
     }
 
     private func stop() {
@@ -9788,28 +9808,20 @@ struct SettingsRootView: View {
             VStack(alignment: .leading, spacing: 14) {
                 settingsCard {
                     Image(systemName: "cup.and.saucer.fill")
-                        .font(.system(size: 54)).foregroundStyle(.orange)
+                        .font(.system(size: 54))
+                        .foregroundStyle(.orange)
                     Text("支持 CineBar").font(.title2.bold())
-                    Text("CineBar 承诺完全免费、无广告、无订阅。若它为你省下了寻找影片的时间，欢迎支持我们一杯咖啡，让项目继续更新。")
+                    Text("CineBar 承诺完全免费、无广告、无订阅。若它为你省下了寻找影片的时间，欢迎通过网页支持我们，让项目持续更新。")
                         .foregroundStyle(.secondary)
                     Button {
                         if let url = store.supportURL { openURL(url) }
                     } label: {
-                        Label("PayPal 打赏", systemImage: "creditcard")
+                        Label("前往支持页", systemImage: "safari")
                             .frame(minWidth: 180)
                     }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.large)
                     .disabled(store.supportURL == nil)
-                }
-                settingsCard {
-                    Text("国内扫码打赏").font(.headline)
-                    HStack(spacing: 16) {
-                        qrCodeCard(title: "微信", imageName: "wxpay")
-                        qrCodeCard(title: "支付宝", imageName: "alipay")
-                    }
-                    Text("使用手机微信或支付宝扫描上方二维码即可打赏。")
-                        .font(.caption).foregroundStyle(.secondary)
                 }
             }
         }
@@ -11222,7 +11234,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             button.image = image
             button.toolTip = "CineBar · 找到下一部好片"
             button.target = self
-            button.action = #selector(togglePanel)
+            button.action = #selector(menuBarClicked)
         }
         self.statusItem = statusItem
 
@@ -11426,34 +11438,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private func setUpdateBadge(visible: Bool) {
         guard let button = statusItem?.button else { return }
         button.toolTip = visible
-            ? "CineBar · 发现新版本，点击图标查看"
+            ? "CineBar · 有新版本，点击图标进行更新"
             : "CineBar · 找到下一部好片"
         if visible {
             guard updateBadgeView == nil else { return }
-            let badge = NSView(frame: NSRect(x: 0, y: 0, width: 10, height: 10))
+            let badge = NSView(frame: NSRect(x: 0, y: 0, width: 6, height: 6))
             badge.wantsLayer = true
             badge.layer?.backgroundColor = NSColor.systemBlue.cgColor
-            badge.layer?.cornerRadius = 5
-            badge.layer?.borderWidth = 1
-            badge.layer?.borderColor = NSColor.white.cgColor
+            badge.layer?.cornerRadius = 3
             badge.translatesAutoresizingMaskIntoConstraints = false
             button.addSubview(badge)
             NSLayoutConstraint.activate([
                 badge.topAnchor.constraint(
                     equalTo: button.topAnchor,
-                    constant: 3
+                    constant: 2
                 ),
                 badge.trailingAnchor.constraint(
                     equalTo: button.trailingAnchor,
-                    constant: -3
+                    constant: -2
                 ),
-                badge.widthAnchor.constraint(equalToConstant: 10),
-                badge.heightAnchor.constraint(equalToConstant: 10)
+                badge.widthAnchor.constraint(equalToConstant: 6),
+                badge.heightAnchor.constraint(equalToConstant: 6)
             ])
             updateBadgeView = badge
         } else {
             updateBadgeView?.removeFromSuperview()
             updateBadgeView = nil
+        }
+    }
+
+    @objc private func menuBarClicked() {
+        if updaterService.hasUpdateAvailable {
+            updaterService.checkForUpdates()
+        } else {
+            togglePanel()
         }
     }
 
