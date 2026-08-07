@@ -149,14 +149,28 @@ export default function Home() {
       <section className="section" id="support">
         <h2>软件保持免费、无广告、无订阅</h2>
         <p className="section-lead">如果 CineBar 为你节省了找片时间，可以自愿支持一次开发。</p>
-        <form action="https://www.paypal.com/cgi-bin/webscr" method="post">
-          <input type="hidden" name="cmd" value="_s-xclick" />
-          <input type="hidden" name="hosted_button_id" value="VVVZUSU9QUJBW" />
-          <input type="hidden" name="currency_code" value="USD" />
-          <button className="button primary" type="submit">
-            用 PayPal 自愿支持 5 美元
-          </button>
-        </form>
+        <div className="support-grid">
+          <a
+            className="support-card"
+            href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=VVVZUSU9QUJBW&amp;currency_code=USD"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span className="support-pay-title">PayPal</span>
+            <span className="support-pay-desc">美元，用于海外用户</span>
+            <span className="support-cta">跳转支付 →</span>
+          </a>
+          <div className="support-card">
+            <span className="support-pay-title">微信</span>
+            <img src="/wxpay.png" alt="微信收款码" width="140" height="140" loading="lazy" />
+            <span className="support-pay-doc">手机微信扫码打赏</span>
+          </div>
+          <div className="support-card">
+            <span className="support-pay-title">支付宝</span>
+            <img src="/alipay.png" alt="支付宝收款码" width="140" height="140" loading="lazy" />
+            <span className="support-pay-doc">支付宝扫码打赏</span>
+          </div>
+        </div>
         <small className="support-note">一次性自愿支持，不会解锁功能，也不是订阅。</small>
       </section>
 
