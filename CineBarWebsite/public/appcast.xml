@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 36&lt;/li&gt;&lt;li&gt;- 优化本地片库扫描性能：浏览大量视频文件时更快构建条目（消除了随文件数平方增长的查找开销）。&lt;/li&gt;&lt;li&gt;- 读取视频时长超时缩短为 8 秒，避免在个别异常文件上长时间卡住扫描。&lt;/li&gt;&lt;li&gt;- 保留本地片库多维智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝扫码打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 37&lt;/li&gt;&lt;li&gt;- 详情页新增豆瓣评分：打开影片或剧集详情时，自动抓取并显示豆瓣评分与评分人数，作为并列评分来源展示。&lt;/li&gt;&lt;li&gt;- 豆瓣评分抓取基于公开搜索页、非登录；若豆瓣风控导致抓取失败，详情页会静默隐藏该评分，不影响其他功能。&lt;/li&gt;&lt;li&gt;- 保留本地片库智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-36-universal.zip"
-        sparkle:version="36"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-37-universal.zip"
+        sparkle:version="37"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="6552438"
+        length="6596766"
         type="application/octet-stream"
-        sparkle:edSignature="9C6+FlOa4yLvgW6UozPDAV2wysPirN0vXOnyuLoFJ2LT0TVaMsosoqSTmFAWzDFmHiKyBpIoFaT9+Ol+FQdCAA=="/>
+        sparkle:edSignature="P80pWdHVjvQmgPjbfcM/M7Sq1iY9l1MdcbpL8120M766iqkeJsg/sDyy+y7BA/eQbYZYlXMk8c1UUSCfTEX9AA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 36&lt;/li&gt;&lt;li&gt;- 优化本地片库扫描性能：浏览大量视频文件时更快构建条目（消除了随文件数平方增长的查找开销）。&lt;/li&gt;&lt;li&gt;- 读取视频时长超时缩短为 8 秒，避免在个别异常文件上长时间卡住扫描。&lt;/li&gt;&lt;li&gt;- 保留本地片库多维智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝扫码打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-36-universal.zip" sparkle:version="36" sparkle:shortVersionString="0.8.3-test.15" length="6552438" type="application/octet-stream" sparkle:edSignature="9C6+FlOa4yLvgW6UozPDAV2wysPirN0vXOnyuLoFJ2LT0TVaMsosoqSTmFAWzDFmHiKyBpIoFaT9+Ol+FQdCAA=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
