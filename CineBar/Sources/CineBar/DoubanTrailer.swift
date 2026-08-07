@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import AVKit
 import SwiftUI
 import AppKit
 
@@ -157,43 +158,43 @@ struct DoubanTrailerClient {
     }
 }
 
-/// 在 SwiftUI 里用 AVPlayer 播放豆瓣 mp4 直链。
+/// 在 SwiftUI 里用 AVPlayerView 播放豆瓣 mp4 直链，自带播放/暂停、
+/// 音量、进度、全屏控制条。
 struct DoubanTrailerPlayerView: NSViewRepresentable {
     let url: URL
 
     final class PlayerNSView: NSView {
-        private let player = AVPlayer()
-        private var playerLayer: AVPlayerLayer?
+        let playerView = AVPlayerView()
+        let player = AVPlayer()
+        private var loadedURL: URL?
 
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
-            configurLayer()
+            playerView.translatesAutoresizingMaskIntoConstraints = false
+            playerView.player = player
+            playerView.controlsStyle = .inline
+            playerView.videoGravity = .resizeAspect
+            playerView.showsFullScreenToggleButton = true
+            playerView.allowsPictureInPicturePlayback = true
+            addSubview(playerView)
+            NSLayoutConstraint.activate([
+                playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                playerView.topAnchor.constraint(equalTo: topAnchor),
+                playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
         }
 
         required init?(coder: NSCoder) {
-            super.init(coder: coder)
-            configurLayer()
-        }
-
-        private func configurLayer() {
-            wantsLayer = true
-            let layer = AVPlayerLayer(player: player)
-            layer.videoGravity = .resizeAspect
-            layer.frame = bounds
-            layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-            self.layer = layer
-            playerLayer = layer
+            nil
         }
 
         func play(_ url: URL) {
+            guard loadedURL != url else { return }
+            loadedURL = url
             player.pause()
             player.replaceCurrentItem(with: AVPlayerItem(url: url))
-            player.rate = 1
-        }
-
-        override func layout() {
-            super.layout()
-            playerLayer?.frame = bounds
+            player.play()
         }
     }
 

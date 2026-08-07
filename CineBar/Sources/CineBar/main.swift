@@ -1525,6 +1525,14 @@ struct MovieRating: Identifiable, Hashable {
     let note: String
     var url: URL? = nil
     var id: String { source }
+
+    /// 只保留分数本体（去掉 “/10” 与空格），如 “8.2/10” → “8.2”。
+    var compactValue: String {
+        value
+            .replacingOccurrences(of: " / 10", with: "")
+            .replacingOccurrences(of: "/10", with: "")
+            .trimmingCharacters(in: .whitespaces)
+    }
 }
 
 struct TMDBCountry: Codable, Identifiable, Hashable {
@@ -5484,6 +5492,167 @@ struct PosterView: View {
     }
 }
 
+/// 双列网格卡片：大图海报 + 片名 + 评分 + 简介（方案 B）。
+/// 按用户确认：去掉年份与评分人数，简介最多 2 行，点击进详情。
+struct MovieCardView: View {
+    @ObservedObject var store: MovieStore
+    let movie: Movie
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Group {
+                if let url = movie.posterURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        case .failure:
+                            cardPlaceholder
+                        default:
+                            ZStack {
+                                Color.secondary.opacity(0.12)
+                                ProgressView().controlSize(.small)
+                            }
+                        }
+                    }
+                } else {
+                    cardPlaceholder
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(2 / 3, contentMode: .fit)
+            .clipped()
+            .clipShape(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(movie.title)
+                        .font(.callout.bold())
+                        .lineLimit(1)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                    if let rating = store.listRating(for: movie) {
+                        Text(rating.compactValue)
+                            .font(.caption.bold())
+                            .foregroundStyle(.orange)
+                            .help(rating.source)
+                    }
+                }
+                Text(movie.overview.isEmpty ? "暂无中文简介" : movie.overview)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 7)
+        }
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("复制片名") {
+                copyToPasteboard(movie.title)
+            }
+        }
+        .onAppear {
+            store.ensureListRating(for: movie)
+        }
+    }
+
+    private var cardPlaceholder: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.indigo.opacity(0.75), .purple.opacity(0.45)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Image(systemName: "film.stack")
+                .font(.system(size: 34))
+                .foregroundStyle(.white.opacity(0.85))
+        }
+    }
+}
+
+/// 剧集版双列网格卡片。
+struct TVCardView: View {
+    @ObservedObject var store: MovieStore
+    let show: TVShow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Group {
+                if let url = show.posterURL {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFill()
+                        case .failure:
+                            cardPlaceholder
+                        default:
+                            ZStack {
+                                Color.secondary.opacity(0.12)
+                                ProgressView().controlSize(.small)
+                            }
+                        }
+                    }
+                } else {
+                    cardPlaceholder
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(2 / 3, contentMode: .fit)
+            .clipped()
+            .clipShape(
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+            )
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(show.name)
+                        .font(.callout.bold())
+                        .lineLimit(1)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                    if let rating = store.listRating(for: show) {
+                        Text(rating.compactValue)
+                            .font(.caption.bold())
+                            .foregroundStyle(.orange)
+                            .help(rating.source)
+                    }
+                }
+                Text(show.overview.isEmpty ? "暂无简介" : show.overview)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 7)
+        }
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("复制剧名") {
+                copyToPasteboard(show.name)
+            }
+        }
+        .onAppear {
+            store.ensureListRating(for: show)
+        }
+    }
+
+    private var cardPlaceholder: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.indigo.opacity(0.75), .purple.opacity(0.45)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Image(systemName: "film.stack")
+                .font(.system(size: 34))
+                .foregroundStyle(.white.opacity(0.85))
+        }
+    }
+}
+
 enum UpcomingReleasePresentation: Equatable {
     case dated(String)
     case undated
@@ -5601,8 +5770,8 @@ struct MovieRow: View {
 
                 HStack(spacing: 8) {
                     if let rating = store.listRating(for: movie) {
-                        Label(rating.value, systemImage: "star.fill")
-                            .foregroundStyle(.orange)
+                        Text(rating.compactValue)
+                            .foregroundStyle(.primary)
                             .help(rating.source)
                     }
                     Text(movie.year)
@@ -6592,6 +6761,7 @@ struct DoubanTrailerSection: View {
     let title: String
     @State private var playingURL: URL?
     @State private var playingTitle = ""
+    @State private var playErrorMessage: String?
 
     private var trailerList: [DoubanTrailerItem] {
         store.doubanTrailers
@@ -6622,6 +6792,24 @@ struct DoubanTrailerSection: View {
                 .background(
                     Color.black.opacity(0.92),
                     in: RoundedRectangle(cornerRadius: 12)
+                )
+            } else if let playErrorMessage {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text(playErrorMessage)
+                        .font(.caption)
+                    Spacer()
+                    Button("重试") {
+                        self.playErrorMessage = nil
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                }
+                .padding(8)
+                .background(
+                    Color.orange.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: 9)
                 )
             }
 
@@ -6687,9 +6875,17 @@ struct DoubanTrailerSection: View {
     }
 
     private func play(_ item: DoubanTrailerItem) {
+        playErrorMessage = nil
         Task {
-            if let url = try? await DoubanTrailerClient()
-                .playbackURL(trailerID: item.id) {
+            do {
+                guard let url = try await DoubanTrailerClient()
+                    .playbackURL(trailerID: item.id) else {
+                    await MainActor.run {
+                        playErrorMessage =
+                            "该预告未能获取到可用源，可能已失效，请换一条重试"
+                    }
+                    return
+                }
                 await MainActor.run {
                     playingURL = url
                     playingTitle = item.title
@@ -6697,6 +6893,11 @@ struct DoubanTrailerSection: View {
                         name: .cineBarMediaPlaybackDidChange,
                         object: true
                     )
+                }
+            } catch {
+                await MainActor.run {
+                    playErrorMessage =
+                        "预告加载失败（\(error.localizedDescription)），请重试"
                 }
             }
         }
@@ -7474,8 +7675,8 @@ struct TVShowRow: View {
                     .lineLimit(1)
                 HStack(spacing: 10) {
                     if let rating = store.listRating(for: show) {
-                        Label(rating.value, systemImage: "star.fill")
-                            .foregroundStyle(.orange)
+                        Text(rating.compactValue)
+                            .foregroundStyle(.primary)
                             .help(rating.source)
                     }
                     Text(show.year)
@@ -10375,171 +10576,182 @@ struct ContentView: View {
                                 .font(.caption.bold())
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 7)
-                            ForEach(store.watchlistMovies) { movie in
-                                HStack(spacing: 4) {
-                                    Button {
-                                        store.select(movie)
-                                    } label: {
-                                        MovieRow(store: store, movie: movie)
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)
+                                ],
+                                spacing: 14
+                            ) {
+                                ForEach(store.watchlistMovies) { movie in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Button {
+                                            store.select(movie)
+                                        } label: {
+                                            MovieCardView(store: store, movie: movie)
+                                        }
+                                        .buttonStyle(.plain)
+                                        HStack {
+                                            Spacer()
+                                            Button {
+                                                store.toggleWatchlist(movie)
+                                            } label: {
+                                                Image(systemName: "heart.fill")
+                                                    .foregroundStyle(.pink)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .help("从我的片单移除")
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 2)
                                     }
-                                    .buttonStyle(.plain)
-                                    Button {
-                                        store.toggleWatchlist(movie)
-                                    } label: {
-                                        Image(systemName: "heart.fill")
-                                            .foregroundStyle(.pink)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("从我的片单移除")
                                 }
-                                Divider().padding(.leading, 78)
                             }
+                            .padding(.bottom, 12)
                         }
                         if !store.watchlistTVShows.isEmpty {
                             Text("电视剧")
                                 .font(.caption.bold())
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 7)
-                            ForEach(store.watchlistTVShows) { show in
-                                HStack(spacing: 4) {
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)
+                                ],
+                                spacing: 14
+                            ) {
+                                ForEach(store.watchlistTVShows) { show in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Button {
+                                            store.selectTV(show)
+                                        } label: {
+                                            TVCardView(store: store, show: show)
+                                        }
+                                        .buttonStyle(.plain)
+                                        HStack {
+                                            Spacer()
+                                            Button {
+                                                store.toggleWatchlist(show)
+                                            } label: {
+                                                Image(systemName: "heart.fill")
+                                                    .foregroundStyle(.pink)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .help("从我的片单移除")
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 2)
+                                    }
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
+                    } else if store.mediaSection == .movies {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 12),
+                                GridItem(.flexible(), spacing: 12)
+                            ],
+                            spacing: 14
+                        ) {
+                            ForEach(store.movies) { movie in
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Button {
+                                        store.select(movie)
+                                    } label: {
+                                        MovieCardView(store: store, movie: movie)
+                                    }
+                                    .buttonStyle(.plain)
+                                    if store.movieBrowseSection == .upcoming,
+                                       let releaseDate = movie.localizedReleaseDate,
+                                       CalendarReleaseEventComposer.shouldOffer(
+                                           dateText: releaseDate
+                                       ) {
+                                        HStack(spacing: 10) {
+                                            Button {
+                                                store.toggleReleaseReminder(for: movie)
+                                            } label: {
+                                                Image(
+                                                    systemName:
+                                                        store.hasReleaseReminder(
+                                                            mediaType: .movie,
+                                                            mediaID: movie.id
+                                                        )
+                                                        ? "bell.fill"
+                                                        : "bell"
+                                                )
+                                                .foregroundStyle(.orange)
+                                            }
+                                            .buttonStyle(.plain)
+                                            .help("设置上映提醒")
+
+                                            CalendarReleaseEventButton(
+                                                title: movie.title,
+                                                dateText: releaseDate,
+                                                region: store.region,
+                                                language: store.appLanguage
+                                            )
+                                        }
+                                        .font(.caption)
+                                        .padding(.horizontal, 2)
+                                    }
+                                }
+                                .disabled(store.isLoading)
+                                .onAppear {
+                                    if movie.id == store.movies.last?.id {
+                                        if store.canLoadMoreCatalog {
+                                            store.loadMoreCatalog()
+                                        } else if store.canLoadMoreMovieBrowse {
+                                            store.loadMoreMovieBrowseIfNeeded()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.top, 6)
+                    } else {
+                        LazyVGrid(
+                            columns: [
+                                GridItem(.flexible(), spacing: 12),
+                                GridItem(.flexible(), spacing: 12)
+                            ],
+                            spacing: 14
+                        ) {
+                            ForEach(store.televisionShows) { show in
+                                VStack(alignment: .leading, spacing: 6) {
                                     Button {
                                         store.selectTV(show)
                                     } label: {
-                                        TVShowRow(store: store, show: show)
+                                        TVCardView(store: store, show: show)
                                     }
                                     .buttonStyle(.plain)
-                                    Button {
-                                        store.toggleWatchlist(show)
-                                    } label: {
-                                        Image(systemName: "heart.fill")
-                                            .foregroundStyle(.pink)
-                                    }
-                                    .buttonStyle(.plain)
-                                    .help("从我的片单移除")
-                                }
-                                Divider().padding(.leading, 78)
-                            }
-                        }
-                    } else if store.mediaSection == .movies {
-                        ForEach(store.movies) { movie in
-                            HStack(spacing: 4) {
-                                Button {
-                                    store.select(movie)
-                                } label: {
-                                    MovieRow(
-                                        store: store,
-                                        movie: movie,
-                                        upcomingRelease: MovieRowPresentation.upcomingRelease(
-                                            section: store.movieBrowseSection,
-                                            rawValue: movie.localizedReleaseDate,
-                                            language: store.appLanguage
-                                        )
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                if store.movieBrowseSection == .upcoming,
-                                   let releaseDate = movie.localizedReleaseDate,
-                                   CalendarReleaseEventComposer.shouldOffer(
-                                       dateText: releaseDate
-                                   ) {
-                                    VStack(spacing: 7) {
-                                        Button {
-                                            store.toggleReleaseReminder(for: movie)
-                                        } label: {
-                                            Image(
-                                                systemName:
-                                                    store.hasReleaseReminder(
-                                                        mediaType: .movie,
-                                                        mediaID: movie.id
-                                                    )
-                                                    ? "bell.fill"
-                                                    : "bell"
+                                    if store.tvBrowseSection == .airingToday {
+                                        HStack(spacing: 10) {
+                                            Label(
+                                                store.todayAirDateLabel,
+                                                systemImage: "calendar"
                                             )
-                                            .foregroundStyle(.orange)
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(.indigo)
                                         }
-                                        .buttonStyle(.plain)
-                                        .help("设置上映提醒")
-
-                                        CalendarReleaseEventButton(
-                                            title: movie.title,
-                                            dateText: releaseDate,
-                                            region: store.region,
-                                            language: store.appLanguage
-                                        )
+                                        .font(.caption)
+                                        .padding(.horizontal, 2)
                                     }
                                 }
-                                Button {
-                                    store.toggleWatchlist(movie)
-                                } label: {
-                                    Image(
-                                        systemName: store.isInWatchlist(movie)
-                                            ? "heart.fill"
-                                            : "heart"
-                                    )
-                                    .foregroundStyle(.pink)
-                                }
-                                .buttonStyle(.plain)
-                                .help("添加到我的片单")
-                            }
-                            .disabled(store.isLoading)
-                            .onAppear {
-                                if movie.id == store.movies.last?.id {
-                                    if store.canLoadMoreCatalog {
-                                        store.loadMoreCatalog()
-                                    } else if store.canLoadMoreMovieBrowse {
-                                        store.loadMoreMovieBrowseIfNeeded()
+                                .disabled(store.isLoading)
+                                .onAppear {
+                                    if show.id == store.televisionShows.last?.id {
+                                        if store.canLoadMoreTVCatalog {
+                                            store.loadMoreTVCatalog()
+                                        } else if store.canLoadMoreTVBrowse {
+                                            store.loadMoreTVBrowseIfNeeded()
+                                        }
                                     }
                                 }
-                            }
-
-                            if movie.id != store.movies.last?.id {
-                                Divider().padding(.leading, 78)
                             }
                         }
-                    } else {
-                        ForEach(store.televisionShows) { show in
-                            HStack(spacing: 4) {
-                                Button {
-                                    store.selectTV(show)
-                                } label: {
-                                    TVShowRow(
-                                        store: store,
-                                        show: show,
-                                        airingLabel:
-                                            store.tvBrowseSection == .airingToday
-                                            ? store.todayAirDateLabel
-                                            : nil
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                Button {
-                                    store.toggleWatchlist(show)
-                                } label: {
-                                    Image(
-                                        systemName: store.isInWatchlist(show)
-                                            ? "heart.fill"
-                                            : "heart"
-                                    )
-                                    .foregroundStyle(.pink)
-                                }
-                                .buttonStyle(.plain)
-                                .help("添加到我的片单")
-                            }
-                            .disabled(store.isLoading)
-                            .onAppear {
-                                if show.id == store.televisionShows.last?.id {
-                                    if store.canLoadMoreTVCatalog {
-                                        store.loadMoreTVCatalog()
-                                    } else if store.canLoadMoreTVBrowse {
-                                        store.loadMoreTVBrowseIfNeeded()
-                                    }
-                                }
-                            }
-
-                            if show.id != store.televisionShows.last?.id {
-                                Divider().padding(.leading, 78)
-                            }
-                        }
+                        .padding(.top, 6)
                     }
 
                     if store.isLoadingMoreCatalog ||
