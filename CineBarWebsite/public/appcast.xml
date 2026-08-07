@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 37&lt;/li&gt;&lt;li&gt;- 详情页新增豆瓣评分：打开影片或剧集详情时，自动抓取并显示豆瓣评分与评分人数，作为并列评分来源展示。&lt;/li&gt;&lt;li&gt;- 豆瓣评分抓取基于公开搜索页、非登录；若豆瓣风控导致抓取失败，详情页会静默隐藏该评分，不影响其他功能。&lt;/li&gt;&lt;li&gt;- 保留本地片库智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 38&lt;/li&gt;&lt;li&gt;- 评分体系升级：简体中文环境首页与详情页以豆瓣评分为首选，其他语言使用 IMDb/烂番茄；详情页评分按豆瓣、TMDB、外部评分、CineBar 顺序排列。&lt;/li&gt;&lt;li&gt;- 评分可点击跳转：点击豆瓣评分直达豆瓣详情页，IMDb、烂番茄、Metacritic 评分同样支持跳转到对应来源页面。&lt;/li&gt;&lt;li&gt;- 详情页移除小铃铛提醒功能，页面更简洁。&lt;/li&gt;&lt;li&gt;- 简体中文环境预告片改为豆瓣预告卡片式播放：在详情页直接预览并播放豆瓣官方预告；其他语言保留原有 YouTube 预告播放。&lt;/li&gt;&lt;li&gt;- 保留本地片库智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-37-universal.zip"
-        sparkle:version="37"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-38-universal.zip"
+        sparkle:version="38"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="6596766"
+        length="6721429"
         type="application/octet-stream"
-        sparkle:edSignature="P80pWdHVjvQmgPjbfcM/M7Sq1iY9l1MdcbpL8120M766iqkeJsg/sDyy+y7BA/eQbYZYlXMk8c1UUSCfTEX9AA=="/>
+        sparkle:edSignature="VZybuIU92Vp+RURPBrWks+0gZaHRVLmsyVJIPQAgqOG2SBl851ID0lmvbguh1ZMjbS4OyxMWf8QOu4g2Z3OnAw=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 37&lt;/li&gt;&lt;li&gt;- 详情页新增豆瓣评分：打开影片或剧集详情时，自动抓取并显示豆瓣评分与评分人数，作为并列评分来源展示。&lt;/li&gt;&lt;li&gt;- 豆瓣评分抓取基于公开搜索页、非登录；若豆瓣风控导致抓取失败，详情页会静默隐藏该评分，不影响其他功能。&lt;/li&gt;&lt;li&gt;- 保留本地片库智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-37-universal.zip" sparkle:version="37" sparkle:shortVersionString="0.8.3-test.15" length="6596766" type="application/octet-stream" sparkle:edSignature="P80pWdHVjvQmgPjbfcM/M7Sq1iY9l1MdcbpL8120M766iqkeJsg/sDyy+y7BA/eQbYZYlXMk8c1UUSCfTEX9AA=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
