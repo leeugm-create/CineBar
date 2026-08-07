@@ -103,6 +103,11 @@ for localization in "$app_source_dir"/Assets/Localization/*.lproj; do
     "$destination/Localizable.strings"
 done
 
+# 版本更新记录必须在签名前拷入，否则后写入会破坏 ad-hoc 资源密封清单。
+if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
+  cp -R "$app_source_dir/ReleaseNotes" "$contents_dir/Resources/ReleaseNotes"
+fi
+
 sparkle_framework="$contents_dir/Frameworks/Sparkle.framework"
 for xpc_service in \
   "$sparkle_framework"/Versions/Current/XPCServices/*.xpc; do
@@ -119,7 +124,6 @@ cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
 cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
 if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
   cp -R "$app_source_dir/ReleaseNotes" "$delivery_dir/"
-  cp -R "$app_source_dir/ReleaseNotes" "$contents_dir/Resources/ReleaseNotes"
 fi
 
 mkdir -p "$dist_dir"
