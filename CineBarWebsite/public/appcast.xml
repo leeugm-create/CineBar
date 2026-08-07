@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 40&lt;/li&gt;&lt;li&gt;- 海报卡悬停互动还原 Apple TV 风格：鼠标进入时卡片轻微抬起、放大并跟随指针视差倾斜 3D 立体感。&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;关于&amp;quot;改为&amp;quot;检查更新&amp;quot;入口，版本号与构建号改为自动读取，不再显示过期信息。&lt;/li&gt;&lt;li&gt;- 全球累计票房在中文界面按实时汇率换算为人民币显示（汇率 24 小时刷新，暂不可用时自动回退美元）。&lt;/li&gt;&lt;li&gt;- 修复豆瓣评分与预告片时有时无的问题：请求改为串行节流，遇到豆瓣限流自动退避重试，命中率明显提升。&lt;/li&gt;&lt;li&gt;- 即将上映日期按豆瓣校正：如在中文环境下把《机器人总动员》错误的首映日期修正为实际的上映日期。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 41&lt;/li&gt;&lt;li&gt;- 菜单栏图标新增更新提示：发现新版本时图标右上角显示蓝色圆点，鼠标悬停提示&amp;quot;发现新版本&amp;quot;，无需打开应用即可得知更新。&lt;/li&gt;&lt;li&gt;- 后台每 30 分钟静默检查一次新版本，有新版本自动点亮蓝点。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-40-universal.zip"
-        sparkle:version="40"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-41-universal.zip"
+        sparkle:version="41"
         sparkle:shortVersionString="0.8.3"
-        length="6845350"
+        length="6855905"
         type="application/octet-stream"
-        sparkle:edSignature="RBDU4vLjwhRqQfCOWKeIT2L7ShQfUkpbqSqA0lHVcJ7eUjOjQKqhk9eZ+SMB+JF/7v32gCahHDYOLlM4vXzQCA=="/>
+        sparkle:edSignature="q2A8wtVj5oKhB+wc0AJjUnQhikwxZ8qe+WOzMogUoj+qXA/nsJ7Qk4lxrlB7DQUp1UDMX23Y206tGBo62mr/Dg=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 40&lt;/li&gt;&lt;li&gt;- 海报卡悬停互动还原 Apple TV 风格：鼠标进入时卡片轻微抬起、放大并跟随指针视差倾斜 3D 立体感。&lt;/li&gt;&lt;li&gt;- 设置&amp;quot;关于&amp;quot;改为&amp;quot;检查更新&amp;quot;入口，版本号与构建号改为自动读取，不再显示过期信息。&lt;/li&gt;&lt;li&gt;- 全球累计票房在中文界面按实时汇率换算为人民币显示（汇率 24 小时刷新，暂不可用时自动回退美元）。&lt;/li&gt;&lt;li&gt;- 修复豆瓣评分与预告片时有时无的问题：请求改为串行节流，遇到豆瓣限流自动退避重试，命中率明显提升。&lt;/li&gt;&lt;li&gt;- 即将上映日期按豆瓣校正：如在中文环境下把《机器人总动员》错误的首映日期修正为实际的上映日期。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-40-universal.zip" sparkle:version="40" sparkle:shortVersionString="0.8.3" length="6845350" type="application/octet-stream" sparkle:edSignature="RBDU4vLjwhRqQfCOWKeIT2L7ShQfUkpbqSqA0lHVcJ7eUjOjQKqhk9eZ+SMB+JF/7v32gCahHDYOLlM4vXzQCA=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
