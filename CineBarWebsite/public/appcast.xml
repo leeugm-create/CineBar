@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 35&lt;/li&gt;&lt;li&gt;- 移除 NAS 功能：不再包含 WebDAV/SFTP/SMB 远程网络存储接入，专注本地片库体验。&lt;/li&gt;&lt;li&gt;- 保留并完善本地片库：多维智能分类、右键手动分类、点击已匹配影片直接进入详情页、详情页可播放对应本地文件、播放按钮按可播放性高亮。&lt;/li&gt;&lt;li&gt;- 设置中“检查更新、新功能、关于”合并为“关于”一栏，集中显示版本、更新与版权信息。&lt;/li&gt;&lt;li&gt;- 支持页新增国内扫码打赏：微信、支付宝收款码可在应用内展示，手机扫码即可打赏；国际用户保留 PayPal。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 36&lt;/li&gt;&lt;li&gt;- 优化本地片库扫描性能：浏览大量视频文件时更快构建条目（消除了随文件数平方增长的查找开销）。&lt;/li&gt;&lt;li&gt;- 读取视频时长超时缩短为 8 秒，避免在个别异常文件上长时间卡住扫描。&lt;/li&gt;&lt;li&gt;- 保留本地片库多维智能分类、右键手动分类、本地播放、设置合并与国内微信/支付宝扫码打赏。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-35-universal.zip"
-        sparkle:version="35"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-36-universal.zip"
+        sparkle:version="36"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="6550447"
+        length="6552438"
         type="application/octet-stream"
-        sparkle:edSignature="r0FiQRQoS0WgtFEH2ob85IthKEksWSfqPfxstrJiXVUVdHxkCVaJqf3gkNpP74yYgFyTBCGsdSQHC9RqBYRZBg=="/>
+        sparkle:edSignature="9C6+FlOa4yLvgW6UozPDAV2wysPirN0vXOnyuLoFJ2LT0TVaMsosoqSTmFAWzDFmHiKyBpIoFaT9+Ol+FQdCAA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 35&lt;/li&gt;&lt;li&gt;- 移除 NAS 功能：不再包含 WebDAV/SFTP/SMB 远程网络存储接入，专注本地片库体验。&lt;/li&gt;&lt;li&gt;- 保留并完善本地片库：多维智能分类、右键手动分类、点击已匹配影片直接进入详情页、详情页可播放对应本地文件、播放按钮按可播放性高亮。&lt;/li&gt;&lt;li&gt;- 设置中“检查更新、新功能、关于”合并为“关于”一栏，集中显示版本、更新与版权信息。&lt;/li&gt;&lt;li&gt;- 支持页新增国内扫码打赏：微信、支付宝收款码可在应用内展示，手机扫码即可打赏；国际用户保留 PayPal。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-35-universal.zip" sparkle:version="35" sparkle:shortVersionString="0.8.3-test.15" length="6550447" type="application/octet-stream" sparkle:edSignature="r0FiQRQoS0WgtFEH2ob85IthKEksWSfqPfxstrJiXVUVdHxkCVaJqf3gkNpP74yYgFyTBCGsdSQHC9RqBYRZBg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
