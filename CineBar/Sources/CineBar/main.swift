@@ -8867,7 +8867,7 @@ struct SettingsRootView: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text("CineBar 0.8.3-test.15").font(.title3.bold())
-                        Text("Build 35 · 2026 年 8 月").font(.caption).foregroundStyle(.secondary)
+                        Text("Build 37 · 2026 年 8 月").font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Image(systemName: "sparkles").font(.largeTitle).foregroundStyle(.orange)
