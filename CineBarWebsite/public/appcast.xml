@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 35&lt;/li&gt;&lt;li&gt;- 移除 NAS 功能：不再包含 WebDAV/SFTP/SMB 远程网络存储接入，专注本地片库体验。&lt;/li&gt;&lt;li&gt;- 保留并完善本地片库：多维智能分类、右键手动分类、点击已匹配影片直接进入详情页、详情页可播放对应本地文件、播放按钮按可播放性高亮。&lt;/li&gt;&lt;li&gt;- 设置中“检查更新、新功能、关于”合并为“关于”一栏，集中显示版本、更新与版权信息。&lt;/li&gt;&lt;li&gt;- 支持页新增国内扫码打赏：微信、支付宝收款码可在应用内展示，手机扫码即可打赏；国际用户保留 PayPal。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-35-universal.zip"
+        sparkle:version="35"
+        sparkle:shortVersionString="0.8.3-test.15"
+        length="6550447"
+        type="application/octet-stream"
+        sparkle:edSignature="r0FiQRQoS0WgtFEH2ob85IthKEksWSfqPfxstrJiXVUVdHxkCVaJqf3gkNpP74yYgFyTBCGsdSQHC9RqBYRZBg=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 32&lt;/li&gt;&lt;li&gt;- NAS 相关配置移入“设置”，本地片库顶部不再直接提供添加 NAS 入口；需要时在 设置 → 本地片库 中添加与管理。&lt;/li&gt;&lt;li&gt;- NAS 影片在本地片库中以独立分项显示：可通过“来源”下拉切换查看全部 / 本地视频 / 各 NAS，影片不再混在同一条列表里。&lt;/li&gt;&lt;li&gt;- 新增 SMB 挂载引导：在设置中点击“挂载 SMB”，系统会先打开“连接服务器”让你挂载共享目录，挂载完成后选择对应卷目录加入片库。&lt;/li&gt;&lt;li&gt;- 设置中的“本地片库”分项可查看已添加的 NAS 连接方式（协议、地址、端口）与凭据状态。&lt;/li&gt;&lt;li&gt;- 本地片库页左上角标题改回 CineBar；搜索栏移到下一行，“全部/电影/电视剧/其他视频”分类筛选上移至上方。&lt;/li&gt;&lt;li&gt;- 顶部“电影/电视剧/我的片单/本地片库”分段选择保持选中高亮。&lt;/li&gt;&lt;li&gt;本版本为测试版。应用本体仅使用 ad-hoc（临时）代码签名，不是 Apple Developer ID&lt;/li&gt;&lt;li&gt;签名，也未经 Apple 公证；Sparkle EdDSA 仅用于验证更新归档，不能替代应用代码签名&lt;/li&gt;&lt;li&gt;或 Apple 公证。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 05 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-32-universal.zip"
-        sparkle:version="32"
-        sparkle:shortVersionString="0.8.3-test.15"
-        length="6282379"
-        type="application/octet-stream"
-        sparkle:edSignature="QNzY2S9vz11sEtKDWUXLQM3+YaqLWG9Ux8B25EoqDwUsmRjtK+SyVqCMHuaPat/z1atSPS/gmR9P9mxXAcs+DQ=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-32-universal.zip" sparkle:version="32" sparkle:shortVersionString="0.8.3-test.15" length="6282379" type="application/octet-stream" sparkle:edSignature="QNzY2S9vz11sEtKDWUXLQM3+YaqLWG9Ux8B25EoqDwUsmRjtK+SyVqCMHuaPat/z1atSPS/gmR9P9mxXAcs+DQ=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
