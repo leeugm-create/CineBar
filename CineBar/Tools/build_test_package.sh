@@ -81,7 +81,6 @@ cp "$info_plist" "$contents_dir/Info.plist"
 cp "$app_source_dir/PkgInfo" "$contents_dir/PkgInfo"
 printf '%s\n' "$build_manifest" \
   > "$contents_dir/Resources/BuildManifest.json"
-printf '%s\n' "$build_manifest" > "$delivery_dir/BuildManifest.json"
 cp "$app_source_dir/Assets/CineBar.icns" \
   "$contents_dir/Resources/CineBar.icns"
 cp "$app_source_dir/Assets/MenuBarIcon-template.png" \
@@ -119,15 +118,10 @@ codesign --force --sign - "$sparkle_framework"
 codesign --force --sign - "$app_bundle"
 codesign --verify --deep --strict "$app_bundle"
 
-cp "$app_source_dir/INSTALL.md" "$delivery_dir/"
-cp "$app_source_dir/请先阅读-测试版安装说明.html" "$delivery_dir/"
-cp "$app_source_dir/请先阅读-测试版安装说明.txt" "$delivery_dir/"
-if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
-  cp -R "$app_source_dir/ReleaseNotes" "$delivery_dir/"
-fi
-
 mkdir -p "$dist_dir"
 rm -f "$output_zip"
+# 安装包只保留应用本体和一份精简安装说明。
+cp "$app_source_dir/安装说明.txt" "$delivery_dir/"
 ditto -c -k --sequesterRsrc --keepParent "$delivery_dir" "$output_zip"
 
 echo "Created $output_zip"
