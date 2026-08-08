@@ -5007,9 +5007,6 @@ final class MovieStore: ObservableObject {
 
     func ratings(for movie: Movie) -> [MovieRating] {
         var result: [MovieRating] = []
-        if let doubanRating {
-            result.append(doubanRating)
-        }
         result.append(
             MovieRating(
                 source: "TMDB",
@@ -5045,9 +5042,6 @@ final class MovieStore: ObservableObject {
 
     func ratings(for show: TVShow) -> [MovieRating] {
         var result: [MovieRating] = []
-        if let doubanRating {
-            result.append(doubanRating)
-        }
         result.append(
             MovieRating(
                 source: "TMDB",
@@ -5227,17 +5221,9 @@ final class MovieStore: ObservableObject {
 
     private var listRatingLoadKeys: Set<String> = []
 
-    /// 首页/列表行展示的评分：zh-CN 用豆瓣，其他语言用 IMDb/烂番茄，缺省回退 TMDB。
+    /// 首页/列表行展示的评分：优先 IMDb/烂番茄，缺省回退 TMDB。
     func listRating(for movie: Movie) -> MovieRating? {
-        let key = Self.doubanKey(
-            title: movie.title,
-            year: Self.year(from: movie.releaseDate)
-        )
-        if appLanguage == .zhCN {
-            if let douban = listDoubanRatings[key] {
-                return douban
-            }
-        } else if let external = listExternalRatings[String(movie.id)] {
+        if let external = listExternalRatings[String(movie.id)] {
             if let imdb = external.first(where: { $0.source == "IMDb" }) {
                 return imdb
             }
@@ -5254,15 +5240,7 @@ final class MovieStore: ObservableObject {
 
     /// 首页/列表行展示的评分（剧集版）。
     func listRating(for show: TVShow) -> MovieRating? {
-        let key = Self.doubanKey(
-            title: show.name,
-            year: Self.year(from: show.firstAirDate)
-        )
-        if appLanguage == .zhCN {
-            if let douban = listDoubanRatings[key] {
-                return douban
-            }
-        } else if let external = listExternalRatings[String(show.id)] {
+        if let external = listExternalRatings[String(show.id)] {
             if let imdb = external.first(where: { $0.source == "IMDb" }) {
                 return imdb
             }
@@ -5279,13 +5257,6 @@ final class MovieStore: ObservableObject {
 
     /// 列表行评分右下角的人数文本。
     func listRatingCount(for movie: Movie) -> String? {
-        let key = Self.doubanKey(
-            title: movie.title,
-            year: Self.year(from: movie.releaseDate)
-        )
-        if appLanguage == .zhCN {
-            return listDoubanRatings[key]?.note
-        }
         if let external = listExternalRatings[String(movie.id)],
            let first = external.first(where: { $0.source == "IMDb" })
             ?? external.first(where: { $0.source == "烂番茄" }) {
@@ -5296,13 +5267,6 @@ final class MovieStore: ObservableObject {
 
     /// 列表行评分右下角的人数文本（剧集版）。
     func listRatingCount(for show: TVShow) -> String? {
-        let key = Self.doubanKey(
-            title: show.name,
-            year: Self.year(from: show.firstAirDate)
-        )
-        if appLanguage == .zhCN {
-            return listDoubanRatings[key]?.note
-        }
         if let external = listExternalRatings[String(show.id)],
            let first = external.first(where: { $0.source == "IMDb" })
             ?? external.first(where: { $0.source == "烂番茄" }) {
@@ -11476,6 +11440,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             created.title = "CineBar 设置"
             created.minSize = NSSize(width: 720, height: 520)
             created.isReleasedWhenClosed = false
+            created.level = .popUpMenu
             created.setFrameAutosaveName("CineBarSettingsWindow")
             created.contentView = NSHostingView(
                 rootView: SettingsRootView(
