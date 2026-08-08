@@ -5617,34 +5617,34 @@ struct MovieCardView: View {
                                 y: hoverOffset.height * 0.14
                             )
 
-                            // 玻璃反光层： ver了鼠标反向移动，增强立体
+                            // 玻璃反光层：光心跟随鼠标位置，增强立体
                             RadialGradient(
                                 colors: [
-                                    .white.opacity(0.22),
+                                    .white.opacity(0.35),
                                     .white.opacity(0.0)
                                 ],
-                                center: .center,
+                                center: UnitPoint(
+                                    x: 0.5 + hoverOffset.width / max(
+                                        proxy.size.width, 1
+                                    ),
+                                    y: 0.5 + hoverOffset.height / max(
+                                        proxy.size.height, 1
+                                    )
+                                ),
                                 startRadius: 0,
-                                endRadius: 75
+                                endRadius: max(
+                                    proxy.size.width, proxy.size.height
+                                ) * 0.85
                             )
-                            .frame(width: 170, height: 170)
-                            .offset(
-                                x: hoverOffset.width * -0.30,
-                                y: hoverOffset.height * -0.30
+                            .frame(
+                                width: proxy.size.width,
+                                height: proxy.size.height
                             )
                             .opacity(isHovering ? 1 : 0)
                             .blendMode(.plusLighter)
                             .allowsHitTesting(false)
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        )
-                        .shadow(
-                            color: .black.opacity(isHovering ? 0.30 : 0.10),
-                            radius: isHovering ? 16 : 8,
-                            y: isHovering ? 8 : 4
-                        )
                         .rotation3DEffect(
                             .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
                             axis: (x: 0, y: 1, z: 0),
@@ -5654,6 +5654,14 @@ struct MovieCardView: View {
                             .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
                             axis: (x: 1, y: 0, z: 0),
                             perspective: 0.35
+                        )
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        )
+                        .shadow(
+                            color: .black.opacity(isHovering ? 0.30 : 0.10),
+                            radius: isHovering ? 16 : 8,
+                            y: isHovering ? 8 : 4
                         )
                         .animation(
                             .easeOut(duration: 0.18),
@@ -5807,34 +5815,34 @@ struct TVCardView: View {
                                 y: hoverOffset.height * 0.14
                             )
 
-                            // 玻璃反光层：逆向随鼠标移动，增强立体
+                            // 玻璃反光层：光心跟随鼠标位置，增强立体
                             RadialGradient(
                                 colors: [
-                                    .white.opacity(0.22),
+                                    .white.opacity(0.35),
                                     .white.opacity(0.0)
                                 ],
-                                center: .center,
+                                center: UnitPoint(
+                                    x: 0.5 + hoverOffset.width / max(
+                                        proxy.size.width, 1
+                                    ),
+                                    y: 0.5 + hoverOffset.height / max(
+                                        proxy.size.height, 1
+                                    )
+                                ),
                                 startRadius: 0,
-                                endRadius: 75
+                                endRadius: max(
+                                    proxy.size.width, proxy.size.height
+                                ) * 0.85
                             )
-                            .frame(width: 170, height: 170)
-                            .offset(
-                                x: hoverOffset.width * -0.30,
-                                y: hoverOffset.height * -0.30
+                            .frame(
+                                width: proxy.size.width,
+                                height: proxy.size.height
                             )
                             .opacity(isHovering ? 1 : 0)
                             .blendMode(.plusLighter)
                             .allowsHitTesting(false)
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        )
-                        .shadow(
-                            color: .black.opacity(isHovering ? 0.30 : 0.10),
-                            radius: isHovering ? 16 : 8,
-                            y: isHovering ? 8 : 4
-                        )
                         .rotation3DEffect(
                             .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
                             axis: (x: 0, y: 1, z: 0),
@@ -5844,6 +5852,14 @@ struct TVCardView: View {
                             .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
                             axis: (x: 1, y: 0, z: 0),
                             perspective: 0.35
+                        )
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        )
+                        .shadow(
+                            color: .black.opacity(isHovering ? 0.30 : 0.10),
+                            radius: isHovering ? 16 : 8,
+                            y: isHovering ? 8 : 4
                         )
                         .animation(
                             .easeOut(duration: 0.18),
