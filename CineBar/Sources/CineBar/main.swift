@@ -5586,7 +5586,7 @@ struct MovieCardView: View {
                                 Image(nsImage: posterImage)
                                     .resizable()
                                     .scaledToFill()
-                                    .scaleEffect(1.08)
+                                    .scaleEffect(1.22)
                                     .offset(
                                         x: hoverOffset.width * 0.06,
                                         y: hoverOffset.height * 0.06
@@ -5611,7 +5611,7 @@ struct MovieCardView: View {
                                     cardPlaceholder
                                 }
                             }
-                            .scaleEffect(isHovering ? 1.03 : 1.0)
+                            .scaleEffect(isHovering ? 1.12 : 1.0)
                             .offset(
                                 x: hoverOffset.width * 0.14,
                                 y: hoverOffset.height * 0.14
@@ -5784,7 +5784,7 @@ struct TVCardView: View {
                                 Image(nsImage: posterImage)
                                     .resizable()
                                     .scaledToFill()
-                                    .scaleEffect(1.08)
+                                    .scaleEffect(1.22)
                                     .offset(
                                         x: hoverOffset.width * 0.06,
                                         y: hoverOffset.height * 0.06
@@ -5809,7 +5809,7 @@ struct TVCardView: View {
                                     cardPlaceholder
                                 }
                             }
-                            .scaleEffect(isHovering ? 1.03 : 1.0)
+                            .scaleEffect(isHovering ? 1.12 : 1.0)
                             .offset(
                                 x: hoverOffset.width * 0.14,
                                 y: hoverOffset.height * 0.14
