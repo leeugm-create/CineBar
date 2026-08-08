@@ -8,6 +8,28 @@ import UserNotifications
 import UniformTypeIdentifiers
 import WebKit
 
+private let posterImageCache = NSCache<NSURL, NSImage>()
+
+private func cachedPosterImage(for url: URL) async -> NSImage? {
+    let key = url as NSURL
+    if let cached = posterImageCache.object(forKey: key) {
+        return cached
+    }
+    var request = URLRequest(url: url)
+    request.cachePolicy = .returnCacheDataElseLoad
+    request.timeoutInterval = 30
+    do {
+        let (data, _) = try await URLSession.shared.data(for: request)
+        if let image = NSImage(data: data) {
+            posterImageCache.setObject(image, forKey: key)
+            return image
+        }
+    } catch {
+        return nil
+    }
+    return nil
+}
+
 private func copyToPasteboard(_ text: String) {
     NSPasteboard.general.clearContents()
     NSPasteboard.general.setString(text, forType: .string)
@@ -5542,6 +5564,7 @@ struct MovieCardView: View {
     let movie: Movie
     @State private var isHovering = false
     @State private var hoverOffset = CGSize.zero
+    @State private var posterImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -5577,93 +5600,123 @@ struct MovieCardView: View {
         .onAppear {
             store.ensureListRating(for: movie)
         }
+        .task(id: movie.posterURL) {
+            if let url = movie.posterURL {
+                posterImage = await cachedPosterImage(for: url)
+            } else {
+                posterImage = nil
+            }
+        }
     }
 
     private var cardPoster: some View {
         ZStack {
             GeometryReader { proxy in
                 ZStack {
-                    Group {
-                        if let url = movie.posterURL {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
-                                case .failure:
-                                    cardPlaceholder
-                                default:
+                    // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
+                    ZStack {
+                        // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
+                        ZStack {
+                            // 背景景深层：hover 时放大错位、压暗，造成纵深
+                            if isHovering, let posterImage {
+                                Image(nsImage: posterImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .scaleEffect(1.08)
+                                    .offset(
+                                        x: hoverOffset.width * 0.06,
+                                        y: hoverOffset.height * 0.06
+                                    )
+                                    .brightness(-0.35)
+                                    .saturation(0.85)
+                                    .blur(radius: 1.5)
+                            }
+
+                            // 主图层：随鼠标平移，是立体感核心
+                            Group {
+                                if let posterImage {
+                                    Image(nsImage: posterImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else if movie.posterURL != nil {
                                     ZStack {
                                         Color.secondary.opacity(0.12)
                                         ProgressView().controlSize(.small)
                                     }
+                                } else {
+                                    cardPlaceholder
                                 }
                             }
-                        } else {
-                            cardPlaceholder
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(2 / 3, contentMode: .fit)
-                    .clipped()
+                            .scaleEffect(isHovering ? 1.03 : 1.0)
+                            .offset(
+                                x: hoverOffset.width * 0.14,
+                                y: hoverOffset.height * 0.14
+                            )
 
-                    RadialGradient(
-                        colors: [
-                            .white.opacity(0.20),
-                            .white.opacity(0.0)
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 75
-                    )
-                    .frame(width: 150, height: 150)
-                    .offset(
-                        x: hoverOffset.width * 0.4,
-                        y: hoverOffset.height * 0.4
-                    )
-                    .opacity(isHovering ? 1 : 0)
-                    .blendMode(.plusLighter)
-                    .allowsHitTesting(false)
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .shadow(
-                    color: .black.opacity(isHovering ? 0.30 : 0.10),
-                    radius: isHovering ? 16 : 8,
-                    y: isHovering ? 8 : 4
-                )
-                .scaleEffect(isHovering ? 1.03 : 1.0)
-                .rotation3DEffect(
-                    .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.4
-                )
-                .rotation3DEffect(
-                    .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
-                    axis: (x: 1, y: 0, z: 0),
-                    perspective: 0.4
-                )
-                .animation(
-                    .easeOut(duration: 0.18),
-                    value: hoverOffset
-                )
-                .animation(
-                    .easeOut(duration: 0.35),
-                    value: isHovering
-                )
-                .onContinuousHover(coordinateSpace: .local) { phase in
-                    switch phase {
-                    case .active(let location):
-                        isHovering = true
-                        hoverOffset = CGSize(
-                            width: location.x - proxy.size.width / 2,
-                            height: location.y - proxy.size.height / 2
+                            // 玻璃反光层： ver了鼠标反向移动，增强立体
+                            RadialGradient(
+                                colors: [
+                                    .white.opacity(0.22),
+                                    .white.opacity(0.0)
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 75
+                            )
+                            .frame(width: 170, height: 170)
+                            .offset(
+                                x: hoverOffset.width * -0.30,
+                                y: hoverOffset.height * -0.30
+                            )
+                            .opacity(isHovering ? 1 : 0)
+                            .blendMode(.plusLighter)
+                            .allowsHitTesting(false)
+                        }
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
                         )
-                    case .ended:
-                        isHovering = false
-                        hoverOffset = .zero
+                        .shadow(
+                            color: .black.opacity(isHovering ? 0.30 : 0.10),
+                            radius: isHovering ? 16 : 8,
+                            y: isHovering ? 8 : 4
+                        )
+                        .rotation3DEffect(
+                            .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                            axis: (x: 0, y: 1, z: 0),
+                            perspective: 0.35
+                        )
+                        .rotation3DEffect(
+                            .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                            axis: (x: 1, y: 0, z: 0),
+                            perspective: 0.35
+                        )
+                        .animation(
+                            .easeOut(duration: 0.18),
+                            value: hoverOffset
+                        )
+                        .animation(
+                            .easeOut(duration: 0.35),
+                            value: isHovering
+                        )
+                        .allowsHitTesting(false)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .contentShape(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    )
+                    .onContinuousHover(coordinateSpace: .local) { phase in
+                        switch phase {
+                        case .active(let location):
+                            isHovering = true
+                            hoverOffset = CGSize(
+                                width: location.x - proxy.size.width / 2,
+                                height: location.y - proxy.size.height / 2
+                            )
+                        case .ended:
+                            isHovering = false
+                            hoverOffset = .zero
+                        }
                     }
                 }
             }
@@ -5701,6 +5754,7 @@ struct TVCardView: View {
     let show: TVShow
     @State private var isHovering = false
     @State private var hoverOffset = CGSize.zero
+    @State private var posterImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -5736,93 +5790,123 @@ struct TVCardView: View {
         .onAppear {
             store.ensureListRating(for: show)
         }
+        .task(id: show.posterURL) {
+            if let url = show.posterURL {
+                posterImage = await cachedPosterImage(for: url)
+            } else {
+                posterImage = nil
+            }
+        }
     }
 
     private var cardPoster: some View {
         ZStack {
             GeometryReader { proxy in
                 ZStack {
-                    Group {
-                        if let url = show.posterURL {
-                            AsyncImage(url: url) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image.resizable().scaledToFill()
-                                case .failure:
-                                    cardPlaceholder
-                                default:
+                    // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
+                    ZStack {
+                        // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
+                        ZStack {
+                            // 背景景深层：hover 时放大错位、压暗，造成纵深
+                            if isHovering, let posterImage {
+                                Image(nsImage: posterImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .scaleEffect(1.08)
+                                    .offset(
+                                        x: hoverOffset.width * 0.06,
+                                        y: hoverOffset.height * 0.06
+                                    )
+                                    .brightness(-0.35)
+                                    .saturation(0.85)
+                                    .blur(radius: 1.5)
+                            }
+
+                            // 主图层：随鼠标平移，是立体感核心
+                            Group {
+                                if let posterImage {
+                                    Image(nsImage: posterImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                } else if show.posterURL != nil {
                                     ZStack {
                                         Color.secondary.opacity(0.12)
                                         ProgressView().controlSize(.small)
                                     }
+                                } else {
+                                    cardPlaceholder
                                 }
                             }
-                        } else {
-                            cardPlaceholder
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .aspectRatio(2 / 3, contentMode: .fit)
-                    .clipped()
+                            .scaleEffect(isHovering ? 1.03 : 1.0)
+                            .offset(
+                                x: hoverOffset.width * 0.14,
+                                y: hoverOffset.height * 0.14
+                            )
 
-                    RadialGradient(
-                        colors: [
-                            .white.opacity(0.20),
-                            .white.opacity(0.0)
-                        ],
-                        center: .center,
-                        startRadius: 0,
-                        endRadius: 75
-                    )
-                    .frame(width: 150, height: 150)
-                    .offset(
-                        x: hoverOffset.width * 0.4,
-                        y: hoverOffset.height * 0.4
-                    )
-                    .opacity(isHovering ? 1 : 0)
-                    .blendMode(.plusLighter)
-                    .allowsHitTesting(false)
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipShape(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                )
-                .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                .shadow(
-                    color: .black.opacity(isHovering ? 0.30 : 0.10),
-                    radius: isHovering ? 16 : 8,
-                    y: isHovering ? 8 : 4
-                )
-                .scaleEffect(isHovering ? 1.03 : 1.0)
-                .rotation3DEffect(
-                    .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.4
-                )
-                .rotation3DEffect(
-                    .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
-                    axis: (x: 1, y: 0, z: 0),
-                    perspective: 0.4
-                )
-                .animation(
-                    .easeOut(duration: 0.18),
-                    value: hoverOffset
-                )
-                .animation(
-                    .easeOut(duration: 0.35),
-                    value: isHovering
-                )
-                .onContinuousHover(coordinateSpace: .local) { phase in
-                    switch phase {
-                    case .active(let location):
-                        isHovering = true
-                        hoverOffset = CGSize(
-                            width: location.x - proxy.size.width / 2,
-                            height: location.y - proxy.size.height / 2
+                            // 玻璃反光层：逆向随鼠标移动，增强立体
+                            RadialGradient(
+                                colors: [
+                                    .white.opacity(0.22),
+                                    .white.opacity(0.0)
+                                ],
+                                center: .center,
+                                startRadius: 0,
+                                endRadius: 75
+                            )
+                            .frame(width: 170, height: 170)
+                            .offset(
+                                x: hoverOffset.width * -0.30,
+                                y: hoverOffset.height * -0.30
+                            )
+                            .opacity(isHovering ? 1 : 0)
+                            .blendMode(.plusLighter)
+                            .allowsHitTesting(false)
+                        }
+                        .frame(width: proxy.size.width, height: proxy.size.height)
+                        .clipShape(
+                            RoundedRectangle(cornerRadius: 9, style: .continuous)
                         )
-                    case .ended:
-                        isHovering = false
-                        hoverOffset = .zero
+                        .shadow(
+                            color: .black.opacity(isHovering ? 0.30 : 0.10),
+                            radius: isHovering ? 16 : 8,
+                            y: isHovering ? 8 : 4
+                        )
+                        .rotation3DEffect(
+                            .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                            axis: (x: 0, y: 1, z: 0),
+                            perspective: 0.35
+                        )
+                        .rotation3DEffect(
+                            .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                            axis: (x: 1, y: 0, z: 0),
+                            perspective: 0.35
+                        )
+                        .animation(
+                            .easeOut(duration: 0.18),
+                            value: hoverOffset
+                        )
+                        .animation(
+                            .easeOut(duration: 0.35),
+                            value: isHovering
+                        )
+                        .allowsHitTesting(false)
+                    }
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .contentShape(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    )
+                    .onContinuousHover(coordinateSpace: .local) { phase in
+                        switch phase {
+                        case .active(let location):
+                            isHovering = true
+                            hoverOffset = CGSize(
+                                width: location.x - proxy.size.width / 2,
+                                height: location.y - proxy.size.height / 2
+                            )
+                        case .ended:
+                            isHovering = false
+                            hoverOffset = .zero
+                        }
                     }
                 }
             }
