@@ -11517,11 +11517,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 
     @objc private func menuBarClicked() {
-        if updaterService.hasUpdateAvailable {
-            updaterService.checkForUpdates()
-        } else {
-            togglePanel()
-        }
+        togglePanel()
     }
 
     @objc private func togglePanel() {
