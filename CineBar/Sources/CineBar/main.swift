@@ -5616,33 +5616,6 @@ struct MovieCardView: View {
                                 x: hoverOffset.width * 0.14,
                                 y: hoverOffset.height * 0.14
                             )
-
-                            // 玻璃反光层：光心跟随鼠标位置，增强立体
-                            RadialGradient(
-                                colors: [
-                                    .white.opacity(0.35),
-                                    .white.opacity(0.0)
-                                ],
-                                center: UnitPoint(
-                                    x: 0.5 + hoverOffset.width / max(
-                                        proxy.size.width, 1
-                                    ),
-                                    y: 0.5 + hoverOffset.height / max(
-                                        proxy.size.height, 1
-                                    )
-                                ),
-                                startRadius: 0,
-                                endRadius: max(
-                                    proxy.size.width, proxy.size.height
-                                ) * 0.85
-                            )
-                            .frame(
-                                width: proxy.size.width,
-                                height: proxy.size.height
-                            )
-                            .opacity(isHovering ? 1 : 0)
-                            .blendMode(.plusLighter)
-                            .allowsHitTesting(false)
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .rotation3DEffect(
@@ -5814,33 +5787,6 @@ struct TVCardView: View {
                                 x: hoverOffset.width * 0.14,
                                 y: hoverOffset.height * 0.14
                             )
-
-                            // 玻璃反光层：光心跟随鼠标位置，增强立体
-                            RadialGradient(
-                                colors: [
-                                    .white.opacity(0.35),
-                                    .white.opacity(0.0)
-                                ],
-                                center: UnitPoint(
-                                    x: 0.5 + hoverOffset.width / max(
-                                        proxy.size.width, 1
-                                    ),
-                                    y: 0.5 + hoverOffset.height / max(
-                                        proxy.size.height, 1
-                                    )
-                                ),
-                                startRadius: 0,
-                                endRadius: max(
-                                    proxy.size.width, proxy.size.height
-                                ) * 0.85
-                            )
-                            .frame(
-                                width: proxy.size.width,
-                                height: proxy.size.height
-                            )
-                            .opacity(isHovering ? 1 : 0)
-                            .blendMode(.plusLighter)
-                            .allowsHitTesting(false)
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .rotation3DEffect(
