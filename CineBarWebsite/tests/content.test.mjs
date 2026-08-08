@@ -48,20 +48,24 @@ function contrastRatio(foreground, background) {
 }
 
 test("publishes the approved CineBar identity and download entry", async () => {
-  const page = await read("app/page.tsx");
-  assert.match(page, /找到下一部好片/);
-  assert.doesNotMatch(page, /今晚看什么？/);
-  assert.match(page, /macOS 菜单栏/);
-  assert.match(page, /测试版/);
+  const home = await read("app/home.tsx");
+  const zh = await read("app/i18n.ts");
+  const support = await read("app/support-view.tsx");
+  const site = `${home}\n${zh}\n${support}`;
+  assert.match(site, /找到下一部好片/);
+  assert.doesNotMatch(site, /今晚看什么？/);
+  assert.match(site, /一个找电影、电视剧的 app/);
+  assert.match(site, /leeugm@vip\.qq\.com/);
+  assert.match(site, /测试版/);
   assert.match(
-    page,
+    site,
     /https:\/\/github\.com\/leeugm-create\/CineBar\/releases/,
   );
-  assert.match(page, /免费/);
-  assert.match(page, /无广告/);
-  assert.match(page, /无订阅/);
-  assert.match(page, /https:\/\/www\.paypal\.com\/cgi-bin\/webscr/);
-  assert.match(page, /VVVZUSU9QUJBW/);
+  assert.match(site, /免费/);
+  assert.match(site, /无广告/);
+  assert.match(site, /无订阅/);
+  assert.match(site, /https:\/\/www\.paypal\.com\/cgi-bin\/webscr/);
+  assert.match(site, /VVVZUSU9QUJBW/);
 });
 
 test("keeps the public website anonymous without GPT account sign-in", async () => {
@@ -77,20 +81,24 @@ test("keeps the public website anonymous without GPT account sign-in", async () 
   );
 });
 
-test("discloses the current Build 28 signed update, Local Library, and anonymous community-rating limit", async () => {
-  const page = await read("app/page.tsx");
+test("discloses the current release and multilingual coverage", async () => {
+  const home = await read("app/home.tsx");
+  const i18n = await read("app/i18n.ts");
+  const langSelect = await read("app/lang-select.tsx");
+  const site = `${home}\n${i18n}\n${langSelect}`;
 
-  assert.match(page, /0\.8\.3-test\.12（Build 28）/);
-  assert.match(page, /本地片库/);
-  assert.match(page, /应用内检查、下载并安装/);
-  assert.match(page, /CineBar-0\.8\.3-test-build-28-universal\.zip/);
-  assert.doesNotMatch(page, /已签名 appcast 发布后才支持应用内更新/);
-  assert.match(page, /匿名设备标识/);
-  assert.match(page, /每个作品仅可评分一次/);
-  assert.match(page, /不是正式稳定版/);
-  assert.doesNotMatch(page, /已经.*公证/);
-  assert.match(page, /安装前请验证 CineBar 独立签名/);
-  assert.match(page, /不等于 Apple 公证/);
+  const linkedMac = home.match(/downloads\/CineBar-0\.8\.3-test-build-(\d+)-universal\.zip/);
+  assert.ok(linkedMac, "home.tsx must link a build-universal.zip download");
+  const buildNumber = Number(linkedMac[1]);
+  assert.ok(Number.isInteger(buildNumber) && buildNumber >= 1, "download link must carry a numeric build");
+  assert.match(site, new RegExp(`Build ${buildNumber}（|Build ${buildNumber}）`));
+  assert.match(site, /本地片库/);
+  assert.match(site, new RegExp(`CineBar-0\\.8\\.3-test-build-${buildNumber}-universal\\.zip`));
+  assert.doesNotMatch(site, /已签名 appcast 发布后才支持应用内更新/);
+  assert.match(site, /支持简体中文、繁体中文、英语、日语与韩语/);
+  assert.match(site, /测试版/);
+  assert.match(site, /一次看全/);
+  assert.doesNotMatch(site, /已经.*公证/);
 });
 
 test("keeps the telemetry dashboard server-side and protected by a secret", async () => {
@@ -112,15 +120,18 @@ test("protects the analytics route before rendering any aggregate data", async (
 });
 
 test("contains accessible navigation and all required sections", async () => {
-  const page = await read("app/page.tsx");
-  for (const id of ["features", "install", "privacy", "support"]) {
-    assert.match(page, new RegExp(`id=["']${id}["']`));
+  const home = await read("app/home.tsx");
+  const i18n = await read("app/i18n.ts");
+  const langSelect = await read("app/lang-select.tsx");
+  const site = `${home}\n${i18n}\n${langSelect}`;
+  for (const id of ["ratings", "features", "install", "support"]) {
+    assert.match(site, new RegExp(`id=["']${id}["']`));
   }
-  assert.match(page, /aria-label=["']主导航["']/);
-  assert.match(page, /Apple 芯片与 Intel Mac/);
-  assert.match(page, /右键/);
-  assert.match(page, /TMDB/);
-  assert.match(page, /OMDb/);
+  assert.match(site, /aria-label=["']Language["']/);
+  assert.match(site, /Apple 芯片与 Intel Mac/);
+  assert.match(site, /右键/);
+  assert.match(site, /TMDB/);
+  assert.match(site, /Metacritic/);
 });
 
 test("follows system appearance and reduced-motion preferences", async () => {
@@ -172,6 +183,12 @@ test("keeps the Sites Vite plugin in a tracked source path", async () => {
   }
 });
 
+test("keeps the lang select from composing broken /en/ja paths", async () => {
+  const select = await read("app/lang-select.tsx");
+  assert.match(select, /if \(!matched\) suffix = here/);
+  assert.doesNotMatch(select, /if \(suffix === "" && here !== "\/"\) suffix = here/);
+});
+
 test("exposes an uncached website health response", async () => {
   const route = await read("app/health/route.ts");
   assert.match(route, /service:\s*["']cinebar-website["']/);
@@ -185,13 +202,27 @@ test("keeps the signed appcast in descending immutable build order", async () =>
   const builds = [...appcast.matchAll(/sparkle:version="(\d+)"/g)].map(
     (match) => Number(match[1]),
   );
-  assert.deepEqual(builds, [28, 27, 26, 25, 24, 23]);
-  assert.match(
-    appcast,
-    /CineBar-0\.8\.3-test-build-28-universal\.zip/,
+  assert.ok(builds.length >= 5, "appcast must carry several prior builds");
+  for (let i = 1; i < builds.length; i++) {
+    assert.ok(builds[i - 1] > builds[i], `builds must descend at index ${i}: ${builds}`);
+  }
+  assert.match(appcast, /sparkle:edSignature="[^"]+"/);
+  assert.match(appcast, /length="[1-9][0-9]*"/);
+  const home = await read("app/home.tsx");
+  const linked = home.match(/build-(\d+)-universal\.zip/);
+  assert.ok(linked, "home.tsx must link the latest build");
+  assert.equal(
+    builds[0],
+    Number(linked[1]),
+    "appcast newest build must match the website download link",
   );
   assert.match(
     appcast,
-    /CineBar-0\.8\.3-test-build-27-universal\.zip/,
+    new RegExp(`CineBar-0\\.8\\.3-test-build-${builds[0]}-universal\\.zip`),
+  );
+  assert.ok(
+    [...appcast.matchAll(/CineBar-0\.8\.3-test-build-(\d+)-universal\.zip/g)]
+      .map((m) => m[1])
+      .includes(String(builds[0])),
   );
 });

@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 47&lt;/li&gt;&lt;li&gt;- 修复海报卡片悬停缺陷：之前光标只能在卡片中间区域触发效果，移不到四角和边缘；现在悬停命中不再受 3D 旋转影响，鼠标滑过整张海报任意位置都能正常触发。&lt;/li&gt;&lt;li&gt;- 海报立体感升级：卡片改为多层视差效果（背景景深、主体、玻璃反光三层随鼠标错位移动），比原来单层旋转更有立体感。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Sat, 08 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-47-universal.zip"
+        sparkle:version="47"
+        sparkle:shortVersionString="0.8.3"
+        length="6893502"
+        type="application/octet-stream"
+        sparkle:edSignature="5PLv7KmZMqZ4QwRr4FkgRNMO3nacIWz8UvsxWR1ZlaheCIgCNx9cgz3GfcXtC/SJJ3/+8Rwet6Rvrz4hZY/OAA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 46&lt;/li&gt;&lt;li&gt;- 调整海报卡片光影效果：鼠标移到卡片时，改为一层淡而柔和的光晕照亮画面（光斑随鼠标位置移动，明显更弱、无方块边缘感），观感更自然。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 07 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-46-universal.zip"
-        sparkle:version="46"
-        sparkle:shortVersionString="0.8.3"
-        length="6856122"
-        type="application/octet-stream"
-        sparkle:edSignature="lDxTwj9H6IpW1by9bS4w5EvuMHHwPcVsxe6SdhsGTKt1OOfuQT92wHK+xqGMGUCUnuYKnravi6EyHdUyg0d2Dw=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-46-universal.zip" sparkle:version="46" sparkle:shortVersionString="0.8.3" length="6856122" type="application/octet-stream" sparkle:edSignature="lDxTwj9H6IpW1by9bS4w5EvuMHHwPcVsxe6SdhsGTKt1OOfuQT92wHK+xqGMGUCUnuYKnravi6EyHdUyg0d2Dw=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
