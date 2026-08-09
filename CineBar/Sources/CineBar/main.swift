@@ -6080,6 +6080,7 @@ struct Hao6vMagnetButton: View {
     @State private var status: Hao6vStatus = .resolving
     @State private var magnet: String?
     @State private var magnetTask: Task<Void, Never>?
+    @State private var justCopied = false
 
     enum Hao6vStatus {
         case resolving
@@ -6099,10 +6100,21 @@ struct Hao6vMagnetButton: View {
 
                 Button {
                     copyMagnet(magnet)
+                    justCopied = true
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 2_000_000_000)
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            justCopied = false
+                        }
+                    }
                 } label: {
-                    Label("复制磁力", systemImage: "doc.on.doc")
+                    Label(
+                        justCopied ? "已复制" : "复制磁力",
+                        systemImage: justCopied ? "checkmark.circle" : "doc.on.doc"
+                    )
                 }
                 .buttonStyle(.bordered)
+                .tint(justCopied ? .green : .accentColor)
                 .help("把磁力链接复制到剪贴板")
             } else {
                 Button {
@@ -6205,9 +6217,17 @@ struct MagnetIndexCard: View {
             if isScanning {
                 ProgressView(value: Double(done), total: Double(max(total, 1)))
                     .controlSize(.small)
-                Text("正在抓取详情页，首次全站约需 20~60 分钟，期间可正常使用")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                HStack {
+                    Text("正在抓取详情页，已抓 \(done) 页，期间可正常使用")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("取消抓取") {
+                        cancelScan()
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                }
             }
             Text(lastUpdatedText)
                 .font(.caption)
@@ -6251,6 +6271,13 @@ struct MagnetIndexCard: View {
                 refresh()
             }
         }
+    }
+
+    private func cancelScan() {
+        scanTask?.cancel()
+        scanTask = nil
+        isScanning = false
+        refresh()
     }
 }
 
@@ -10127,9 +10154,11 @@ enum VersionHistoryLoader {
     }
 }
 
-/// 设置-检查更新里的"版本更新记录"卡片。
+/// 设置-检查更新里的"版本更新记录"卡片。只保留最近少量版本，避免刷屏。
 struct VersionHistoryCard: View {
-    private let entries = VersionHistoryLoader.loadAll()
+    private let entries = Array(
+        VersionHistoryLoader.loadAll().prefix(5)
+    )
 
     var body: some View {
         Group {

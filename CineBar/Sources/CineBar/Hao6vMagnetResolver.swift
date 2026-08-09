@@ -68,19 +68,23 @@ enum Hao6vMagnetResolver {
             let n1 = normalize(title)
             let n2 = normalize(clean)
             let n3 = normalize(chinese)
-            var score = 0
-            if n2 == n1 || n2 == n3 { score = 100 }
-            else if n1.contains(n2) || n2.contains(n1)
-                        || (n3.count > 1 && (n3.contains(n2) || n2.contains(n3))) {
-                score = 40
-            } else {
-                continue
-            }
+            let score = fuzzyScore(n1: n1, n2: n2, n3: n3)
+            guard score > 0 else { continue }
             if best == nil || score > best!.score {
                 best = (entry, score)
             }
         }
         return best?.entry
+    }
+
+    /// 标题相似度打分：完全一致 100；模糊子串匹配 40（要求双方至少 4 个字符，
+    /// 避免"蜘蛛侠"这种短前缀命中《蜘蛛侠：崭新之日》等不相干片名）；否则 0。
+    private static func fuzzyScore(n1: String, n2: String, n3: String) -> Int {
+        if n2 == n1 || n2 == n3 { return 100 }
+        let substringMatch =
+            (n1.count >= 4 && n2.count >= 4 && (n1.contains(n2) || n2.contains(n1)))
+            || (n3.count >= 4 && n2.count >= 4 && (n3.contains(n2) || n2.contains(n3)))
+        return substringMatch ? 40 : 0
     }
 
     /// 在当前列表条目里找最匹配的。
@@ -99,7 +103,8 @@ enum Hao6vMagnetResolver {
             let n2 = normalize(clean)
             var score = 0
             if n2 == n1 { score = 100 }
-            else if n1.contains(n2) || n2.contains(n1) {
+            else if n1.count >= 4 && n2.count >= 4 &&
+                        (n1.contains(n2) || n2.contains(n1)) {
                 score = 40
             } else {
                 continue
