@@ -10,6 +10,8 @@ struct MooviePlayerView: View {
     @Binding var currentTime: Double
     @Binding var playbackRate: Double
     @Binding var danmakuVisible: Bool
+    /// 是否暂停（打开独立播放窗口时暂停内嵌播放器，避免双路播放）。
+    var paused: Bool = false
 
     var body: some View {
         ZStack {
@@ -17,6 +19,7 @@ struct MooviePlayerView: View {
             MoovieVideoView(
                 url: url,
                 rate: $playbackRate,
+                paused: paused,
                 onTick: { currentTime = $0 }
             )
             if danmakuVisible, !danmaku.isEmpty {
@@ -31,6 +34,7 @@ struct MooviePlayerView: View {
 struct MoovieVideoView: NSViewRepresentable {
     let url: URL
     @Binding var rate: Double
+    var paused: Bool = false
     let onTick: (Double) -> Void
 
     final class VideoNSView: NSView {
@@ -78,34 +82,42 @@ struct MoovieVideoView: NSViewRepresentable {
             onTick = closure
         }
 
-        func play(_ url: URL, rate: Double) {
+        func play(_ url: URL, rate: Double, paused: Bool) {
             if loadedURL != url {
                 loadedURL = url
                 player.pause()
                 player.replaceCurrentItem(with: AVPlayerItem(url: url))
-                player.rate = Float(rate)
+                if !paused {
+                    player.rate = Float(rate)
+                }
+            } else if paused {
+                player.pause()
             } else if player.rate == 0 {
                 player.rate = Float(rate)
             }
         }
 
-        func setRate(_ rate: Double) {
+        func setRate(_ rate: Double, paused: Bool) {
             guard player.currentItem != nil else { return }
-            player.rate = Float(rate)
+            if paused {
+                player.pause()
+            } else if player.rate == 0 {
+                player.rate = Float(rate)
+            }
         }
     }
 
     func makeNSView(context: Context) -> VideoNSView {
         let view = VideoNSView()
         view.setOnTick(onTick)
-        view.play(url, rate: rate)
+        view.play(url, rate: rate, paused: paused)
         return view
     }
 
     func updateNSView(_ nsView: VideoNSView, context: Context) {
         nsView.setOnTick(onTick)
-        nsView.play(url, rate: rate)
-        nsView.setRate(rate)
+        nsView.play(url, rate: rate, paused: paused)
+        nsView.setRate(rate, paused: paused)
     }
 }
 
@@ -227,6 +239,8 @@ final class MooviePlayerWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func cancelOperation(_ sender: Any?) {
+        // 只有自己可见时响应 ESC，避免事件沿响应链误关主面板。
+        guard isVisible else { return }
         MooviePlaybackController.shared.closeAndRestoreMainPanel()
     }
 }

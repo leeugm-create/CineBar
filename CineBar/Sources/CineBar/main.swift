@@ -10,6 +10,21 @@ import WebKit
 
 private let posterImageCache = NSCache<NSURL, NSImage>()
 
+/// 滚动活动指示：滚动期间禁用卡片 3D hover 视差，避免滚动卡顿。
+final class ScrollActivity: ObservableObject {
+    @Published private(set) var isActive = false
+    private var timer: Timer?
+
+    func begin() {
+        isActive = true
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.35, repeats: false) {
+            [weak self] _ in
+            self?.isActive = false
+        }
+    }
+}
+
 private func cachedPosterImage(for url: URL) async -> NSImage? {
     let key = url as NSURL
     if let cached = posterImageCache.object(forKey: key) {
@@ -20,14 +35,56 @@ private func cachedPosterImage(for url: URL) async -> NSImage? {
     request.timeoutInterval = 30
     do {
         let (data, _) = try await URLSession.shared.data(for: request)
-        if let image = NSImage(data: data) {
-            posterImageCache.setObject(image, forKey: key)
-            return image
+        // 后台解码并缩放成缩略图，避免主线程解压大图导致滚动卡顿。
+        let image = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let thumbnail = posterThumbnail(from: data)
+                DispatchQueue.main.async {
+                    continuation.resume(returning: thumbnail)
+                }
+            }
         }
+        if let image {
+            posterImageCache.setObject(
+                image,
+                forKey: key,
+                cost: image.cacheCost
+            )
+        }
+        return image
     } catch {
         return nil
     }
-    return nil
+}
+
+/// 用 ImageIO 后台解码并按最大边长缩放，降低渲染重采样成本。
+private func posterThumbnail(from data: Data) -> NSImage? {
+    guard
+        let source = CGImageSourceCreateWithData(data as CFData, nil),
+        let image = CGImageSourceCreateThumbnailAtIndex(
+            source,
+            0,
+            [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 560
+            ] as CFDictionary
+        )
+    else {
+        return NSImage(data: data)
+    }
+    return NSImage(
+        cgImage: image,
+        size: NSSize(width: image.width, height: image.height)
+    )
+}
+
+private extension NSImage {
+    var cacheCost: Int {
+        cgImage(forProposedRect: nil, context: nil, hints: nil)
+            .map { $0.bytesPerRow * $0.height }
+            ?? 0
+    }
 }
 
 private func copyToPasteboard(_ text: String) {
@@ -5534,6 +5591,7 @@ struct PosterView: View {
 /// 海报带类 Apple TV 的鼠标视差 3D 交互。
 struct MovieCardView: View {
     @ObservedObject var store: MovieStore
+    @EnvironmentObject private var scrollActivity: ScrollActivity
     let movie: Movie
     @State private var isHovering = false
     @State private var hoverOffset = CGSize.zero
@@ -5583,7 +5641,8 @@ struct MovieCardView: View {
     }
 
     private var cardPoster: some View {
-        ZStack {
+        let scrolling = scrollActivity.isActive
+        return ZStack {
             GeometryReader { proxy in
                 ZStack {
                     // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
@@ -5591,7 +5650,7 @@ struct MovieCardView: View {
                         // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
                         ZStack {
                             // 背景景深层：hover 时放大错位、压暗，造成纵深
-                            if isHovering, let posterImage {
+                            if isHovering && !scrolling, let posterImage {
                                 Image(nsImage: posterImage)
                                     .resizable()
                                     .scaledToFill()
@@ -5620,20 +5679,28 @@ struct MovieCardView: View {
                                     cardPlaceholder
                                 }
                             }
-                            .scaleEffect(isHovering ? 1.12 : 1.0)
+                            .scaleEffect(isHovering && !scrolling ? 1.12 : 1.0)
                             .offset(
-                                x: hoverOffset.width * 0.08,
-                                y: hoverOffset.height * 0.08
+                                x: scrolling ? 0 : hoverOffset.width * 0.08,
+                                y: scrolling ? 0 : hoverOffset.height * 0.08
                             )
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .rotation3DEffect(
-                            .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                            .degrees(
+                                scrolling
+                                    ? 0
+                                    : parallaxAngle(for: proxy.size, isYaw: true)
+                            ),
                             axis: (x: 0, y: 1, z: 0),
                             perspective: 0.35
                         )
                         .rotation3DEffect(
-                            .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                            .degrees(
+                                scrolling
+                                    ? 0
+                                    : parallaxAngle(for: proxy.size, isYaw: false)
+                            ),
                             axis: (x: 1, y: 0, z: 0),
                             perspective: 0.35
                         )
@@ -5641,9 +5708,11 @@ struct MovieCardView: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                         )
                         .shadow(
-                            color: .black.opacity(isHovering ? 0.30 : 0.10),
-                            radius: isHovering ? 16 : 8,
-                            y: isHovering ? 8 : 4
+                            color: .black.opacity(
+                                isHovering && !scrolling ? 0.30 : 0.10
+                            ),
+                            radius: isHovering && !scrolling ? 16 : 8,
+                            y: isHovering && !scrolling ? 8 : 4
                         )
                         .animation(
                             .easeOut(duration: 0.18),
@@ -5660,6 +5729,7 @@ struct MovieCardView: View {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                     )
                     .onContinuousHover(coordinateSpace: .local) { phase in
+                        guard !scrollActivity.isActive else { return }
                         switch phase {
                         case .active(let location):
                             isHovering = true
@@ -5705,6 +5775,7 @@ struct MovieCardView: View {
 /// 剧集版双列网格卡片。
 struct TVCardView: View {
     @ObservedObject var store: MovieStore
+    @EnvironmentObject private var scrollActivity: ScrollActivity
     let show: TVShow
     @State private var isHovering = false
     @State private var hoverOffset = CGSize.zero
@@ -5754,7 +5825,8 @@ struct TVCardView: View {
     }
 
     private var cardPoster: some View {
-        ZStack {
+        let scrolling = scrollActivity.isActive
+        return ZStack {
             GeometryReader { proxy in
                 ZStack {
                     // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
@@ -5762,7 +5834,7 @@ struct TVCardView: View {
                         // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
                         ZStack {
                             // 背景景深层：hover 时放大错位、压暗，造成纵深
-                            if isHovering, let posterImage {
+                            if isHovering && !scrolling, let posterImage {
                                 Image(nsImage: posterImage)
                                     .resizable()
                                     .scaledToFill()
@@ -5791,20 +5863,28 @@ struct TVCardView: View {
                                     cardPlaceholder
                                 }
                             }
-                            .scaleEffect(isHovering ? 1.12 : 1.0)
+                            .scaleEffect(isHovering && !scrolling ? 1.12 : 1.0)
                             .offset(
-                                x: hoverOffset.width * 0.08,
-                                y: hoverOffset.height * 0.08
+                                x: scrolling ? 0 : hoverOffset.width * 0.08,
+                                y: scrolling ? 0 : hoverOffset.height * 0.08
                             )
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
                         .rotation3DEffect(
-                            .degrees(parallaxAngle(for: proxy.size, isYaw: true)),
+                            .degrees(
+                                scrolling
+                                    ? 0
+                                    : parallaxAngle(for: proxy.size, isYaw: true)
+                            ),
                             axis: (x: 0, y: 1, z: 0),
                             perspective: 0.35
                         )
                         .rotation3DEffect(
-                            .degrees(parallaxAngle(for: proxy.size, isYaw: false)),
+                            .degrees(
+                                scrolling
+                                    ? 0
+                                    : parallaxAngle(for: proxy.size, isYaw: false)
+                            ),
                             axis: (x: 1, y: 0, z: 0),
                             perspective: 0.35
                         )
@@ -5812,9 +5892,11 @@ struct TVCardView: View {
                             RoundedRectangle(cornerRadius: 9, style: .continuous)
                         )
                         .shadow(
-                            color: .black.opacity(isHovering ? 0.30 : 0.10),
-                            radius: isHovering ? 16 : 8,
-                            y: isHovering ? 8 : 4
+                            color: .black.opacity(
+                                isHovering && !scrolling ? 0.30 : 0.10
+                            ),
+                            radius: isHovering && !scrolling ? 16 : 8,
+                            y: isHovering && !scrolling ? 8 : 4
                         )
                         .animation(
                             .easeOut(duration: 0.18),
@@ -5831,6 +5913,7 @@ struct TVCardView: View {
                         RoundedRectangle(cornerRadius: 9, style: .continuous)
                     )
                     .onContinuousHover(coordinateSpace: .local) { phase in
+                        guard !scrollActivity.isActive else { return }
                         switch phase {
                         case .active(let location):
                             isHovering = true
@@ -6222,6 +6305,8 @@ struct MooviePlaySection: View {
     @State private var currentIndex = 0
     @State private var playTask: Task<Void, Never>?
     @State private var loadingDanmaku = false
+    /// 独立播放窗口打开时暂停内嵌播放器，防止双路同时出声。
+    @State private var inlinePaused = false
 
     enum Status {
         case idle
@@ -6305,6 +6390,7 @@ struct MooviePlaySection: View {
                         .controlSize(.small)
                         .help("播放速度设置")
                         Button {
+                            inlinePaused = true
                             MooviePlaybackController.shared.show(
                                 url: streamURL,
                                 title: "\(title) · \(sourceName)",
@@ -6318,6 +6404,7 @@ struct MooviePlaySection: View {
                         .controlSize(.small)
                         .help("在独立浮窗中放大播放")
                         Button {
+                            inlinePaused = true
                             MooviePlaybackController.shared.show(
                                 url: streamURL,
                                 title: "\(title) · \(sourceName)",
@@ -6336,7 +6423,8 @@ struct MooviePlaySection: View {
                         danmaku: danmaku,
                         currentTime: $currentTime,
                         playbackRate: $playbackRate,
-                        danmakuVisible: $danmakuVisible
+                        danmakuVisible: $danmakuVisible,
+                        paused: inlinePaused
                     )
                     .frame(height: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -6347,10 +6435,21 @@ struct MooviePlaySection: View {
             playTask?.cancel()
             playTask = nil
         }
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: .cineBarMediaPlaybackDidChange
+            )
+        ) { note in
+            // 独立播放窗口关闭（object == false）后恢复内嵌播放。
+            if let active = note.object as? Bool, !active {
+                inlinePaused = false
+            }
+        }
     }
 
     private func startSearch(forceNext: Bool) {
         playTask?.cancel()
+        inlinePaused = false
         if forceNext {
             currentIndex += 1
         }
@@ -11062,6 +11161,8 @@ struct ContentView: View {
     @State private var localLibrarySearchText = ""
     @State private var localLibraryCategoryFilter = LocalLibraryCategoryFilter.all
     @State private var localLibraryStatusFilter = LocalLibraryStatusFilter.all
+    @State private var scrollActivity = ScrollActivity()
+    @State private var scrollWheelMonitor: Any?
     private let reminderCheckTimer = Timer.publish(
         every: 6 * 60 * 60,
         on: .main,
@@ -11115,6 +11216,7 @@ struct ContentView: View {
             \.locale,
             Locale(identifier: store.appLanguage.localeIdentifier)
         )
+        .environmentObject(scrollActivity)
         .background {
             ZStack {
                 Color(nsColor: .windowBackgroundColor)
@@ -11138,6 +11240,21 @@ struct ContentView: View {
             store.loadDailyTVRecommendation()
             store.loadCountries()
             store.checkReleaseReminders()
+            if scrollWheelMonitor == nil {
+                let monitor = NSEvent.addLocalMonitorForEvents(
+                    matching: .scrollWheel
+                ) { [weak scrollActivity] event in
+                    scrollActivity?.begin()
+                    return event
+                }
+                scrollWheelMonitor = monitor
+            }
+        }
+        .onDisappear {
+            if let monitor = scrollWheelMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+            scrollWheelMonitor = nil
         }
         .onReceive(reminderCheckTimer) { _ in
             store.checkReleaseReminders()
@@ -11687,6 +11804,10 @@ struct ContentView: View {
 final class CineBarPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    // 拦截 ESC：播放窗口关闭后残余按键事件可能传到主面板，
+    // NSPanel 默认会关闭面板，表现为"程序被退出"。
+    override func cancelOperation(_ sender: Any?) {}
 }
 
 enum PanelPlacement {
