@@ -6070,6 +6070,73 @@ struct RatingBadge: View {
     }
 }
 
+/// "磁力观看"按钮：从 6v 电影网按片名匹配磁力链接，点击后用系统默认
+/// 下载器（迅雷等）打开 magnet。站点搜索接口失效，用"最新电影"列表匹配。
+struct Hao6vMagnetButton: View {
+    let title: String
+    let year: String
+
+    @State private var status: Hao6vStatus = .idle
+    @State private var task: Task<Void, Never>?
+
+    enum Hao6vStatus {
+        case idle
+        case searching
+        case failed(String)
+    }
+
+    private var labelText: String {
+        switch status {
+        case .idle: return "磁力观看"
+        case .searching: return "正在匹配磁力…"
+        case .failed: return "重新匹配磁力"
+        }
+    }
+
+    private var isBusy: Bool {
+        if case .searching = status { return true }
+        return false
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Button {
+                task?.cancel()
+                task = Task {
+                    status = .searching
+                    let year = year.isEmpty
+                        ? nil
+                        : year
+                    let magnet = await Hao6vMagnetResolver.searchMagnet(
+                        for: title, year: year
+                    )
+                    guard !Task.isCancelled else { return }
+                    if let magnet, let url = URL(string: magnet) {
+                        NSWorkspace.shared.open(url)
+                        status = .idle
+                    } else {
+                        status = .failed("未找到磁力")
+                    }
+                }
+            } label: {
+                Label(labelText, systemImage: "arrow.down.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isBusy)
+
+            if case .failed(let message) = status {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text("需先在下载器中登录或安装迅雷类工具")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
 final class RatingNSSlider: NSSlider {
     convenience init() {
         self.init(frame: .zero)
@@ -7551,6 +7618,8 @@ struct MovieDetailView: View {
                         mediaID: movie.id
                     )
 
+                    Hao6vMagnetButton(title: movie.title, year: movie.year)
+
                     BoxOfficeView(
                         financials: store.financials,
                         isLoading: store.isLoadingFinancials,
@@ -8237,6 +8306,8 @@ struct TVDetailView: View {
                         mediaType: .tv,
                         mediaID: show.id
                     )
+
+                    Hao6vMagnetButton(title: show.name, year: show.year)
 
                     VStack(alignment: .leading, spacing: 9) {
                         HStack {
