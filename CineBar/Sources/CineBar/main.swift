@@ -6152,8 +6152,6 @@ struct Hao6vMagnetButton: View {
 }
 
 final class RatingNSSlider: NSSlider {
-
-final class RatingNSSlider: NSSlider {
     convenience init() {
         self.init(frame: .zero)
     }
