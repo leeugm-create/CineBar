@@ -3138,6 +3138,10 @@ final class MovieStore: ObservableObject {
     @Published var trendingItems: [MoovieStreamResolver.TrendingItem] = []
     @Published var isLoadingMoovieTrending = false
     @Published var moovieTrendingFailed = false
+    /// 浏览区电影网格列数（2~5），首页标题行右侧滑块调节并持久化。
+    @Published var gridColumnCount: Int = 2 {
+        didSet { defaults.set(gridColumnCount, forKey: "gridColumnCount") }
+    }
     @Published var searchText = ""
     @Published var isLoading = false
     @Published var message = "演示模式 · 配置 TMDB Token 后显示真实数据"
@@ -3260,6 +3264,10 @@ final class MovieStore: ObservableObject {
         appLanguage = AppLanguage(
             rawValue: defaults.string(forKey: "appLanguage") ?? ""
         ) ?? .zhCN
+        let savedGridColumns = defaults.object(
+            forKey: "gridColumnCount"
+        ) as? Int ?? 2
+        gridColumnCount = min(max(savedGridColumns, 2), 5)
         let savedAutoHide = defaults.object(forKey: "autoHideInterval") as? Int ?? 30
         autoHideInterval = AutoHideInterval(rawValue: savedAutoHide) ?? .thirtySeconds
         launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -11488,6 +11496,14 @@ struct ContentView: View {
         }
     }
 
+    /// 浏览区电影网格列数：跟随标题行滑块（2~5 列）。
+    private var movieGridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(), spacing: 12),
+            count: store.gridColumnCount
+        )
+    }
+
     private var mainList: some View {
         VStack(spacing: 0) {
             VStack(spacing: 10) {
@@ -11736,6 +11752,29 @@ struct ContentView: View {
                     .menuStyle(.borderlessButton)
                     .fixedSize()
                 }
+                if !store.isShowingWatchlist && store.mediaSection == .movies {
+                    HStack(spacing: 6) {
+                        Image(systemName: "square.grid.2x2")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Slider(
+                            value: Binding(
+                                get: { Double(store.gridColumnCount) },
+                                set: { store.gridColumnCount = Int($0.rounded()) }
+                            ),
+                            in: 2...5,
+                            step: 1
+                        )
+                        .controlSize(.small)
+                        .frame(width: 110)
+                        Text("\(store.gridColumnCount) 列")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                            .frame(width: 28, alignment: .trailing)
+                    }
+                    .help("卡片列数（2~5 列）")
+                }
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
@@ -11868,10 +11907,7 @@ struct ContentView: View {
                            store.appLanguage.isChinese {
                             if !store.trendingItems.isEmpty {
                                 LazyVGrid(
-                                    columns: [
-                                        GridItem(.flexible(), spacing: 12),
-                                        GridItem(.flexible(), spacing: 12)
-                                    ],
+                                    columns: movieGridColumns,
                                     spacing: 14
                                 ) {
                                     ForEach(store.trendingItems) { item in
@@ -11918,10 +11954,7 @@ struct ContentView: View {
                             }
                         } else {
                             LazyVGrid(
-                                columns: [
-                                    GridItem(.flexible(), spacing: 12),
-                                    GridItem(.flexible(), spacing: 12)
-                                ],
+                                columns: movieGridColumns,
                                 spacing: 14
                             ) {
                                 ForEach(store.movies) { movie in
