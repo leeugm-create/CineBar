@@ -11548,11 +11548,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
-        ) { [weak self] note in
-            guard let self,
-                  let window = note.object as? NSWindow,
-                  window !== self.settingsWindow,
-                  window !== self.panel,
+        ) { note in
+            let settings = self.settingsWindow
+            let panel = self.panel
+            guard let window = note.object as? NSWindow else { return }
+            guard window !== settings, window !== panel,
                   !(window is NSPanel),
                   window.level.rawValue < NSWindow.Level.popUpMenu.rawValue
             else { return }
