@@ -7774,7 +7774,11 @@ final class TrailerPlayerWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func cancelOperation(_ sender: Any?) {
-        TrailerPlaybackController.shared.closeAndRestoreMainPanel()
+        // 延迟到按键事件处理结束后再关窗，避免事件分发栈内
+        // 释放窗口对象导致 use-after-free 崩溃。
+        DispatchQueue.main.async {
+            TrailerPlaybackController.shared.closeAndRestoreMainPanel()
+        }
     }
 }
 
@@ -7902,6 +7906,10 @@ final class TrailerPlaybackController: NSObject, NSWindowDelegate {
 
         window.backgroundColor = .black
         window.isOpaque = true
+        // 程序化创建的窗口必须交给 ARC 全权管理，
+        // 否则 close() 时系统按旧式内存管理再 release 一次，
+        // 与 ARC 双重释放导致崩溃（ESC 退出全屏时必现）。
+        window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(
             rootView: TrailerPlayerWindowView(

@@ -241,7 +241,12 @@ final class MooviePlayerWindow: NSWindow {
     override func cancelOperation(_ sender: Any?) {
         // 只有自己可见时响应 ESC，避免事件沿响应链误关主面板。
         guard isVisible else { return }
-        MooviePlaybackController.shared.closeAndRestoreMainPanel()
+        // 延迟到按键事件处理结束后再关窗：cancelOperation 正位于 keyDown
+        // 的事件分发栈内，同步 close 会释放窗口对象造成 use-after-free
+        // （autorelease pool pop 时崩溃，详见 Build 54 崩溃报告）。
+        DispatchQueue.main.async {
+            MooviePlaybackController.shared.closeAndRestoreMainPanel()
+        }
     }
 }
 
@@ -328,6 +333,10 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
 
         window.backgroundColor = .black
         window.isOpaque = true
+        // 程序化创建的窗口必须交给 ARC 全权管理，
+        // 否则 close() 时系统按旧式内存管理再 release 一次，
+        // 与 ARC 双重释放导致崩溃（ESC 退出全屏时必现）。
+        window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(
             rootView: MooviePlayerWindowView(
