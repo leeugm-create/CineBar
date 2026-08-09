@@ -351,6 +351,51 @@ struct DoubanRatingClient {
         }
     }
 
+    /// 必应/豆瓣站内搜索结果里的候选条目。根据标题匹配+年份校验选出最佳项。
+    /// 回归测试覆盖此方法；生产路径已改为逐条校验。
+    static func match(
+        items: [DoubanSearchItem],
+        title: String,
+        year: Int?
+    ) -> DoubanRatingResult? {
+        let normalized = normalize(title)
+        guard !normalized.isEmpty else { return nil }
+
+        func rank(_ item: DoubanSearchItem) -> Int? {
+            guard item.rating?.value != nil else { return nil }
+            let norm = normalize(item.title)
+            guard !norm.isEmpty else { return nil }
+            if norm == normalized {
+                if let year { return abstractContains(item, year: year) ? 0 : 1 }
+                return 0
+            }
+            if norm.contains(normalized) || normalized.contains(norm) {
+                if let year { return abstractContains(item, year: year) ? 2 : 3 }
+                return 2
+            }
+            return nil
+        }
+
+        let ranked = items.compactMap { item -> (item: DoubanSearchItem, rank: Int)? in
+            guard let r = rank(item) else { return nil }
+            return (item, r)
+        }.sorted { $0.rank < $1.rank }
+
+        guard let best = ranked.first else { return nil }
+        return DoubanRatingResult(
+            doubanID: best.item.id,
+            title: best.item.title,
+            score: best.item.rating?.value ?? 0,
+            voteCount: best.item.rating?.count ?? nil,
+            pageURL: "https://movie.douban.com/subject/\(best.item.id)/"
+        )
+    }
+
+    private static func abstractContains(_ item: DoubanSearchItem, year: Int) -> Bool {
+        guard let abstract = item.abstract else { return false }
+        return abstract.contains(String(year))
+    }
+
     static func normalize(_ value: String) -> String {
         value
             .replacingOccurrences(

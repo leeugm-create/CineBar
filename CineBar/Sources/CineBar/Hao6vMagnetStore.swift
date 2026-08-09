@@ -10,15 +10,20 @@ final class Hao6vMagnetStore {
         var rawTitle: String
         var magnet: String
         var scrapedAt: Date
+        /// 条目在站内的发布日期（YYYY-MM-DD，来自列表 URL 路径），用于增量抓取。
+        var publishDate: String? = nil
     }
 
     private struct Persisted: Codable {
         var entries: [Entry]
         var lastUpdated: Date
+        /// 上次全量抓取覆盖到的最大站内发布日期（YYYY-MM-DD）。nil 表示从未全量抓过。
+        var lastFullDate: String? = nil
     }
 
     private var entries: [Entry] = []
     private(set) var lastUpdated: Date = .distantPast
+    private var lastFullDateString: String?
     private var loaded = false
     private let lock = NSLock()
 
@@ -36,12 +41,30 @@ final class Hao6vMagnetStore {
     private func ensureLoaded() {
         guard !loaded else { return }
         loaded = true
-        guard let data = try? Data(contentsOf: Self.fileURL),
-              let persisted = try? JSONDecoder().decode(Persisted.self, from: data) else {
+        if let data = try? Data(contentsOf: Self.fileURL),
+           let persisted = try? JSONDecoder().decode(Persisted.self, from: data) {
+            entries = persisted.entries
+            lastUpdated = persisted.lastUpdated
+            lastFullDateString = persisted.lastFullDate
             return
         }
-        entries = persisted.entries
-        lastUpdated = persisted.lastUpdated
+        // 首次启动：从应用内置的初始索引导入，新用户无需先全站抓取。
+        if let data = try? Data(contentsOf: Self.bundledIndexURL()),
+           let persisted = try? JSONDecoder().decode(Persisted.self, from: data),
+           !persisted.entries.isEmpty {
+            entries = persisted.entries
+            lastUpdated = persisted.lastUpdated
+            lastFullDateString = persisted.lastFullDate
+            saveLocked()
+        }
+    }
+
+    /// 应用包内置的初始索引（打包时由脚本从本机全量库生成）。
+    private static func bundledIndexURL() -> URL {
+        return Bundle.main.url(
+            forResource: "InitialHao6vMagnetIndex",
+            withExtension: "json"
+        ) ?? URL(fileURLWithPath: "InitialHao6vMagnetIndex.json")
     }
 
     /// 全部藏品。返回拷贝以防并发修改。
@@ -66,6 +89,14 @@ final class Hao6vMagnetStore {
         return lastUpdated
     }
 
+    /// 上次全量抓取覆盖到的最大日期（YYYY-MM-DD）。
+    func lastFullDate() -> String? {
+        lock.lock()
+        defer { lock.unlock() }
+        ensureLoaded()
+        return lastFullDateString
+    }
+
     /// 批量新增/覆盖条目并落盘。
     func merge(newEntries: [Entry]) {
         lock.lock()
@@ -80,8 +111,21 @@ final class Hao6vMagnetStore {
         saveLocked()
     }
 
+    /// 更新全量抓取水位线并落盘。
+    func setFullDate(_ date: String?) {
+        lock.lock()
+        defer { lock.unlock() }
+        ensureLoaded()
+        lastFullDateString = date
+        saveLocked()
+    }
+
     private func saveLocked() {
-        let payload = Persisted(entries: entries, lastUpdated: lastUpdated)
+        let payload = Persisted(
+            entries: entries,
+            lastUpdated: lastUpdated,
+            lastFullDate: lastFullDateString
+        )
         guard let data = try? JSONEncoder().encode(payload) else { return }
         let dir = Self.fileURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(

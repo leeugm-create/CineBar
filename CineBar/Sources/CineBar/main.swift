@@ -1756,6 +1756,15 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .koKR: return "KR"
         }
     }
+
+    /// 是否中文界面（简/繁）。磁力下载与正版观看入口按语言互斥：
+    /// 中文显示磁力下载，其他语言显示正版观看。
+    var isChinese: Bool {
+        switch self {
+        case .zhCN, .zhHK, .zhTW: return true
+        case .enUS, .jaJP, .koKR: return false
+        }
+    }
 }
 
 enum AutoHideInterval: Int, CaseIterable, Identifiable {
@@ -6076,6 +6085,8 @@ struct RatingBadge: View {
 struct Hao6vMagnetButton: View {
     let title: String
     let year: String
+    /// 界面语言：磁力下载仅在中文界面可用，其他语言隐藏（保留正版观看入口）。
+    let language: AppLanguage
 
     @State private var status: Hao6vStatus = .resolving
     @State private var magnet: String?
@@ -6089,6 +6100,14 @@ struct Hao6vMagnetButton: View {
     }
 
     var body: some View {
+        Group {
+            if language.isChinese {
+                magnetButtons
+            }
+        }
+    }
+
+    private var magnetButtons: some View {
         HStack(spacing: 10) {
             if status == .available, let magnet, let url = URL(string: magnet) {
                 Button {
@@ -6205,7 +6224,7 @@ struct MagnetIndexCard: View {
                     Label(
                         isScanning
                             ? "抓取中 \(done)…"
-                            : "全站抓取",
+                            : "更新抓取",
                         systemImage: isScanning
                             ? "arrow.triangle.2.circlepath"
                             : "icloud.and.arrow.down"
@@ -6218,7 +6237,7 @@ struct MagnetIndexCard: View {
                 ProgressView(value: Double(done), total: Double(max(total, 1)))
                     .controlSize(.small)
                 HStack {
-                    Text("正在抓取详情页，已抓 \(done) 页，期间可正常使用")
+                    Text("正在抓取新增内容，已完成 \(done) 条，期间可正常使用")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -6244,12 +6263,14 @@ struct MagnetIndexCard: View {
     private func refresh() {
         total = Hao6vMagnetStore.shared.count()
         let date = Hao6vMagnetStore.shared.lastUpdatedDate()
-        if date.timeIntervalSince1970 > 0 {
-            lastUpdatedText = "上次更新："
-                + date.formatted(date: .abbreviated, time: .shortened)
-        } else {
-            lastUpdatedText = "尚未抓取过"
-        }
+        let watermark = Hao6vMagnetStore.shared.lastFullDate()
+        let updatedPart = date.timeIntervalSince1970 > 0
+            ? date.formatted(date: .abbreviated, time: .shortened)
+            : "尚未抓取过"
+        let watermarkPart = watermark.map {
+            "，已抓取至 \($0) 的新片"
+        } ?? ""
+        lastUpdatedText = "上次更新：" + updatedPart + watermarkPart
     }
 
     private func startScan() {
@@ -6257,13 +6278,11 @@ struct MagnetIndexCard: View {
         isScanning = true
         total = Hao6vMagnetStore.shared.count()
         scanTask = Task {
-            await Hao6vMagnetResolver.scanIndex { done, pageTotal, _ in
+            await Hao6vMagnetResolver.scanIndex {
+                done, candidateTotal, _ in
                 Task { @MainActor in
-                    self.total = max(
-                        self.total, Hao6vMagnetStore.shared.count()
-                    )
                     self.done = done
-                    _ = pageTotal
+                    _ = candidateTotal
                 }
             }
             await MainActor.run {
@@ -7762,7 +7781,11 @@ struct MovieDetailView: View {
                         mediaID: movie.id
                     )
 
-                    Hao6vMagnetButton(title: movie.title, year: movie.year)
+                    Hao6vMagnetButton(
+                        title: movie.title,
+                        year: movie.year,
+                        language: store.appLanguage
+                    )
 
                     BoxOfficeView(
                         financials: store.financials,
@@ -7996,60 +8019,61 @@ struct MovieDetailView: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("正版观看").font(.headline)
-                            Text(store.region)
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(.secondary.opacity(0.12), in: Capsule())
-                        }
+                    if !store.appLanguage.isChinese {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("正版观看").font(.headline)
+                                Text(store.region)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(.secondary.opacity(0.12), in: Capsule())
+                            }
 
-                        if movie.id < 0 {
-                            Text("演示影片不查询观看平台")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else if store.isLoadingProviders {
-                            ProgressView("正在查询…")
-                                .controlSize(.small)
-                        } else if store.providers.isEmpty {
-                            Text("当前地区暂未收录正版观看平台")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            FlowLayout(spacing: 6) {
-                                ForEach(store.providers) { provider in
-                                    if let destination = providerSearchURL(
-                                        providerName: provider.providerName,
-                                        title: movie.title
-                                    ) {
-                                        Button {
-                                            openURL(destination)
-                                        } label: {
-                                            Label(
-                                                provider.providerName,
-                                                systemImage: "arrow.up.right.square"
-                                            )
-                                        }
-                                        .buttonStyle(.plain)
-                                        .font(.caption)
-                                        .padding(.horizontal, 9)
-                                        .padding(.vertical, 5)
-                                        .background(.blue.opacity(0.12), in: Capsule())
-                                        .help("在该平台搜索影片")
-                                    } else {
-                                        Text(provider.providerName)
+                            if movie.id < 0 {
+                                Text("演示影片不查询观看平台")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else if store.isLoadingProviders {
+                                ProgressView("正在查询…")
+                                    .controlSize(.small)
+                            } else if store.providers.isEmpty {
+                                Text("当前地区暂未收录正版观看平台")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                FlowLayout(spacing: 6) {
+                                    ForEach(store.providers) { provider in
+                                        if let destination = providerSearchURL(
+                                            providerName: provider.providerName,
+                                            title: movie.title
+                                        ) {
+                                            Button {
+                                                openURL(destination)
+                                            } label: {
+                                                Label(
+                                                    provider.providerName,
+                                                    systemImage: "arrow.up.right.square"
+                                                )
+                                            }
+                                            .buttonStyle(.plain)
                                             .font(.caption)
                                             .padding(.horizontal, 9)
                                             .padding(.vertical, 5)
                                             .background(.blue.opacity(0.12), in: Capsule())
+                                            .help("在该平台搜索影片")
+                                        } else {
+                                            Text(provider.providerName)
+                                                .font(.caption)
+                                                .padding(.horizontal, 9)
+                                                .padding(.vertical, 5)
+                                                .background(.blue.opacity(0.12), in: Capsule())
+                                        }
                                     }
                                 }
                             }
-                        }
 
-                        if let link = store.providerLink {
+                            if let link = store.providerLink {
                             Button("查看正版观看入口") {
                                 openURL(link)
                             }
@@ -8060,6 +8084,7 @@ struct MovieDetailView: View {
                         Text("观看平台信息由 JustWatch 通过 TMDB 提供，实际可用性以平台页面为准。")
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
+                        }
                     }
                 }
                 .padding()
@@ -8451,7 +8476,11 @@ struct TVDetailView: View {
                         mediaID: show.id
                     )
 
-                    Hao6vMagnetButton(title: show.name, year: show.year)
+                    Hao6vMagnetButton(
+                        title: show.name,
+                        year: show.year,
+                        language: store.appLanguage
+                    )
 
                     VStack(alignment: .leading, spacing: 9) {
                         HStack {
@@ -8893,19 +8922,20 @@ struct TVDetailView: View {
                         }
                     }
 
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("正版观看").font(.headline)
-                            Text(store.region)
-                                .font(.caption2.bold())
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(.secondary.opacity(0.12), in: Capsule())
-                        }
-                        if store.tvProviders.isEmpty {
-                            Text("当前地区暂未收录正版观看平台")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                    if !store.appLanguage.isChinese {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Text("正版观看").font(.headline)
+                                Text(store.region)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(.secondary.opacity(0.12), in: Capsule())
+                            }
+                            if store.tvProviders.isEmpty {
+                                Text("当前地区暂未收录正版观看平台")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                         } else {
                             FlowLayout(spacing: 6) {
                                 ForEach(store.tvProviders) { provider in
@@ -8941,6 +8971,7 @@ struct TVDetailView: View {
                         )
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        }
                     }
                 }
                 .padding()

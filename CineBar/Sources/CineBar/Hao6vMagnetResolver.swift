@@ -25,6 +25,16 @@ enum Hao6vMagnetResolver {
     struct ListEntry {
         let url: URL
         let rawTitle: String
+        /// 条目站内发布日期（YYYY-MM-DD，取自列表 URL 路径），用于增量抓取。
+        var publishDate: String? { ListEntry.dateString(from: url) }
+
+        static func dateString(from url: URL) -> String? {
+            let comps = url.pathComponents
+            guard let idx = comps.firstIndex(where: {
+                $0.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
+            }) else { return nil }
+            return comps[idx]
+        }
     }
 
     static func categoryURL(path: String, page: Int) -> URL {
@@ -49,7 +59,8 @@ enum Hao6vMagnetResolver {
                     Hao6vMagnetStore.Entry(
                         rawTitle: entry.rawTitle,
                         magnet: magnet,
-                        scrapedAt: Date()
+                        scrapedAt: Date(),
+                        publishDate: entry.publishDate
                     )
                 ])
                 return magnet
@@ -122,10 +133,15 @@ enum Hao6vMagnetResolver {
 
     // MARK: - 建库扫描
 
-    /// 全站扫描建库：枚举全部分类的全部分页（直到页面为空），逐个抓详情磁力入
-    /// 库。progress 回调 (完成的页数, 总页数, 当前分类标签)。
+    /// 建库扫描：先枚举全部分类的全部分页收集全部列表条目（探测），再只对
+    /// 新增条目抓详情磁力入库。依赖已持久化的 lastFullDate 水位实现断点续传：
+    /// 上次抓到的最大发布日期之前的内容不再重复请求，只抓之后的最新内容。
+    /// progress 回调 (已完成条数, 本次待抓总条数, 当前分类标签)。
     static func scanIndex(progress: ((Int, Int, String) -> Void)? = nil) async {
-        var pages: [(cat: String, url: URL)] = []
+        let lastFull = Hao6vMagnetStore.shared.lastFullDate()
+        var allItems: [ListEntry] = []
+        var seenKeys = Set<String>()
+        var latestDate = lastFull ?? ""
         for cat in categories {
             var page = 1
             while true {
@@ -133,34 +149,59 @@ enum Hao6vMagnetResolver {
                 let url = categoryURL(path: cat.path, page: page)
                 let items = await fetchListPage(url: url)
                 if items.isEmpty { break }
-                pages.append((cat.path, url))
+                // 增量早停：分类首页最大发布日期仍早于水位线，
+                // 说明该分类没有新内容，后续更旧的页无需再探测。
+                if page == 1, let lastFull {
+                    let newest = items.compactMap(\.publishDate).max() ?? ""
+                    if !newest.isEmpty && newest < lastFull {
+                        break
+                    }
+                }
+                for item in items {
+                    let key = item.url.absoluteString
+                    guard !seenKeys.contains(key) else { continue }
+                    seenKeys.insert(key)
+                    if let date = item.publishDate, date > latestDate {
+                        latestDate = date
+                    }
+                    allItems.append(item)
+                }
                 page += 1
                 if page > 100 { break }
                 try? await Task.sleep(nanoseconds: 120_000_000)
             }
         }
-        let known = KnownKeys(
-            Set(Hao6vMagnetStore.shared.allEntries().map { normalize($0.rawTitle) })
+        // 增量水位：只抓上次全量之后发布的内容；但老日期且未入库的条目
+        // （上次扫漏的）也要补抓，保证"全站扫描"始终是兜底全量。
+        let knownSet = Set(
+            Hao6vMagnetStore.shared.allEntries().map { normalize($0.rawTitle) }
         )
-        let total = pages.count
+        let candidates = allItems.filter { item in
+            guard let date = item.publishDate else { return true }
+            if lastFull == nil || date >= lastFull! { return true }
+            return !knownSet.contains(normalize(item.rawTitle))
+        }
+        let total = candidates.count
         var done = 0
         var pending: [Hao6vMagnetStore.Entry] = []
-        await withTaskGroup(of: [Hao6vMagnetStore.Entry].self) { group in
+        let known = KnownKeys(knownSet)
+        await withTaskGroup(of: (ListEntry, Hao6vMagnetStore.Entry?).self)
+        { group in
             let window = 4
             var next = 0
             func enqueue(_ i: Int) {
-                guard i < pages.count else { return }
-                let url = pages[i].url
+                guard i < candidates.count else { return }
+                let item = candidates[i]
                 group.addTask {
-                    await Self.scanPage(url: url, known: known)
+                    await Self.scanEntry(item: item, known: known)
                 }
             }
             for i in 0..<window { enqueue(i) }
             next = window
-            for await batch in group {
-                if !batch.isEmpty {
-                    pending.append(contentsOf: batch)
-                    known.add(batch.map { normalize($0.rawTitle) })
+            for await (_, fetched) in group {
+                if let fetched {
+                    pending.append(fetched)
+                    known.add([normalize(fetched.rawTitle)])
                 }
                 done += 1
                 progress?(done, total, "p\(done)")
@@ -177,30 +218,29 @@ enum Hao6vMagnetResolver {
                 Hao6vMagnetStore.shared.merge(newEntries: pending)
             }
         }
+        // 更新水位：写入本次探测到的最大发布日期。取消时不推进，
+        // 保持旧水位以便下次从该日期之后继续补抓。
+        if !Task.isCancelled, !latestDate.isEmpty {
+            Hao6vMagnetStore.shared.setFullDate(latestDate)
+        }
     }
 
-    private static func scanPage(
-        url: URL,
+    private static func scanEntry(
+        item: ListEntry,
         known: KnownKeys
-    ) async -> [Hao6vMagnetStore.Entry] {
-        if Task.isCancelled { return [] }
-        let items = await fetchListPage(url: url)
-        var batch: [Hao6vMagnetStore.Entry] = []
-        for entry in items {
-            if Task.isCancelled { return batch }
-            let key = normalize(entry.rawTitle)
-            if known.contains(key) { continue }
-            if let magnet = await fetchMagnet(url: entry.url) {
-                batch.append(Hao6vMagnetStore.Entry(
-                    rawTitle: entry.rawTitle,
-                    magnet: magnet,
-                    scrapedAt: Date()
-                ))
-                known.add([key])
-            }
-            try? await Task.sleep(nanoseconds: 60_000_000)
+    ) async -> (ListEntry, Hao6vMagnetStore.Entry?) {
+        if Task.isCancelled { return (item, nil) }
+        let key = normalize(item.rawTitle)
+        if known.contains(key) { return (item, nil) }
+        if let magnet = await fetchMagnet(url: item.url) {
+            return (item, Hao6vMagnetStore.Entry(
+                rawTitle: item.rawTitle,
+                magnet: magnet,
+                scrapedAt: Date(),
+                publishDate: item.publishDate
+            ))
         }
-        return batch
+        return (item, nil)
     }
 
     /// 线程安全的已收录标题集合，避免每次全数组扫描。
@@ -235,7 +275,8 @@ enum Hao6vMagnetResolver {
                     batch.append(Hao6vMagnetStore.Entry(
                         rawTitle: item.rawTitle,
                         magnet: magnet,
-                        scrapedAt: Date()
+                        scrapedAt: Date(),
+                        publishDate: item.publishDate
                     ))
                 }
                 try? await Task.sleep(nanoseconds: 120_000_000)

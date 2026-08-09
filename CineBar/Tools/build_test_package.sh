@@ -104,6 +104,31 @@ if [[ -d "$app_source_dir/ReleaseNotes" ]]; then
   cp -R "$app_source_dir/ReleaseNotes" "$contents_dir/Resources/ReleaseNotes"
 fi
 
+# 内置磁力初始索引：若本机已有全量库则打包进应用，
+# 新用户首次启动即可直接使用，无需先跑全站抓取。
+magnet_index="$HOME/Library/Application Support/CineBar/Hao6vMagnetIndex.json"
+if [[ -f "$magnet_index" ]]; then
+  # 只打包条目 + 打包时刻的 lastUpdated；不设 lastFullDate 水位：
+  # 首次"更新抓取"时探测全站但只抓新增详情（已在库的跳过），
+  # 完成后水位自动建立，之后才是真正的增量扫描。
+  python3 - "$magnet_index" "$contents_dir/Resources/InitialHao6vMagnetIndex.json" <<'PYEOF'
+import json, sys, datetime, time
+src, dst = sys.argv[1], sys.argv[2]
+try:
+    data = json.load(open(src, encoding="utf-8"))
+except Exception as ex:
+    print("WARN: cannot embed initial magnet index:", ex)
+    sys.exit(0)
+if isinstance(data, dict) and data.get("entries"):
+    data["lastUpdated"] = time.time()
+    data["lastFullDate"] = None
+    json.dump(data, open(dst, "w", encoding="utf-8"), ensure_ascii=False)
+    print("Embedded initial magnet index:", len(data["entries"]), "entries")
+else:
+    print("WARN: 磁力库为空或无有效 entries，跳过内置索引")
+PYEOF
+fi
+
 sparkle_framework="$contents_dir/Frameworks/Sparkle.framework"
 for xpc_service in \
   "$sparkle_framework"/Versions/Current/XPCServices/*.xpc; do

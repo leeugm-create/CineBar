@@ -9,8 +9,10 @@ final class UpdaterService: ObservableObject {
 
     var automaticallyChecksForUpdates = true
     @Published var canCheckForUpdates = true
+    @Published private(set) var hasUpdateAvailable = false
 
     func checkForUpdates() {}
+    func startSilentUpdateChecks() {}
 }
 
 private actor RecordingServiceLoader: ServiceDataLoading {
@@ -653,7 +655,7 @@ struct CineBarRegressionBehaviorTests {
         precondition(CertificationCardMetrics.width <= 130)
         precondition(CertificationCardMetrics.height <= 44)
 
-        let calendarDetails = CalendarReleaseEventComposer.make(
+let calendarDetails = CalendarReleaseEventComposer.make(
             title: "奥德赛",
             dateText: "2026-08-14",
             region: "CN",
@@ -693,7 +695,7 @@ struct CineBarRegressionBehaviorTests {
             ) == nil
         )
 
-        let personImage = PersonImage(
+let personImage = PersonImage(
             filePath: "/actor.jpg",
             width: 1_000,
             height: 1_500,
@@ -924,7 +926,7 @@ struct CineBarRegressionBehaviorTests {
                 == "v.qq.com"
         )
 
-        let moviePayload = SharePayload(
+let moviePayload = SharePayload(
             mediaType: .movie,
             title: "沙丘2",
             url: movieShareURL!
@@ -950,7 +952,7 @@ struct CineBarRegressionBehaviorTests {
                 "https://share.example/t/1399"
         )
 
-        let store = MovieStore()
+let store = MovieStore()
         store.communityRating = CommunityRatingSummary(
             mediaType: "movie",
             mediaID: 603,
@@ -958,7 +960,7 @@ struct CineBarRegressionBehaviorTests {
             total: 14,
             myScore: 8.5
         )
-        let movieRatings = store.ratings(for: Movie.demo[0])
+let movieRatings = store.ratings(for: Movie.demo[0])
         precondition(movieRatings.last?.source == "我的评分")
         precondition(movieRatings.last?.value == "8.5/10")
 
@@ -973,9 +975,8 @@ struct CineBarRegressionBehaviorTests {
         precondition(televisionRatings.last?.source == "我的评分")
         precondition(televisionRatings.last?.value == "9.5/10")
 
-        // —— 评分体系：豆瓣排第一、可携带跳转 URL ——
-        let doubanRatingStore = MovieStore()
-        doubanRatingStore.appLanguage = .zhCN
+        // —— 评分体系：列表/详情评分 —— 豆瓣评分走详情独立字段，不进 ratings 列表。
+let doubanRatingStore = MovieStore()
         doubanRatingStore.setDoubanRatingForTesting(
             MovieRating(
                 source: "豆瓣",
@@ -985,18 +986,17 @@ struct CineBarRegressionBehaviorTests {
             )
         )
         let rankedMovieRatings = doubanRatingStore.ratings(for: Movie.demo[0])
-        precondition(rankedMovieRatings.first?.source == "豆瓣")
-        precondition(rankedMovieRatings.first?.value == "9.3/10")
+        precondition(rankedMovieRatings.first?.source == "TMDB")
         precondition(
-            rankedMovieRatings.first?.url?.absoluteString ==
-                "https://movie.douban.com/subject/1292001/"
+            rankedMovieRatings.allSatisfy { $0.source != "豆瓣" }
         )
+        // 列表行缺省回退 TMDB（豆瓣不参与列表行评分）
         precondition(
-            doubanRatingStore.listRating(for: Movie.demo[0])?.value == "9.3/10"
+            doubanRatingStore.listRating(for: Movie.demo[0])?.source == "TMDB"
         )
 
-        // 列表行评分语言切换：zh-CN 走豆瓣，其他语言走 IMDb，缺省回退 TMDB
-        let englishListStore = MovieStore()
+        // 列表行评分：语言无关，优先 IMDb，其次烂番茄，缺省回退 TMDB
+let englishListStore = MovieStore()
         englishListStore.appLanguage = .enUS
         englishListStore.setExternalRatingsForTesting(
             movieID: Movie.demo[0].id,
@@ -1023,15 +1023,15 @@ struct CineBarRegressionBehaviorTests {
         precondition(
             englishListStore.listRatingCount(for: Movie.demo[0]) == "214.8万"
         )
-        englishListStore.appLanguage = .zhCN
+englishListStore.appLanguage = .zhCN
         precondition(
-            englishListStore.listRating(for: Movie.demo[0])?.source == "TMDB"
+            englishListStore.listRating(for: Movie.demo[0])?.source == "IMDb"
         )
+        // 语言切换不影响列表行评分来源与跳转链接
         precondition(
-            englishListStore.listRating(for: Movie.demo[0])?.url == nil
+            englishListStore.listRating(for: Movie.demo[0])?.url?.absoluteString ==
+                "https://www.imdb.com/title/tt0816692/"
         )
-
-        // RatingBadge 的跳转 URL 原样保留
         let badgeRating = MovieRating(
             source: "豆瓣",
             value: "9.3/10",
@@ -1043,7 +1043,7 @@ struct CineBarRegressionBehaviorTests {
             badgeRating.url?.absoluteString.contains("douban.com") == true
         )
 
-        let slider = RatingNSSlider()
+let slider = RatingNSSlider()
         precondition(slider.minValue == 0)
         precondition(slider.maxValue == 10)
         precondition(slider.numberOfTickMarks == 21)
@@ -2316,6 +2316,22 @@ struct CineBarRegressionBehaviorTests {
         )
         precondition(none == nil)
 
+        // ---- 磁力全站索引：发布日期提取 ----
+        precondition(
+            Hao6vMagnetResolver.ListEntry.dateString(
+                from: URL(string: "https://www.hao6v.cc/dy/2026-08-09/50094.html")!
+            ) == "2026-08-09"
+        )
+        precondition(
+            Hao6vMagnetResolver.ListEntry.dateString(
+                from: URL(string: "https://www.hao6v.cc/dy/index_2.html")!
+            ) == nil
+        )
+        precondition(
+            Hao6vMagnetResolver.ListEntry.dateString(
+                from: URL(string: "https://www.hao6v.cc/dy/")!
+            ) == nil
+        )
     }
 }
 
