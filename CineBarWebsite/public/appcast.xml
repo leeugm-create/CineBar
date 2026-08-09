@@ -5,16 +5,22 @@
     <link>https://cinebar.cc/appcast.xml</link>
     <description>CineBar signed application updates</description>
     <item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 57&lt;/li&gt;&lt;li&gt;- 新增：中文界面「热门」改走聚合站热度榜（约 50 部），不再使用 IMDB 热度数据；卡片点击直达详情页在线播放，无需 TMDB Token 即可使用。&lt;/li&gt;&lt;li&gt;- 新增：热门电影卡片显示海报、片名与豆瓣评分，榜单更新失败时提供一键重试。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-57-universal.zip"
+        sparkle:version="57"
+        sparkle:shortVersionString="0.8.3"
+        length="7831915"
+        type="application/octet-stream"
+        sparkle:edSignature="YnYahois9DMV+KX0LrCvBJbkAJWxA0dwmA30ygvlh1j6ykiPN3+ubjHA/3yVN8VguJDGkrhOapvzBAI/fFNBCA=="/>
+    </item>
+<item>
       <title>CineBar 0.8.3-test.15</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 56&lt;/li&gt;&lt;li&gt;- 新增电视剧在线播放：剧集详情页可直接解析播放正片，多个资源源可在菜单中自由切换，支持逐集选择播放（每一集独立解析直链）。&lt;/li&gt;&lt;li&gt;- 修复：点击&amp;quot;放大播放&amp;quot;或&amp;quot;全屏&amp;quot;后，内嵌播放器不再继续出声，播放窗口关闭后自动恢复内嵌播放。&lt;/li&gt;&lt;li&gt;- 修复：全屏播放按 Esc 退出时偶发的应用崩溃。&lt;/li&gt;&lt;li&gt;- 优化：首页卡片悬停动画改为轻量效果（取消大幅 3D 旋转与视差），卡片信息精简为片名与评分，字号加大一档。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Sun, 09 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-56-universal.zip"
-        sparkle:version="56"
-        sparkle:shortVersionString="0.8.3-test.15"
-        length="7743060"
-        type="application/octet-stream"
-        sparkle:edSignature="Ez0dYMERQXO2FeC0TE4seoff584yCWvqmJoX5HQ4iL8+brITr4h5oUyOs405affjPzgHuqJ5pPcKt1R15xlXDg=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-56-universal.zip" sparkle:version="56" sparkle:shortVersionString="0.8.3-test.15" length="7743060" type="application/octet-stream" sparkle:edSignature="Ez0dYMERQXO2FeC0TE4seoff584yCWvqmJoX5HQ4iL8+brITr4h5oUyOs405affjPzgHuqJ5pPcKt1R15xlXDg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
