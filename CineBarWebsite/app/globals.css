@@ -763,6 +763,10 @@ a.support-card:hover {
 .analytics-header h1 { max-width: none; margin: 0 0 12px; font-size: clamp(2.6rem, 6vw, 5rem); font-weight: 850; letter-spacing: -0.045em; line-height: 1.08; }
 .analytics-muted { color: var(--muted); }
 .analytics-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.analytics-metrics.metrics-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.analytics-section-title { margin: 44px 0 16px; font-size: 1.3rem; letter-spacing: -0.02em; }
+.analytics-section-title:first-of-type { margin-top: 8px; }
+.analytics-sub { display: block; color: var(--muted); font-size: 0.8rem; }
 .analytics-card { padding: 24px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
 .analytics-card h2 { max-width: none; margin: 0 0 16px; font-size: 1.15rem; letter-spacing: -0.02em; }
 .analytics-card strong { display: block; margin-top: 4px; font-size: clamp(2.3rem, 6vw, 4rem); line-height: 1; }
@@ -863,6 +867,7 @@ footer {
   .hero h1 { letter-spacing: -0.05em; }
   .feature-list li { padding: 18px 2px; }
   .analytics-metrics,
+  .analytics-metrics.metrics-3,
   .analytics-grid { grid-template-columns: 1fr; }
   footer { align-items: flex-start; flex-direction: column; }
 }

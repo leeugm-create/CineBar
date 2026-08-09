@@ -21,6 +21,13 @@
   "observability": {
     "enabled": true
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cinebar-site-stats",
+      "database_id": "2e120b6b-adef-477b-b720-d2f8351096d4"
+    }
+  ],
   "routes": [
     {
       "pattern": "cinebar.cc",

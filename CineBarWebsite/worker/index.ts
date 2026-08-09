@@ -141,6 +141,50 @@ async function handleSearch(request: Request, env: Env): Promise<Response> {
   });
 }
 
+/** Records a page view into the D1 stats database. IP is hashed one-way
+ *  (SHA-256) so raw visitor addresses are never persisted. Fires in the
+ *  background and never blocks or fails the response. */
+async function recordPageVisit(request: Request, env: Env, url: URL): Promise<void> {
+  try {
+    const rawIp = request.headers.get("cf-connecting-ip") ?? "";
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`cinebar:${rawIp}`));
+    const ipHash = Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    const firstSegment = url.pathname.split("/").filter(Boolean)[0] ?? "";
+    const locale = ["zh-Hans", "zh-Hant", "en", "ja", "ko"].includes(firstSegment)
+      ? firstSegment
+      : "zh-Hans";
+
+    await env.DB.prepare(
+      "INSERT INTO page_visits (ts, path, country, ip_hash, locale) VALUES (?, ?, ?, ?, ?)"
+    )
+      .bind(
+        Math.floor(Date.now() / 1000),
+        url.pathname,
+        request.headers.get("cf-ipcountry") ?? "--",
+        ipHash,
+        locale,
+      )
+      .run();
+  } catch {
+    // Statistics must never break the page itself.
+  }
+}
+
+/** A navigational page request worth counting: HTML document requests that
+ *  are not admin pages, API endpoints, or static assets. */
+function shouldRecordPageVisit(request: Request, url: URL): boolean {
+  if (request.method !== "GET" && request.method !== "HEAD") return false;
+  if (!isNavigationalRequest(request)) return false;
+  if (url.pathname === "/admin/analytics") return false;
+  if (url.pathname.startsWith("/api/")) return false;
+  if (url.pathname.startsWith("/_vinext")) return false;
+  if (/\.(css|js|png|jpe?g|svg|ico|webp|woff2?|json|zip|txt|xml|mp4|pdf)$/i.test(url.pathname)) return false;
+  return true;
+}
+
 function isWeChatBrowser(request: Request): boolean {
   const ua = request.headers.get("user-agent") ?? "";
   return /MicroMessenger/i.test(ua);
@@ -277,6 +321,10 @@ const worker = {
     // Otherwise a guessed URL would reveal aggregate installation counts.
     if (url.pathname === "/admin/analytics" && !isAdminAnalyticsRequest(request, env)) {
       return adminAnalyticsUnauthorized(url);
+    }
+
+    if (shouldRecordPageVisit(request, url)) {
+      ctx.waitUntil(recordPageVisit(request, env, url));
     }
 
     if (url.pathname === "/api/search" && request.method === "GET") {
