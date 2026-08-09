@@ -3,7 +3,7 @@ import LangSelect from "./lang-select";
 import SiteSearch from "./site-search";
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-48-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-49-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 function ratingIcon(id: string) {

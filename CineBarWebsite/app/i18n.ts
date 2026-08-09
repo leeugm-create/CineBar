@@ -71,7 +71,7 @@ export type Messages = {
 export const messages: Record<Locale, Messages> = {
   "zh-Hans": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 48）测试版",
+    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 49）测试版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "一个找电影、电视剧的 app。",
@@ -120,7 +120,7 @@ export const messages: Record<Locale, Messages> = {
       ["多语言", "支持简体中文、繁体中文、英语、日语与韩语。"],
     ],
     steps: [
-      "从上方 Build 48 固定地址下载测试包并解压，把 CineBar.app 移入“应用程序”文件夹。",
+      "从上方 Build 49 固定地址下载测试包并解压，把 CineBar.app 移入“应用程序”文件夹。",
       "双击或右键打开 CineBar（首次打开时若系统询问，选择“打开”）。",
       "若弹出“Apple 无法验证开发者”，请打开“系统设置”→“隐私与安全”→“安全性”，找到被阻止的 CineBar，点击“仍要打开”，输入密码或验证 Touch ID，然后重新打开 CineBar 即可。",
     ],
@@ -158,7 +158,7 @@ export const messages: Record<Locale, Messages> = {
   },
   "zh-Hant": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 48）測試版",
+    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 49）測試版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "一個找電影、電視劇的 app。",
@@ -207,7 +207,7 @@ export const messages: Record<Locale, Messages> = {
       ["多語言", "支援簡體中文、繁體中文、英語、日語與韓語。"],
     ],
     steps: [
-      "從上方 Build 48 固定連結下載測試包並解壓，把 CineBar.app 移入「應用程式」資料夾。",
+      "從上方 Build 49 固定連結下載測試包並解壓，把 CineBar.app 移入「應用程式」資料夾。",
       "雙擊或右鍵開啟 CineBar（首次開啟時若系統詢問，選擇「開啟」）。",
       "若出現「Apple 無法驗證開發者」，請開啟「系統設定」→「隱私權與安全性」→「安全性」，找到被阻擋的 CineBar，點擊「仍要開啟」，輸入密碼或驗證 Touch ID，然後重新開啟 CineBar 即可。",
     ],
@@ -245,7 +245,7 @@ export const messages: Record<Locale, Messages> = {
   },
   en: {
     metaTitle: "CineBar — Find your next great film",
-    heroVersion: "CineBar for macOS · 0.8.3-test.15 (Build 48) Beta",
+    heroVersion: "CineBar for macOS · 0.8.3-test.15 (Build 49) Beta",
     heroTitle1: "Find your",
     heroTitle2: "next great film",
     heroLede: "An app for finding movies & TV shows.",
@@ -293,7 +293,7 @@ export const messages: Record<Locale, Messages> = {
       ["Multilingual", "Supports Simplified & Traditional Chinese, English, Japanese and Korean."],
     ],
     steps: [
-      "Download and unzip the beta from the fixed Build 48 link above, then move CineBar.app into your Applications folder.",
+      "Download and unzip the beta from the fixed Build 49 link above, then move CineBar.app into your Applications folder.",
       "Double-click CineBar — or right-click and choose Open on first launch if asked.",
       "If macOS says it can't verify the developer, open System Settings → Privacy & Security → Security, find the blocked CineBar, click Open Anyway (or “Still Open”), confirm with your password or Touch ID, then open CineBar again.",
     ],
@@ -331,7 +331,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ja: {
     metaTitle: "CineBar — 次の名作を見つけよう",
-    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 48）テスト版",
+    heroVersion: "CineBar for macOS · 0.8.3-test.15（Build 49）テスト版",
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
     heroLede: "映画・ドラマを探せるアプリ。",
@@ -379,7 +379,7 @@ export const messages: Record<Locale, Messages> = {
       ["多言語対応", "簡体字・繁体字中国語、英語、日本語、韓国語に対応。"],
     ],
     steps: [
-      "上記の固定リンク（Build 48）からテスト版をダウンロードして解凍し、CineBar.app を Applications フォルダに移します。",
+      "上記の固定リンク（Build 49）からテスト版をダウンロードして解凍し、CineBar.app を Applications フォルダに移します。",
       "CineBar をダブルクリック、または右クリックで「開く」を選んで起動します（初回は確認が出る場合があります）。",
       "「Apple が開発元を検証できません」と表示されたら、「システム設定」→「プライバシーとセキュリティ」→「セキュリティ」でブロックされた CineBar の「このまま開く」をクリックし、パスワードまたは Touch ID で確認して、再度 CineBar を開きます。",
     ],
@@ -417,7 +417,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ko: {
     metaTitle: "CineBar — 다음 영화를 찾아보세요",
-    heroVersion: "CineBar for macOS · 0.8.3-test.15 (Build 48) 베타",
+    heroVersion: "CineBar for macOS · 0.8.3-test.15 (Build 49) 베타",
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
     heroLede: "영화·드라마를 찾아주는 앱.",
@@ -466,7 +466,7 @@ export const messages: Record<Locale, Messages> = {
       ["다국어 지원", "중국어(간체·번체), 영어, 일본어, 한국어 지원."],
     ],
     steps: [
-      "위의 고정 링크(Build 48)에서 테스트 버전을 다운로드해 압축을 풀고, CineBar.app을 응용 프로그램 폴더로 옮깁니다.",
+      "위의 고정 링크(Build 49)에서 테스트 버전을 다운로드해 압축을 풀고, CineBar.app을 응용 프로그램 폴더로 옮깁니다.",
       "CineBar를 더블 클릭하거나 마우스 오른쪽 버튼 클릭 후 '열기'를 선택해 실행합니다(첫 실행 시 시스템이 묻는 경우).",
       "'Apple이 개발자를 확인할 수 없다'는 메시지가 나오면 '시스템 설정'→'개인정보 및 보안'→'보안'에서 차단된 CineBar를 찾아 '그래도 열기'를 클릭하고 암호 또는 Touch ID로 확인한 뒤 CineBar를 다시 실행합니다.",
     ],

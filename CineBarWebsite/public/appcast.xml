@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 48&lt;/li&gt;&lt;li&gt;- 修复点菜单栏图标打不开程序的问题：之前检测到新版本时，点击图标只会触发更新检查而不会打开主面板，更新检查又可能静默失败，导致图标看起来完全没反应；现在点击菜单栏图标在任何情况下都会打开/切换主面板，蓝点依然提示有新版本，想要手动更新请在设置面板里点“检查更新”。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 49&lt;/li&gt;&lt;li&gt;- 海报 3D 效果打磨：去掉了鼠标划过时跟随的高光层；修复旋转边缘露出的黑色边线，多层视差现在无论鼠标移到卡片哪个角落都不会露底；整体动态幅度调柔和（旋转角度与位移都缩小），立体感保留但不再夸张。&lt;/li&gt;&lt;li&gt;- 主页右侧的滚动条指示器不再显示，界面更干净。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Sun, 09 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-48-universal.zip"
-        sparkle:version="48"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-49-universal.zip"
+        sparkle:version="49"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="6894704"
+        length="6890174"
         type="application/octet-stream"
-        sparkle:edSignature="pyB+sUY033Y9CqRp9qt2krdAqaGcR7VbivQdhybhKEV2z1/yXtw0pfIUf90y4PHPQtvd86MZht3OOkzTDLCUDg=="/>
+        sparkle:edSignature="ynCFcYxxSGSfQBfGLINhatA3jovfZIjWsBFeq/BuqROzzxZbd7yJIFby6F6nwI+4bwQlW8Z7vIN9sJTj4w/SDQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 48&lt;/li&gt;&lt;li&gt;- 修复点菜单栏图标打不开程序的问题：之前检测到新版本时，点击图标只会触发更新检查而不会打开主面板，更新检查又可能静默失败，导致图标看起来完全没反应；现在点击菜单栏图标在任何情况下都会打开/切换主面板，蓝点依然提示有新版本，想要手动更新请在设置面板里点“检查更新”。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-48-universal.zip" sparkle:version="48" sparkle:shortVersionString="0.8.3-test.15" length="6894704" type="application/octet-stream" sparkle:edSignature="pyB+sUY033Y9CqRp9qt2krdAqaGcR7VbivQdhybhKEV2z1/yXtw0pfIUf90y4PHPQtvd86MZht3OOkzTDLCUDg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
