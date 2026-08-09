@@ -180,6 +180,114 @@ enum MoovieStreamResolver {
         return nil
     }
 
+    /// 一集电视剧的播放入口（播放页路径 + 展示名）。
+    struct PlaybackEpisode: Identifiable, Hashable {
+        var id: String { playPath }
+        let label: String
+        let playPath: String
+
+        /// 从"第X集"文本提取数字（第36集完结 → 36），失败返回 nil。
+        var numericOrder: Int? {
+            let trimmed = label
+                .replacingOccurrences(of: "完结", with: "")
+                .trimmingCharacters(in: .whitespaces)
+            let digits = trimmed.filter(\.isNumber)
+            return Int(digits)
+        }
+    }
+
+    /// 从播放页 HTML 提取剧集列表（离线纯函数，供测试）。
+    /// 播放页内嵌 `var episodeList = [...]`，元素形如：
+    /// { "title": "第01集", "url": "/play/源/id?source=..&ep=第01集&douban_id=.." }
+    static func parseEpisodeList(from html: String) -> [PlaybackEpisode] {
+        // 先精确提取 episodeList 数组文本，避免误匹配其它 JS 数组。
+        guard let listRange = html.range(of: "episodeList = [") ??
+                html.range(of: "episodeList=[") else { return [] }
+        var scanIndex = listRange.upperBound
+        var bracketDepth = 1
+        while scanIndex < html.endIndex {
+            let ch = html[scanIndex]
+            if ch == "[" { bracketDepth += 1 }
+            if ch == "]" {
+                bracketDepth -= 1
+                if bracketDepth == 0 { break }
+            }
+            scanIndex = html.index(after: scanIndex)
+        }
+        guard bracketDepth == 0 else { return [] }
+        let listText = String(html[listRange.upperBound...scanIndex])
+
+        var episodes: [PlaybackEpisode] = []
+        // 站点 JS 用双引号 JSON 风格；兼容单引号 label 风格。
+        let patterns = [
+            #""title":\s*"([^"]+)",\s*"url":\s*"([^"]+)""#,
+            #"'label':\s*'([^']*)'\s*,\s*'url':\s*'([^']*)'"#,
+            #"label:\s*'([^']*)'\s*,\s*url:\s*'([^']*)'"#
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else {
+                continue
+            }
+            let ns = listText as NSString
+            let matches = regex.matches(
+                in: listText,
+                range: NSRange(location: 0, length: ns.length)
+            )
+            var seen = Set<String>()
+            for match in matches {
+                let label = ns.substring(with: match.range(at: 1))
+                let path = ns.substring(with: match.range(at: 2))
+                let decoded = path.replacingOccurrences(of: "\\/", with: "/")
+                guard !label.isEmpty, !decoded.isEmpty else { continue }
+                if seen.insert(decoded).inserted {
+                    episodes.append(
+                        PlaybackEpisode(label: label, playPath: decoded)
+                    )
+                }
+            }
+            if !episodes.isEmpty { break }
+        }
+        return episodes.sorted { a, b in
+            let (na, nb) = (a.numericOrder, b.numericOrder)
+            if let na, let nb, na != nb { return na < nb }
+            return a.label < b.label
+        }
+    }
+
+    /// 拉取播放页并解析剧集列表；失败返回空数组。
+    static func loadEpisodes(playPath: String) async -> [PlaybackEpisode] {
+        guard let url = URL(string: playPath, relativeTo: siteBase) else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = timeout
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let html = String(data: data, encoding: .utf8) else {
+            return []
+        }
+        return parseEpisodeList(from: html)
+    }
+
+    /// 从片名提取季信息（"庆余年 第二季"→"第二季"，"Show S02"→"S02"）。
+    /// 没有明确季标识时返回 nil。
+    static func seasonLabel(from title: String) -> String? {
+        let patterns = [
+            #"第[一二三四五六七八九十0-9]+季"#,
+            #"\bS\d{1,2}\b"#,
+            #"\bSeason\s*\d{1,2}\b"#
+        ]
+        for pattern in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern),
+               let match = regex.firstMatch(
+                   in: title,
+                   range: NSRange(location: 0, length: (title as NSString).length)
+               ) {
+                return (title as NSString).substring(with: match.range)
+            }
+        }
+        return nil
+    }
+
     /// 从播放页 HTML 提取正片片名（initPlayer 里的 vodName），供弹幕匹配。
     static func vodName(playPath: String) async -> String? {
         guard let url = URL(string: playPath, relativeTo: siteBase) else { return nil }

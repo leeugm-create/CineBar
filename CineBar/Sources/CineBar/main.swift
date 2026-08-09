@@ -5594,30 +5594,25 @@ struct MovieCardView: View {
     @EnvironmentObject private var scrollActivity: ScrollActivity
     let movie: Movie
     @State private var isHovering = false
-    @State private var hoverOffset = CGSize.zero
     @State private var posterImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             cardPoster
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(movie.title)
-                        .font(.callout.bold())
+                        .font(.subheadline.bold())
                         .lineLimit(1)
                         .textSelection(.enabled)
                     Spacer(minLength: 0)
                     if let rating = store.listRating(for: movie) {
                         Text(rating.compactValue)
-                            .font(.caption.bold())
+                            .font(.callout.bold())
                             .foregroundStyle(.orange)
                             .help(rating.source)
                     }
                 }
-                Text(movie.overview.isEmpty ? "暂无中文简介" : movie.overview)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
             }
             .padding(.horizontal, 2)
             .padding(.top, 7)
@@ -5645,117 +5640,52 @@ struct MovieCardView: View {
         return ZStack {
             GeometryReader { proxy in
                 ZStack {
-                    // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
-                    ZStack {
-                        // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
-                        ZStack {
-                            // 背景景深层：hover 时放大错位、压暗，造成纵深
-                            if isHovering && !scrolling, let posterImage {
-                                Image(nsImage: posterImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .scaleEffect(1.22)
-                                    .offset(
-                                        x: hoverOffset.width * 0.06,
-                                        y: hoverOffset.height * 0.06
-                                    )
-                                    .brightness(-0.35)
-                                    .saturation(0.85)
-                                    .blur(radius: 1.5)
+                    Group {
+                        if let posterImage {
+                            Image(nsImage: posterImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else if movie.posterURL != nil {
+                            ZStack {
+                                Color.secondary.opacity(0.12)
+                                ProgressView().controlSize(.small)
                             }
-
-                            // 主图层：随鼠标平移，是立体感核心
-                            Group {
-                                if let posterImage {
-                                    Image(nsImage: posterImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                } else if movie.posterURL != nil {
-                                    ZStack {
-                                        Color.secondary.opacity(0.12)
-                                        ProgressView().controlSize(.small)
-                                    }
-                                } else {
-                                    cardPlaceholder
-                                }
-                            }
-                            .scaleEffect(isHovering && !scrolling ? 1.12 : 1.0)
-                            .offset(
-                                x: scrolling ? 0 : hoverOffset.width * 0.08,
-                                y: scrolling ? 0 : hoverOffset.height * 0.08
-                            )
-                        }
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .rotation3DEffect(
-                            .degrees(
-                                scrolling
-                                    ? 0
-                                    : parallaxAngle(for: proxy.size, isYaw: true)
-                            ),
-                            axis: (x: 0, y: 1, z: 0),
-                            perspective: 0.35
-                        )
-                        .rotation3DEffect(
-                            .degrees(
-                                scrolling
-                                    ? 0
-                                    : parallaxAngle(for: proxy.size, isYaw: false)
-                            ),
-                            axis: (x: 1, y: 0, z: 0),
-                            perspective: 0.35
-                        )
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        )
-                        .shadow(
-                            color: .black.opacity(
-                                isHovering && !scrolling ? 0.30 : 0.10
-                            ),
-                            radius: isHovering && !scrolling ? 16 : 8,
-                            y: isHovering && !scrolling ? 8 : 4
-                        )
-                        .animation(
-                            .easeOut(duration: 0.18),
-                            value: hoverOffset
-                        )
-                        .animation(
-                            .easeOut(duration: 0.35),
-                            value: isHovering
-                        )
-                        .allowsHitTesting(false)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .contentShape(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    )
-                    .onContinuousHover(coordinateSpace: .local) { phase in
-                        guard !scrollActivity.isActive else { return }
-                        switch phase {
-                        case .active(let location):
-                            isHovering = true
-                            hoverOffset = CGSize(
-                                width: location.x - proxy.size.width / 2,
-                                height: location.y - proxy.size.height / 2
-                            )
-                        case .ended:
-                            isHovering = false
-                            hoverOffset = .zero
+                        } else {
+                            cardPlaceholder
                         }
                     }
+                    .scaleEffect(isHovering && !scrolling ? 1.04 : 1.0)
+                    .offset(y: isHovering && !scrolling ? -4 : 0)
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .shadow(
+                    color: .black.opacity(
+                        isHovering && !scrolling ? 0.28 : 0.10
+                    ),
+                    radius: isHovering && !scrolling ? 14 : 8,
+                    y: isHovering && !scrolling ? 8 : 4
+                )
+                .animation(
+                    .easeOut(duration: 0.25),
+                    value: isHovering
+                )
+                .contentShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .onHover { hovering in
+                    guard !scrollActivity.isActive else {
+                        isHovering = false
+                        return
+                    }
+                    isHovering = hovering
                 }
             }
         }
         .aspectRatio(2 / 3, contentMode: .fit)
         .frame(maxWidth: .infinity)
-    }
-
-    private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
-        guard isHovering, size.width > 0, size.height > 0 else { return 0 }
-        let maxDegrees: CGFloat = 6
-        let normalized = isYaw
-            ? hoverOffset.width / (size.width / 2)
-            : -hoverOffset.height / (size.height / 2)
-        return max(-maxDegrees, min(maxDegrees, normalized * maxDegrees))
     }
 
     private var cardPlaceholder: some View {
@@ -5778,30 +5708,25 @@ struct TVCardView: View {
     @EnvironmentObject private var scrollActivity: ScrollActivity
     let show: TVShow
     @State private var isHovering = false
-    @State private var hoverOffset = CGSize.zero
     @State private var posterImage: NSImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             cardPoster
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(show.name)
-                        .font(.callout.bold())
+                        .font(.subheadline.bold())
                         .lineLimit(1)
                         .textSelection(.enabled)
                     Spacer(minLength: 0)
                     if let rating = store.listRating(for: show) {
                         Text(rating.compactValue)
-                            .font(.caption.bold())
+                            .font(.callout.bold())
                             .foregroundStyle(.orange)
                             .help(rating.source)
                     }
                 }
-                Text(show.overview.isEmpty ? "暂无简介" : show.overview)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
             }
             .padding(.horizontal, 2)
             .padding(.top, 7)
@@ -5829,117 +5754,52 @@ struct TVCardView: View {
         return ZStack {
             GeometryReader { proxy in
                 ZStack {
-                    // 平面命中层：不随 3D 旋转，保证光标能在卡片任意位置触发 hover
-                    ZStack {
-                        // 3D 视觉层：多层视差（景深/主图/反光）+ 阴影 + 轻旋转
-                        ZStack {
-                            // 背景景深层：hover 时放大错位、压暗，造成纵深
-                            if isHovering && !scrolling, let posterImage {
-                                Image(nsImage: posterImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .scaleEffect(1.22)
-                                    .offset(
-                                        x: hoverOffset.width * 0.06,
-                                        y: hoverOffset.height * 0.06
-                                    )
-                                    .brightness(-0.35)
-                                    .saturation(0.85)
-                                    .blur(radius: 1.5)
+                    Group {
+                        if let posterImage {
+                            Image(nsImage: posterImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else if show.posterURL != nil {
+                            ZStack {
+                                Color.secondary.opacity(0.12)
+                                ProgressView().controlSize(.small)
                             }
-
-                            // 主图层：随鼠标平移，是立体感核心
-                            Group {
-                                if let posterImage {
-                                    Image(nsImage: posterImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                } else if show.posterURL != nil {
-                                    ZStack {
-                                        Color.secondary.opacity(0.12)
-                                        ProgressView().controlSize(.small)
-                                    }
-                                } else {
-                                    cardPlaceholder
-                                }
-                            }
-                            .scaleEffect(isHovering && !scrolling ? 1.12 : 1.0)
-                            .offset(
-                                x: scrolling ? 0 : hoverOffset.width * 0.08,
-                                y: scrolling ? 0 : hoverOffset.height * 0.08
-                            )
-                        }
-                        .frame(width: proxy.size.width, height: proxy.size.height)
-                        .rotation3DEffect(
-                            .degrees(
-                                scrolling
-                                    ? 0
-                                    : parallaxAngle(for: proxy.size, isYaw: true)
-                            ),
-                            axis: (x: 0, y: 1, z: 0),
-                            perspective: 0.35
-                        )
-                        .rotation3DEffect(
-                            .degrees(
-                                scrolling
-                                    ? 0
-                                    : parallaxAngle(for: proxy.size, isYaw: false)
-                            ),
-                            axis: (x: 1, y: 0, z: 0),
-                            perspective: 0.35
-                        )
-                        .clipShape(
-                            RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        )
-                        .shadow(
-                            color: .black.opacity(
-                                isHovering && !scrolling ? 0.30 : 0.10
-                            ),
-                            radius: isHovering && !scrolling ? 16 : 8,
-                            y: isHovering && !scrolling ? 8 : 4
-                        )
-                        .animation(
-                            .easeOut(duration: 0.18),
-                            value: hoverOffset
-                        )
-                        .animation(
-                            .easeOut(duration: 0.35),
-                            value: isHovering
-                        )
-                        .allowsHitTesting(false)
-                    }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                    .contentShape(
-                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    )
-                    .onContinuousHover(coordinateSpace: .local) { phase in
-                        guard !scrollActivity.isActive else { return }
-                        switch phase {
-                        case .active(let location):
-                            isHovering = true
-                            hoverOffset = CGSize(
-                                width: location.x - proxy.size.width / 2,
-                                height: location.y - proxy.size.height / 2
-                            )
-                        case .ended:
-                            isHovering = false
-                            hoverOffset = .zero
+                        } else {
+                            cardPlaceholder
                         }
                     }
+                    .scaleEffect(isHovering && !scrolling ? 1.04 : 1.0)
+                    .offset(y: isHovering && !scrolling ? -4 : 0)
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .shadow(
+                    color: .black.opacity(
+                        isHovering && !scrolling ? 0.28 : 0.10
+                    ),
+                    radius: isHovering && !scrolling ? 14 : 8,
+                    y: isHovering && !scrolling ? 8 : 4
+                )
+                .animation(
+                    .easeOut(duration: 0.25),
+                    value: isHovering
+                )
+                .contentShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .onHover { hovering in
+                    guard !scrollActivity.isActive else {
+                        isHovering = false
+                        return
+                    }
+                    isHovering = hovering
                 }
             }
         }
         .aspectRatio(2 / 3, contentMode: .fit)
         .frame(maxWidth: .infinity)
-    }
-
-    private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
-        guard isHovering, size.width > 0, size.height > 0 else { return 0 }
-        let maxDegrees: CGFloat = 6
-        let normalized = isYaw
-            ? hoverOffset.width / (size.width / 2)
-            : -hoverOffset.height / (size.height / 2)
-        return max(-maxDegrees, min(maxDegrees, normalized * maxDegrees))
     }
 
     private var cardPlaceholder: some View {
@@ -6292,6 +6152,8 @@ struct MooviePlaySection: View {
     let title: String
     let year: String
     let language: AppLanguage
+    /// 电视剧模式：搜索候选按季展示，提供集数选择。
+    var isTV = false
 
     @State private var status: Status = .idle
     @State private var streamURL: URL?
@@ -6307,6 +6169,10 @@ struct MooviePlaySection: View {
     @State private var loadingDanmaku = false
     /// 独立播放窗口打开时暂停内嵌播放器，防止双路同时出声。
     @State private var inlinePaused = false
+    /// 电视剧：当前候选的剧集列表与选中集。
+    @State private var episodes: [MoovieStreamResolver.PlaybackEpisode] = []
+    @State private var currentEpisode: MoovieStreamResolver.PlaybackEpisode?
+    @State private var episodesLoading = false
 
     enum Status {
         case idle
@@ -6334,15 +6200,31 @@ struct MooviePlaySection: View {
                 .buttonStyle(.borderedProminent)
                 .disabled(status == .searching)
 
-                if status == .ready {
-                    Button {
-                        startSearch(forceNext: true)
+                if status == .ready, allCandidates.count > 1 {
+                    Menu {
+                        ForEach(allCandidates.indices, id: \.self) { index in
+                            Button {
+                                selectCandidate(at: index)
+                            } label: {
+                                if index == currentIndex {
+                                    Label(
+                                        candidateTitle(allCandidates[index]),
+                                        systemImage: "checkmark"
+                                    )
+                                } else {
+                                    Text(candidateTitle(allCandidates[index]))
+                                }
+                            }
+                        }
                     } label: {
-                        Label("换一个源", systemImage: "arrow.triangle.2.circlepath")
+                        Label(
+                            candidateTitle(allCandidates[currentIndex]),
+                            systemImage: "arrow.triangle.2.circlepath"
+                        )
                     }
-                    .buttonStyle(.bordered)
-                    .disabled(allCandidates.isEmpty)
-                    .help("尝试从其他资源源解析")
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help("选择其他资源源或季")
                 }
 
                 Text(auxiliaryText)
@@ -6357,6 +6239,9 @@ struct MooviePlaySection: View {
 
             if status == .ready, let streamURL {
                 VStack(alignment: .leading, spacing: 6) {
+                    if isTV, !episodes.isEmpty {
+                        episodeGrid
+                    }
                     HStack {
                         Text("正片播放 · \(sourceName)")
                             .font(.caption)
@@ -6453,49 +6338,185 @@ struct MooviePlaySection: View {
         if forceNext {
             currentIndex += 1
         }
-        guard currentIndex < allCandidates.count || !forceNext else {
-            status = .failed
-            return
-        }
-        status = .searching
-        playTask = Task {
-            let candidates: [MoovieStreamResolver.StreamCandidate]
-            if allCandidates.isEmpty {
-                candidates = await MoovieStreamResolver.search(
+        guard !allCandidates.isEmpty else {
+            status = .searching
+            playTask = Task {
+                let candidates = await MoovieStreamResolver.search(
                     title: title,
                     year: year.isEmpty ? nil : year
                 )
-                allCandidates = candidates
-            } else {
-                candidates = allCandidates
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    allCandidates = candidates
+                    guard !candidates.isEmpty else {
+                        status = .failed
+                        return
+                    }
+                    selectCandidate(at: 0)
+                }
             }
-            guard !Task.isCancelled else { return }
-            guard currentIndex < candidates.count else {
-                await MainActor.run { status = .failed }
-                return
-            }
-            let slice = Array(candidates.dropFirst(currentIndex))
-            let found = await MoovieStreamResolver.firstPlayable(
-                candidates: slice
+            return
+        }
+        guard currentIndex < allCandidates.count else {
+            status = .failed
+            return
+        }
+        selectCandidate(at: currentIndex)
+    }
+
+    /// 选中某个候选源（电视剧时同时加载其剧集列表）。
+    private func selectCandidate(at index: Int) {
+        guard !allCandidates.isEmpty, index < allCandidates.count else {
+            status = .failed
+            return
+        }
+        playTask?.cancel()
+        inlinePaused = false
+        currentIndex = index
+        status = .searching
+        episodes = []
+        currentEpisode = nil
+        episodesLoading = isTV
+        let candidate = allCandidates[index]
+        playTask = Task {
+            async let url = MoovieStreamResolver.resolveStreamURL(
+                playPath: candidate.playPath
             )
+            async let list = isTV
+                ? MoovieStreamResolver.loadEpisodes(playPath: candidate.playPath)
+                : []
+            let (resolvedURL, episodeList) = await (url, list)
             guard !Task.isCancelled else { return }
             await MainActor.run {
-                if let found {
-                    streamURL = found.streamURL
-                    sourceName = found.candidate.sourceName
-                    vodName = nil
-                    danmaku = []
-                    status = .ready
-                    loadDanmaku(for: found.candidate)
-                } else {
+                guard let resolvedURL else {
+                    episodesLoading = false
                     status = .failed
+                    return
                 }
+                streamURL = resolvedURL
+                sourceName = candidate.sourceName
+                vodName = nil
+                danmaku = []
+                currentTime = 0
+                episodes = episodeList
+                episodesLoading = false
+                currentEpisode = episodeList.first
+                status = .ready
+                loadDanmaku(
+                    for: candidate,
+                    episode: episodeList.first?.label
+                )
             }
         }
     }
 
-    /// 解析完成后按片名拉取弹幕（失败静默，弹幕不影响正片播放）。
-    private func loadDanmaku(for candidate: MoovieStreamResolver.StreamCandidate) {
+    /// 电视剧切集：换流、重置进度并拉取该集弹幕。
+    private func selectEpisode(_ episode: MoovieStreamResolver.PlaybackEpisode) {
+        guard episode != currentEpisode else { return }
+        guard let candidate = currentCandidate else { return }
+        currentEpisode = episode
+        currentTime = 0
+        status = .searching
+        playTask?.cancel()
+        playTask = Task {
+            let url = await MoovieStreamResolver.resolveStreamURL(
+                playPath: episode.playPath
+            )
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let url else {
+                    status = .ready
+                    return
+                }
+                streamURL = url
+                status = .ready
+                danmaku = []
+                loadDanmaku(for: candidate, episode: episode.label)
+            }
+        }
+    }
+
+    private var currentCandidate: MoovieStreamResolver.StreamCandidate? {
+        guard !allCandidates.isEmpty, currentIndex < allCandidates.count else {
+            return nil
+        }
+        return allCandidates[currentIndex]
+    }
+
+    private func candidateTitle(
+        _ candidate: MoovieStreamResolver.StreamCandidate
+    ) -> String {
+        var text = candidate.sourceName
+        if let season = MoovieStreamResolver.seasonLabel(from: candidate.title) {
+            text += " · \(season)"
+        }
+        return text
+    }
+
+    /// 电视剧集数选择网格。
+    private var episodeGrid: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Text("选集")
+                    .font(.caption.bold())
+                    .foregroundStyle(.secondary)
+                if episodesLoading {
+                    ProgressView()
+                        .controlSize(.mini)
+                }
+                if let candidate = currentCandidate,
+                   let season = MoovieStreamResolver.seasonLabel(
+                       from: candidate.title
+                   ) {
+                    Text(season)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHGrid(
+                    rows: [
+                        GridItem(.fixed(26)),
+                        GridItem(.fixed(26))
+                    ],
+                    spacing: 6
+                ) {
+                    ForEach(episodes) { episode in
+                        let isSelected = episode.id == currentEpisode?.id
+                        Button {
+                            selectEpisode(episode)
+                        } label: {
+                            Text(episode.label)
+                                .font(.caption2)
+                                .lineLimit(1)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(
+                                            isSelected
+                                                ? Color.accentColor
+                                                : Color.gray.opacity(0.15)
+                                        )
+                                )
+                                .foregroundStyle(
+                                    isSelected ? .white : .primary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .help(episode.label)
+                    }
+                }
+            }
+            .frame(height: 58)
+        }
+    }
+
+    /// 解析完成后按片名（电视剧附加集数）拉取弹幕（失败静默）。
+    private func loadDanmaku(
+        for candidate: MoovieStreamResolver.StreamCandidate,
+        episode: String? = nil
+    ) {
         loadingDanmaku = true
         playTask = Task {
             let name: String
@@ -6507,7 +6528,10 @@ struct MooviePlaySection: View {
                 )
                 name = parsed ?? candidate.title
             }
-            let items = await MoovieStreamResolver.loadDanmaku(title: name)
+            let items = await MoovieStreamResolver.loadDanmaku(
+                title: name,
+                episode: episode
+            )
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 danmaku = items
@@ -6674,7 +6698,8 @@ final class RatingNSSlider: NSSlider {
     private func configure() {
         minValue = 0
         maxValue = 10
-        numberOfTickMarks = 21
+        // 101 个刻度 = 0.1 步进（原为 21 刻度 = 0.5 步进）。
+        numberOfTickMarks = 101
         tickMarkPosition = .below
         allowsTickMarkValuesOnly = true
         isContinuous = true
@@ -8846,6 +8871,13 @@ struct TVDetailView: View {
                         title: show.name,
                         year: show.year,
                         language: store.appLanguage
+                    )
+
+                    MooviePlaySection(
+                        title: show.name,
+                        year: show.year,
+                        language: store.appLanguage,
+                        isTV: true
                     )
 
                     VStack(alignment: .leading, spacing: 9) {
