@@ -10893,7 +10893,7 @@ struct ContentView: View {
 
             Divider()
 
-            ScrollView {
+            ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 0) {
                     if !store.peopleSearchResults.isEmpty {
                         HStack {
