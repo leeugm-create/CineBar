@@ -6070,7 +6070,7 @@ struct RatingBadge: View {
     }
 }
 
-/// "磁力观看"按钮：从 6v 电影网按片名匹配磁力链接，点击后用系统默认
+/// "磁力下载"按钮：从 6v 电影网按片名匹配磁力链接，点击后用系统默认
 /// 下载器（迅雷等）打开 magnet。站点搜索接口失效，用"最新电影"列表匹配。
 struct Hao6vMagnetButton: View {
     let title: String
@@ -6087,7 +6087,7 @@ struct Hao6vMagnetButton: View {
 
     private var labelText: String {
         switch status {
-        case .idle: return "磁力观看"
+        case .idle: return "磁力下载"
         case .searching: return "正在匹配磁力…"
         case .failed: return "重新匹配磁力"
         }
