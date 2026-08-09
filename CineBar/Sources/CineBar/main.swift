@@ -6070,9 +6070,9 @@ struct RatingBadge: View {
     }
 }
 
-/// "磁力下载"按钮：从 6v 电影网按片名匹配磁力链接，点击后用系统默认
-/// 下载器（迅雷等）打开 magnet。站点搜索接口失效，用"最新电影"列表匹配。
-/// 进入详情页自动预检一次：找到→可点击；找不到→灰色按钮提示"等待更新"。
+/// "磁力下载"按钮：按片名匹配磁力链接，点击后用系统默认
+/// 下载器（迅雷等）打开 magnet。进入详情页自动预检一次：
+/// 找到→可点击；找不到→灰色按钮提示"等待更新"。
 struct Hao6vMagnetButton: View {
     let title: String
     let year: String
@@ -6089,16 +6089,30 @@ struct Hao6vMagnetButton: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Button {
-                guard status == .available, let magnet, let url = URL(string: magnet) else {
-                    return
+            if status == .available, let magnet, let url = URL(string: magnet) {
+                Button {
+                    NSWorkspace.shared.open(url)
+                } label: {
+                    Label("磁力下载", systemImage: "arrow.down.circle")
                 }
-                NSWorkspace.shared.open(url)
-            } label: {
-                Label(labelText, systemImage: systemImageName)
+                .buttonStyle(.borderedProminent)
+
+                Button {
+                    copyMagnet(magnet)
+                } label: {
+                    Label("复制磁力", systemImage: "doc.on.doc")
+                }
+                .buttonStyle(.bordered)
+                .help("把磁力链接复制到剪贴板")
+            } else {
+                Button {
+                    // 未就绪时点击无效。
+                } label: {
+                    Label(labelText, systemImage: systemImageName)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(true)
             }
-            .buttonStyle(.borderedProminent)
-            .disabled(status != .available)
 
             Text(auxiliaryText)
                 .font(.caption2)
@@ -6126,6 +6140,12 @@ struct Hao6vMagnetButton: View {
         }
     }
 
+    private func copyMagnet(_ magnet: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(magnet, forType: .string)
+    }
+
     private var labelText: String {
         switch status {
         case .resolving: return "正在匹配磁力…"
@@ -6146,7 +6166,7 @@ struct Hao6vMagnetButton: View {
         switch status {
         case .available: return "将在下载器中打开磁力链接"
         case .unavailable: return "该片暂无磁力资源，等更新后再看"
-        case .resolving: return "来自 6v 电影网"
+        case .resolving: return "正在匹配磁力…"
         }
     }
 }
@@ -10729,8 +10749,21 @@ struct ContentView: View {
         in: .common
     ).autoconnect()
 
+    private var isShowingDetail: Bool {
+        store.showMovieStills ||
+            store.selectedPerson != nil ||
+            store.selectedMovie != nil ||
+            store.selectedTVShow != nil ||
+            store.isShowingLocalLibrary
+    }
+
     var body: some View {
-        Group {
+        ZStack {
+            mainList
+                .opacity(isShowingDetail ? 0 : 1)
+                .allowsHitTesting(!isShowingDetail)
+                .accessibilityHidden(isShowingDetail)
+
             if store.showMovieStills, let movie = store.selectedMovie {
                 MovieStillsView(store: store, movie: movie)
             } else if let person = store.selectedPerson {
@@ -10755,8 +10788,6 @@ struct ContentView: View {
                     categoryFilter: $localLibraryCategoryFilter,
                     statusFilter: $localLibraryStatusFilter
                 )
-            } else {
-                mainList
             }
         }
         .frame(width: 520)
@@ -11375,6 +11406,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var settingsWindow: NSWindow?
     private var autoHideTimer: Timer?
     private var activityMonitor: Any?
+    private var sparkleWindowObserver: NSObjectProtocol?
     private var isMediaPlaybackActive = false
     private var updateBadgeView: NSView?
     private var updateBadgeCancellable: AnyCancellable?
@@ -11509,6 +11541,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
                 self?.scheduleAutoHide()
             }
             return event
+        }
+        // Sparkle 更新窗口是普通层级窗口，会被 .popUpMenu 的设置窗口压住；
+        // 一旦出现这类窗口成为 key（例如"软件更新"面板），提到设置窗之上。
+        sparkleWindowObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let self,
+                  let window = note.object as? NSWindow,
+                  window !== self.settingsWindow,
+                  window !== self.panel,
+                  !(window is NSPanel),
+                  window.level.rawValue < NSWindow.Level.popUpMenu.rawValue
+            else { return }
+            window.level = .popUpMenu
+            window.orderFrontRegardless()
         }
         applyAppearance(
             rawValue: UserDefaults.standard.string(forKey: "appearanceMode") ?? ""
