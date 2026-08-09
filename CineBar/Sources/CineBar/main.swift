@@ -11548,16 +11548,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             forName: NSWindow.didBecomeKeyNotification,
             object: nil,
             queue: .main
-        ) { note in
-            let settings = self.settingsWindow
-            let panel = self.panel
+        ) { [weak self] note in
             guard let window = note.object as? NSWindow else { return }
-            guard window !== settings, window !== panel,
-                  !(window is NSPanel),
-                  window.level.rawValue < NSWindow.Level.popUpMenu.rawValue
-            else { return }
-            window.level = .popUpMenu
-            window.orderFrontRegardless()
+            guard let self else { return }
+            Task { @MainActor in
+                self.raiseWindowAboveSettingsIfNeeded(window)
+            }
         }
         applyAppearance(
             rawValue: UserDefaults.standard.string(forKey: "appearanceMode") ?? ""
@@ -11606,6 +11602,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             window.contentView?.needsDisplay = true
             window.displayIfNeeded()
         }
+    }
+
+    @MainActor
+    private func raiseWindowAboveSettingsIfNeeded(_ window: NSWindow) {
+        guard window !== settingsWindow,
+              window !== panel,
+              !(window is NSPanel),
+              window.level.rawValue < NSWindow.Level.popUpMenu.rawValue
+        else { return }
+        window.level = .popUpMenu
+        window.orderFrontRegardless()
     }
 
     @objc private func panelMovementDidChange(_ notification: Notification) {
