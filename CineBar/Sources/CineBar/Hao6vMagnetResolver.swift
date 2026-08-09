@@ -134,34 +134,82 @@ enum Hao6vMagnetResolver {
                 try? await Task.sleep(nanoseconds: 120_000_000)
             }
         }
+        let known = KnownKeys(
+            Set(Hao6vMagnetStore.shared.allEntries().map { normalize($0.rawTitle) })
+        )
         let total = pages.count
         var done = 0
-        for (cat, url) in pages {
-            if Task.isCancelled { return }
-            let items = await fetchListPage(url: url)
-            var batch: [Hao6vMagnetStore.Entry] = []
-            for entry in items {
-                if Task.isCancelled { return }
-                let key = normalize(entry.rawTitle)
-                if Hao6vMagnetStore.shared.allEntries().contains(
-                    where: { normalize($0.rawTitle) == key }
-                ) {
-                    continue
+        var pending: [Hao6vMagnetStore.Entry] = []
+        await withTaskGroup(of: [Hao6vMagnetStore.Entry].self) { group in
+            let window = 4
+            var next = 0
+            func enqueue(_ i: Int) {
+                guard i < pages.count else { return }
+                let url = pages[i].url
+                group.addTask {
+                    await Self.scanPage(url: url, known: known)
                 }
-                if let magnet = await fetchMagnet(url: entry.url) {
-                    batch.append(Hao6vMagnetStore.Entry(
-                        rawTitle: entry.rawTitle,
-                        magnet: magnet,
-                        scrapedAt: Date()
-                    ))
+            }
+            for i in 0..<window { enqueue(i) }
+            next = window
+            for await batch in group {
+                if !batch.isEmpty {
+                    pending.append(contentsOf: batch)
+                    known.add(batch.map { normalize($0.rawTitle) })
                 }
-                try? await Task.sleep(nanoseconds: 120_000_000)
+                done += 1
+                progress?(done, total, "p\(done)")
+                if done % 20 == 0 || done == total {
+                    if !pending.isEmpty {
+                        Hao6vMagnetStore.shared.merge(newEntries: pending)
+                        pending.removeAll()
+                    }
+                }
+                enqueue(next)
+                next += 1
             }
-            if !batch.isEmpty {
-                Hao6vMagnetStore.shared.merge(newEntries: batch)
+            if !pending.isEmpty {
+                Hao6vMagnetStore.shared.merge(newEntries: pending)
             }
-            done += 1
-            progress?(done, total, cat)
+        }
+    }
+
+    private static func scanPage(
+        url: URL,
+        known: KnownKeys
+    ) async -> [Hao6vMagnetStore.Entry] {
+        if Task.isCancelled { return [] }
+        let items = await fetchListPage(url: url)
+        var batch: [Hao6vMagnetStore.Entry] = []
+        for entry in items {
+            if Task.isCancelled { return batch }
+            let key = normalize(entry.rawTitle)
+            if known.contains(key) { continue }
+            if let magnet = await fetchMagnet(url: entry.url) {
+                batch.append(Hao6vMagnetStore.Entry(
+                    rawTitle: entry.rawTitle,
+                    magnet: magnet,
+                    scrapedAt: Date()
+                ))
+                known.add([key])
+            }
+            try? await Task.sleep(nanoseconds: 60_000_000)
+        }
+        return batch
+    }
+
+    /// 线程安全的已收录标题集合，避免每次全数组扫描。
+    private final class KnownKeys: @unchecked Sendable {
+        private let lock = NSLock()
+        private var set: Set<String>
+        init(_ set: Set<String>) { self.set = set }
+        func contains(_ key: String) -> Bool {
+            lock.lock(); defer { lock.unlock() }
+            return set.contains(key)
+        }
+        func add(_ keys: [String]) {
+            lock.lock(); defer { lock.unlock() }
+            set.formUnion(keys)
         }
     }
 
