@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --background: #f7f5f1;
   --surface: rgba(255, 255, 255, 0.82);
   --foreground: #10162f;
@@ -12,8 +12,27 @@
   --shadow: 0 24px 70px rgba(31, 38, 71, 0.12);
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #080b20;
+  --surface: rgba(18, 24, 55, 0.84);
+  --foreground: #f7f8ff;
+  --muted: #adb5d0;
+  --border: rgba(255, 255, 255, 0.16);
+  --accent: #ffad4d;
+  --accent-ink: #211303;
+  --primary-background: #ffad4d;
+  --primary-foreground: #211303;
+  --shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --background: #080b20;
     --surface: rgba(18, 24, 55, 0.84);
     --foreground: #f7f8ff;
@@ -136,6 +155,21 @@ footer {
   transition: border-color 160ms ease, color 160ms ease;
 }
 .search-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 .search-input {
   width: clamp(120px, 22vw, 260px);

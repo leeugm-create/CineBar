@@ -2332,6 +2332,56 @@ let slider = RatingNSSlider()
                 from: URL(string: "https://www.hao6v.cc/dy/")!
             ) == nil
         )
+
+        // ---- Moovie 在线播放：搜索 HTML 解析 ----
+        let moovieHTML = """
+        <div id="search-container">
+            <div class="search-result-grid">
+            <a href="/play/%e9%ad%94%e9%83%bd%e8%b5%84%e6%ba%90/42998?douban_id=1889243" class="search-result-card">
+                <h3 class="card-title">星际穿越</h3>
+                <span class="card-year">2014</span>
+            </a>
+            <a href="/play/%e9%87%8f%e5%ad%90%e8%b5%84%e6%ba%90/38842?douban_id=1889243" class="search-result-card">
+                <h3 class="card-title">星际穿越[电影解说]</h3>
+                <span class="card-year">2014</span>
+            </a>
+            <a href="/play/%e4%bc%98%e8%b4%a8%e8%b5%84%e6%ba%90/26773" class="search-result-card">
+                <h3 class="card-title">《星际穿越》中的科学</h3>
+                <span class="card-year">2014</span>
+            </a>
+            </div>
+        </div>
+        """
+        let moovieCandidates = MoovieStreamResolver.parseSearchResults(
+            html: moovieHTML,
+            forTitle: "星际穿越"
+        )
+        precondition(moovieCandidates.count == 3)
+        precondition(moovieCandidates.first?.sourceName == "魔都资源")
+        precondition(moovieCandidates.first?.title == "星际穿越")
+        precondition(moovieCandidates.first?.doubanID == "1889243")
+        precondition(moovieCandidates.last?.title == "星际穿越[电影解说]")
+        precondition(moovieCandidates.last?.isDerivative == true)
+        precondition(moovieCandidates.contains { $0.title == "《星际穿越》中的科学" })
+
+        // ---- Moovie 在线播放：播放页 m3u8 提取 ----
+        let playHTML = """
+        <script>
+        initPlayer('artplayer-app', 'https:\\/\\/vv.jisuzyv.com\\/play\\/wdL16wAe\\/index.m3u8', {
+            title: '海上钢琴师 - 正片',
+            douban_id: '1292001',
+            vodName: '海上钢琴师'
+        });
+        </script>
+        """
+        precondition(
+            MoovieStreamResolver.extractStreamURL(from: playHTML)?
+                .absoluteString ==
+                "https://vv.jisuzyv.com/play/wdL16wAe/index.m3u8"
+        )
+        precondition(
+            MoovieStreamResolver.extractStreamURL(from: "<html>无播放器</html>") == nil
+        )
     }
 }
 

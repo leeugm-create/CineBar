@@ -6202,6 +6202,259 @@ struct Hao6vMagnetButton: View {
     }
 }
 
+/// "在线播放"按钮：按片名在 Moovie 影牛（moovie.c2v2.com）聚合站
+/// 搜索正片资源，解析出 HLS 直链后用内置播放器直接播放，无需下载。
+/// 仅在中文界面可用，其他语言隐藏（保留正版观看入口）。
+struct MooviePlaySection: View {
+    let title: String
+    let year: String
+    let language: AppLanguage
+
+    @State private var status: Status = .idle
+    @State private var streamURL: URL?
+    @State private var sourceName = ""
+    @State private var vodName: String?
+    @State private var danmaku: [DanmakuItem] = []
+    @State private var danmakuVisible = true
+    @State private var playbackRate: Double = 1
+    @State private var currentTime: Double = 0
+    @State private var allCandidates: [MoovieStreamResolver.StreamCandidate] = []
+    @State private var currentIndex = 0
+    @State private var playTask: Task<Void, Never>?
+    @State private var loadingDanmaku = false
+
+    enum Status {
+        case idle
+        case searching
+        case ready
+        case failed
+    }
+
+    var body: some View {
+        Group {
+            if language.isChinese {
+                content
+            }
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Button {
+                    startSearch(forceNext: false)
+                } label: {
+                    Label(buttonLabel, systemImage: buttonImage)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(status == .searching)
+
+                if status == .ready {
+                    Button {
+                        startSearch(forceNext: true)
+                    } label: {
+                        Label("换一个源", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(allCandidates.isEmpty)
+                    .help("尝试从其他资源源解析")
+                }
+
+                Text(auxiliaryText)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            if status == .searching {
+                ProgressView()
+                    .controlSize(.small)
+            }
+
+            if status == .ready, let streamURL {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("正片播放 · \(sourceName)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if !danmaku.isEmpty {
+                            Toggle(isOn: $danmakuVisible) {
+                                Label(
+                                    danmakuVisible ? "弹幕开" : "弹幕关",
+                                    systemImage: "captions.bubble"
+                                )
+                            }
+                            .toggleStyle(.button)
+                            .controlSize(.small)
+                            .help("弹幕开关")
+                        }
+                        if loadingDanmaku {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Menu {
+                            ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
+                                Button("\(rateDisplay(rate))") {
+                                    playbackRate = rate
+                                }
+                            }
+                        } label: {
+                            Label("倍速 \(rateDisplay(playbackRate))", systemImage: "speedometer")
+                        }
+                        .menuStyle(.borderlessButton)
+                        .controlSize(.small)
+                        .help("播放速度设置")
+                        Button {
+                            MooviePlaybackController.shared.show(
+                                url: streamURL,
+                                title: "\(title) · \(sourceName)",
+                                danmaku: danmaku,
+                                mode: .floating
+                            )
+                        } label: {
+                            Label("放大播放", systemImage: "arrow.up.left.and.arrow.down.right")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("在独立浮窗中放大播放")
+                        Button {
+                            MooviePlaybackController.shared.show(
+                                url: streamURL,
+                                title: "\(title) · \(sourceName)",
+                                danmaku: danmaku,
+                                mode: .fullScreen
+                            )
+                        } label: {
+                            Label("全屏", systemImage: "rectangle.expand.vertical")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("全屏播放")
+                    }
+                    MooviePlayerView(
+                        url: streamURL,
+                        danmaku: danmaku,
+                        currentTime: $currentTime,
+                        playbackRate: $playbackRate,
+                        danmakuVisible: $danmakuVisible
+                    )
+                    .frame(height: 260)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+            }
+        }
+        .onDisappear {
+            playTask?.cancel()
+            playTask = nil
+        }
+    }
+
+    private func startSearch(forceNext: Bool) {
+        playTask?.cancel()
+        if forceNext {
+            currentIndex += 1
+        }
+        guard currentIndex < allCandidates.count || !forceNext else {
+            status = .failed
+            return
+        }
+        status = .searching
+        playTask = Task {
+            let candidates: [MoovieStreamResolver.StreamCandidate]
+            if allCandidates.isEmpty {
+                candidates = await MoovieStreamResolver.search(
+                    title: title,
+                    year: year.isEmpty ? nil : year
+                )
+                allCandidates = candidates
+            } else {
+                candidates = allCandidates
+            }
+            guard !Task.isCancelled else { return }
+            guard currentIndex < candidates.count else {
+                await MainActor.run { status = .failed }
+                return
+            }
+            let slice = Array(candidates.dropFirst(currentIndex))
+            let found = await MoovieStreamResolver.firstPlayable(
+                candidates: slice
+            )
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                if let found {
+                    streamURL = found.streamURL
+                    sourceName = found.candidate.sourceName
+                    vodName = nil
+                    danmaku = []
+                    status = .ready
+                    loadDanmaku(for: found.candidate)
+                } else {
+                    status = .failed
+                }
+            }
+        }
+    }
+
+    /// 解析完成后按片名拉取弹幕（失败静默，弹幕不影响正片播放）。
+    private func loadDanmaku(for candidate: MoovieStreamResolver.StreamCandidate) {
+        loadingDanmaku = true
+        playTask = Task {
+            let name: String
+            if let vodName {
+                name = vodName
+            } else {
+                let parsed = await MoovieStreamResolver.vodName(
+                    playPath: candidate.playPath
+                )
+                name = parsed ?? candidate.title
+            }
+            let items = await MoovieStreamResolver.loadDanmaku(title: name)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                danmaku = items
+                loadingDanmaku = false
+            }
+        }
+    }
+
+    private var buttonLabel: String {
+        switch status {
+        case .idle: return "在线播放"
+        case .searching: return "正在解析…"
+        case .ready: return "重新播放"
+        case .failed: return "重试"
+        }
+    }
+
+    private var buttonImage: String {
+        switch status {
+        case .idle: return "play.circle"
+        case .searching: return "arrow.triangle.2.circlepath"
+        case .ready: return "arrow.clockwise.circle"
+        case .failed: return "arrow.clockwise"
+        }
+    }
+
+    private var auxiliaryText: String {
+        switch status {
+        case .idle: return "从聚合站解析在线正片资源"
+        case .searching: return "正在搜索并解析 m3u8 直链…"
+        case .ready: return "来源：\(sourceName)"
+        case .failed: return "未能解析出可播放的源，请重试"
+        }
+    }
+
+    private func rateDisplay(_ rate: Double) -> String {
+        if rate == 1 { return "1x" }
+        if rate == 0.5 { return "0.5x" }
+        if rate == 0.75 { return "0.75x" }
+        if rate == 1.25 { return "1.25x" }
+        if rate == 1.5 { return "1.5x" }
+        if rate == 2 { return "2x" }
+        return "\(rate)x"
+    }
+}
+
 /// 磁力索引库设置卡：显示容量与上次更新时间，可手动触发全站扫描建库。
 struct MagnetIndexCard: View {
     @State private var total = 0
@@ -7782,6 +8035,12 @@ struct MovieDetailView: View {
                     )
 
                     Hao6vMagnetButton(
+                        title: movie.title,
+                        year: movie.year,
+                        language: store.appLanguage
+                    )
+
+                    MooviePlaySection(
                         title: movie.title,
                         year: movie.year,
                         language: store.appLanguage

@@ -1,9 +1,10 @@
 import type { Locale, Messages } from "./i18n";
 import LangSelect from "./lang-select";
 import SiteSearch from "./site-search";
+import ThemeToggle from "./theme-toggle";
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-52-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.8.3-test-build-53-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 function ratingIcon(id: string) {
@@ -78,6 +79,7 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         </a>
         <SiteSearch m={m} locale={locale} />
         <LangSelect locale={locale} />
+        <ThemeToggle label={m.appearance} />
         <nav aria-label="Main">
           <a href="#features">{m.navFeatures}</a>
           <a href="#install">{m.navInstall}</a>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import LangSelect from "./lang-select";
+import ThemeToggle from "./theme-toggle";
 
 const paypalURL =
   "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=VVVZUSU9QUJBW&currency_code=USD";
@@ -21,6 +22,7 @@ export default function SupportView({ m, locale }: { m: Messages; locale: Locale
           <span>CineBar</span>
         </a>
         <LangSelect locale={locale} />
+        <ThemeToggle label={m.appearance} />
         <nav aria-label="Support">
           <Link href={homePath}>{m.backHome}</Link>
         </nav>
