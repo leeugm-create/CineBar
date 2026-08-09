@@ -63,7 +63,6 @@ enum Hao6vMagnetResolver {
         let chinese = extractChineseStrict(from: title)
         var best: (entry: Hao6vMagnetStore.Entry, score: Int)?
         for entry in Hao6vMagnetStore.shared.allEntries() {
-            let name = chinese.isEmpty ? title : chinese
             let entryName = extractChineseStrict(from: entry.rawTitle)
             let clean = entryName.isEmpty ? entry.rawTitle : entryName
             let n1 = normalize(title)
