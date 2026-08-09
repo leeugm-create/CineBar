@@ -335,4 +335,89 @@ enum MoovieStreamResolver {
         }
         return items.filter { !$0.text.isEmpty }
     }
+
+    /// 一个热门影视条目（discover 页卡片：标题 + 豆瓣评分 + 海报）。
+    struct TrendingItem: Identifiable, Hashable {
+        var id: String { doubanID }
+        let title: String
+        let doubanID: String
+        /// 豆瓣评分文本（可能为空）。
+        let ratingText: String
+        /// 海报地址（站点图片代理，可直接下载）。
+        let posterURL: URL?
+
+        var rating: Double? {
+            Double(ratingText)
+        }
+    }
+
+    /// 拉取热门电影榜（/discover/movie，约 50 部）。
+    static func trendingMovies() async -> [TrendingItem] {
+        var components = URLComponents(
+            url: siteBase.appendingPathComponent("discover/movie"),
+            resolvingAgainstBaseURL: false
+        )
+        components?.port = 443
+        guard let url = components?.url else { return [] }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = timeout
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        request.setValue("true", forHTTPHeaderField: "HX-Request")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let html = String(data: data, encoding: .utf8) else {
+            return []
+        }
+        return parseTrendingMovies(from: html)
+    }
+
+    /// 从热门榜 HTML 解析卡片（离线纯函数，供测试）。
+    /// 卡片形如：
+    /// <a href="/search?kw=<标题>&doubanId=<id>"><div class="movie-poster">
+    /// <img src="/api/proxy/image/…" alt="标题">…<span class="movie-rating">7.6</span>
+    /// …<h3 class="movie-title" title="标题">
+    static func parseTrendingMovies(from html: String) -> [TrendingItem] {
+        var items: [TrendingItem] = []
+        let cardPattern = #"<a href="/search\?kw=([^"]+)&doubanId=(\d+)"[\s\S]*?<span class="movie-rating">([\d.]+)</span>[\s\S]*?<h3 class="movie-title" title="([^"]*)"#
+        guard let regex = try? NSRegularExpression(
+            pattern: cardPattern
+        ) else { return [] }
+        let ns = html as NSString
+        let matches = regex.matches(
+            in: html,
+            range: NSRange(location: 0, length: ns.length)
+        )
+        var seen = Set<String>()
+        for match in matches {
+            let doubanID = ns.substring(with: match.range(at: 2))
+            guard seen.insert(doubanID).inserted else { continue }
+            let rating = ns.substring(with: match.range(at: 3))
+            let title = ns.substring(with: match.range(at: 4))
+            guard !title.isEmpty else { continue }
+            let cardText = ns.substring(with: match.range)
+            items.append(TrendingItem(
+                title: title,
+                doubanID: doubanID,
+                ratingText: rating,
+                posterURL: posterURL(in: cardText)
+            ))
+        }
+        return items
+    }
+
+    /// 从单张卡片 HTML 提取海报代理地址（img src="/api/proxy/image/…"）。
+    private static func posterURL(in cardHTML: String) -> URL? {
+        let pattern = #"src="(/api/proxy/image/[^"]+)""#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+            return nil
+        }
+        let ns = cardHTML as NSString
+        guard let match = regex.firstMatch(
+            in: cardHTML,
+            range: NSRange(location: 0, length: ns.length)
+        ) else { return nil }
+        let src = ns.substring(with: match.range(at: 1))
+        return URL(string: src, relativeTo: siteBase)?.absoluteURL
+    }
 }
+

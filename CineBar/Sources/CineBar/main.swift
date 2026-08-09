@@ -3134,6 +3134,10 @@ final class MovieStore: ObservableObject {
     @Published var dailyTVShow: TVShow? = TVShow.demo
     @Published var dailyTVShows: [TVShow] = [TVShow.demo]
     @Published var isLoadingDaily = false
+    /// 热门电影（中文界面）：来源为 Moovie 聚合站热度榜，而非 TMDB trending。
+    @Published var trendingItems: [MoovieStreamResolver.TrendingItem] = []
+    @Published var isLoadingMoovieTrending = false
+    @Published var moovieTrendingFailed = false
     @Published var searchText = ""
     @Published var isLoading = false
     @Published var message = "演示模式 · 配置 TMDB Token 后显示真实数据"
@@ -3943,6 +3947,11 @@ final class MovieStore: ObservableObject {
             isLoading = false
             return
         }
+        // 中文界面热门电影：改用 Moovie 聚合站热度榜，不再拉取 TMDB trending。
+        if section == .trending, appLanguage.isChinese {
+            loadMoovieTrending()
+            return
+        }
         Task {
             do {
                 let client = TMDBClient(
@@ -3988,6 +3997,29 @@ final class MovieStore: ObservableObject {
                 }
             }
             isLoading = false
+        }
+    }
+
+    /// 中文界面热门电影：从 Moovie 聚合站热度榜拉取（约 50 部），
+    /// 失败时显示重试入口，不降级回 TMDB trending（用户明确不要 IMDB 热门）。
+    func loadMoovieTrending() {
+        canLoadMoreMovieBrowse = false
+        movieBrowseNextPage = 1
+        isLoading = true
+        moovieTrendingFailed = false
+        message = "正在获取热门电影…"
+        Task {
+            let items = await MoovieStreamResolver.trendingMovies()
+            await MainActor.run {
+                isLoading = false
+                guard !items.isEmpty else {
+                    moovieTrendingFailed = true
+                    message = "热门电影源暂不可用"
+                    return
+                }
+                trendingItems = items
+                message = "热门电影 · 来自聚合站热度榜"
+            }
         }
     }
 
@@ -5589,6 +5621,145 @@ struct PosterView: View {
 /// 双列网格卡片：大图海报 + 片名 + 评分 + 简介（方案 B）。
 /// 按用户确认：去掉年份与评分人数，简介最多 2 行，点击进详情。
 /// 海报带类 Apple TV 的鼠标视差 3D 交互。
+/// 聚合站热门电影卡片：点击直接在线播放（无需进详情页）。
+struct MoovieTrendingCard: View {
+    let item: MoovieStreamResolver.TrendingItem
+    @State private var posterImage: NSImage?
+    @State private var playState: PlayState = .idle
+    @State private var isHovering = false
+
+    enum PlayState {
+        case idle
+        case resolving
+        case failed
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            cardPoster
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(item.title)
+                        .font(.subheadline.bold())
+                        .lineLimit(1)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 0)
+                    if let rating = item.rating {
+                        Text(String(format: "%.1f", rating))
+                            .font(.callout.bold())
+                            .foregroundStyle(.orange)
+                            .help("豆瓣评分")
+                    }
+                }
+                switch playState {
+                case .idle:
+                    Label("在线播放", systemImage: "play.circle")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                case .resolving:
+                    HStack(spacing: 5) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("解析中…")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(.secondary)
+                case .failed:
+                    Text("未能解析，点击重试")
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.top, 7)
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering in
+            isHovering = hovering
+        }
+        .onTapGesture {
+            play()
+        }
+        .task(id: item.posterURL) {
+            if let url = item.posterURL {
+                posterImage = await cachedPosterImage(for: url)
+            } else {
+                posterImage = nil
+            }
+        }
+    }
+
+    private func play() {
+        guard playState != .resolving else { return }
+        playState = .resolving
+        Task {
+            let candidates = await MoovieStreamResolver.search(
+                title: item.title,
+                year: nil
+            )
+            let found = await MoovieStreamResolver.firstPlayable(
+                candidates: candidates
+            )
+            await MainActor.run {
+                guard let found else {
+                    playState = .failed
+                    return
+                }
+                playState = .idle
+                MooviePlaybackController.shared.show(
+                    url: found.streamURL,
+                    title: "\(item.title) · \(found.candidate.sourceName)",
+                    danmaku: [],
+                    mode: .floating
+                )
+            }
+        }
+    }
+
+    private var cardPoster: some View {
+        ZStack {
+            Group {
+                if let posterImage {
+                    Image(nsImage: posterImage)
+                        .resizable()
+                        .scaledToFill()
+                } else if item.posterURL != nil {
+                    ZStack {
+                        Color.secondary.opacity(0.12)
+                        ProgressView().controlSize(.small)
+                    }
+                } else {
+                    cardPlaceholder
+                }
+            }
+            .scaleEffect(isHovering ? 1.04 : 1.0)
+            .offset(y: isHovering ? -4 : 0)
+        }
+        .aspectRatio(2 / 3, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .shadow(
+            color: .black.opacity(isHovering ? 0.28 : 0.10),
+            radius: isHovering ? 14 : 8,
+            y: isHovering ? 8 : 4
+        )
+        .animation(.easeOut(duration: 0.25), value: isHovering)
+    }
+
+    private var cardPlaceholder: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.indigo.opacity(0.75), .purple.opacity(0.45)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            Image(systemName: "film.stack")
+                .font(.system(size: 34))
+                .foregroundStyle(.white.opacity(0.85))
+        }
+    }
+}
+
 struct MovieCardView: View {
     @ObservedObject var store: MovieStore
     @EnvironmentObject private var scrollActivity: ScrollActivity
@@ -11693,59 +11864,112 @@ struct ContentView: View {
                             .padding(.bottom, 12)
                         }
                     } else if store.mediaSection == .movies {
-                        LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 12),
-                                GridItem(.flexible(), spacing: 12)
-                            ],
-                            spacing: 14
-                        ) {
-                            ForEach(store.movies) { movie in
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Button {
-                                        store.select(movie)
-                                    } label: {
-                                        MovieCardView(store: store, movie: movie)
-                                    }
-                                    .buttonStyle(.plain)
-                                    if store.movieBrowseSection == .upcoming,
-                                       let releaseDate = movie.localizedReleaseDate,
-                                       CalendarReleaseEventComposer.shouldOffer(
-                                           dateText: releaseDate
-                                       ) {
-                                        HStack(spacing: 10) {
-                                            Button {
-                                                store.toggleReleaseReminder(for: movie)
-                                            } label: {
-                                                Image(
-                                                    systemName:
-                                                        store.hasReleaseReminder(
-                                                            mediaType: .movie,
-                                                            mediaID: movie.id
-                                                        )
-                                                        ? "bell.fill"
-                                                        : "bell"
-                                                )
-                                                .foregroundStyle(.orange)
-                                            }
-                                            .buttonStyle(.plain)
-                                            .help("设置上映提醒")
-
-                                            CalendarReleaseEventButton(
-                                                title: movie.title,
-                                                dateText: releaseDate,
-                                                region: store.region,
-                                                language: store.appLanguage
-                                            )
-                                        }
-                                        .font(.caption)
-                                        .padding(.horizontal, 2)
+                        if store.movieBrowseSection == .trending,
+                           store.appLanguage.isChinese {
+                            if !store.trendingItems.isEmpty {
+                                LazyVGrid(
+                                    columns: [
+                                        GridItem(.flexible(), spacing: 12),
+                                        GridItem(.flexible(), spacing: 12)
+                                    ],
+                                    spacing: 14
+                                ) {
+                                    ForEach(store.trendingItems) { item in
+                                        MoovieTrendingCard(item: item)
                                     }
                                 }
-                                .disabled(store.isLoading)
-                                .onAppear {
-                                    if movie.id == store.movies.last?.id {
-                                        if store.canLoadMoreCatalog {
+                                .padding(.bottom, 8)
+                                Text(
+                                    "热门电影来自聚合站热度榜，点击卡片直接在线播放"
+                                )
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
+                                .padding(.bottom, 10)
+                            } else if store.moovieTrendingFailed {
+                                VStack(spacing: 8) {
+                                    Label(
+                                        "热门电影源暂不可用",
+                                        systemImage: "wifi.exclamationmark"
+                                    )
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    Button("重试") {
+                                        store.loadMoovieTrending()
+                                    }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 32)
+                            } else {
+                                VStack(spacing: 8) {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                    Text("正在获取热门电影…")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 32)
+                            }
+                        } else {
+                            LazyVGrid(
+                                columns: [
+                                    GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)
+                                ],
+                                spacing: 14
+                            ) {
+                                ForEach(store.movies) { movie in
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        Button {
+                                            store.select(movie)
+                                        } label: {
+                                            MovieCardView(store: store, movie: movie)
+                                        }
+                                        .buttonStyle(.plain)
+                                        if store.movieBrowseSection == .upcoming,
+                                           let releaseDate = movie.localizedReleaseDate,
+                                           CalendarReleaseEventComposer.shouldOffer(
+                                               dateText: releaseDate
+                                           ) {
+                                            HStack(spacing: 10) {
+                                                Button {
+                                                    store.toggleReleaseReminder(for: movie)
+                                                } label: {
+                                                    Image(
+                                                        systemName:
+                                                            store.hasReleaseReminder(
+                                                                mediaType: .movie,
+                                                                mediaID: movie.id
+                                                            )
+                                                            ? "bell.fill"
+                                                            : "bell"
+                                                    )
+                                                    .foregroundStyle(.orange)
+                                                }
+                                                .buttonStyle(.plain)
+                                                .help("设置上映提醒")
+
+                                                CalendarReleaseEventButton(
+                                                    title: movie.title,
+                                                    dateText: releaseDate,
+                                                    region: store.region,
+                                                    language: store.appLanguage
+                                                )
+                                            }
+                                            .font(.caption)
+                                            .padding(.horizontal, 2)
+                                        }
+                                    }
+                                    .disabled(store.isLoading)
+                                    .onAppear {
+                                        if movie.id == store.movies.last?.id {
+                                            if store.canLoadMoreCatalog {
                                             store.loadMoreCatalog()
                                         } else if store.canLoadMoreMovieBrowse {
                                             store.loadMoreMovieBrowseIfNeeded()
@@ -11755,6 +11979,7 @@ struct ContentView: View {
                             }
                         }
                         .padding(.top, 6)
+                        }
                     } else {
                         LazyVGrid(
                             columns: [

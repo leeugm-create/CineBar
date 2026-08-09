@@ -2382,6 +2382,46 @@ let slider = RatingNSSlider()
         precondition(
             MoovieStreamResolver.extractStreamURL(from: "<html>无播放器</html>") == nil
         )
+
+        // ---- Moovie 热门榜：卡片解析 ----
+        let trendingHTML = """
+        <div class="movie-grid">
+        <a href="/search?kw=%E6%B5%B7%E4%B8%8A%E9%92%A2%E7%90%B4%E5%B8%88&doubanId=1292001"><div class="movie-poster">
+        <img src="/api/proxy/image/https%3A%2F%2Fimg.example.com%2Fp1.jpg" alt="海上钢琴师">
+        <span class="movie-rating">9.3</span>
+        <h3 class="movie-title" title="海上钢琴师">海上钢琴师</h3></div></a>
+        <a href="/search?kw=%E6%98%9F%E9%99%85%E7%A9%BF%E8%B6%8A&doubanId=1889243"><div class="movie-poster">
+        <img src="/api/proxy/image/https%3A%2F%2Fimg.example.com%2Fp2.jpg" alt="星际穿越">
+        <span class="movie-rating">9.4</span>
+        <h3 class="movie-title" title="星际穿越">星际穿越</h3></div></a>
+        </div>
+        """
+        let trendingItems = MoovieStreamResolver.parseTrendingMovies(
+            from: trendingHTML
+        )
+        precondition(trendingItems.count == 2)
+        precondition(trendingItems.first?.title == "海上钢琴师")
+        precondition(trendingItems.first?.doubanID == "1292001")
+        precondition(trendingItems.first?.ratingText == "9.3")
+        precondition(
+            trendingItems.first?.posterURL?.absoluteString.hasPrefix(
+                "https://moovie.c2v2.com/api/proxy/image/"
+            ) == true
+        )
+        precondition(
+            trendingItems.first?.posterURL?.absoluteString.contains(
+                "img.example.com%2Fp1.jpg"
+            ) == true
+        )
+        precondition(trendingItems.last?.title == "星际穿越")
+        precondition(trendingItems.last?.doubanID == "1889243")
+        precondition(trendingItems.last?.ratingText == "9.4")
+        precondition(
+            trendingItems.last?.posterURL?.absoluteString.contains(
+                "img.example.com%2Fp2.jpg"
+            ) == true
+        )
+        precondition(MoovieStreamResolver.parseTrendingMovies(from: "<html>空</html>").isEmpty)
     }
 }
 
