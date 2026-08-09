@@ -5613,8 +5613,8 @@ struct MovieCardView: View {
                             }
                             .scaleEffect(isHovering ? 1.12 : 1.0)
                             .offset(
-                                x: hoverOffset.width * 0.14,
-                                y: hoverOffset.height * 0.14
+                                x: hoverOffset.width * 0.08,
+                                y: hoverOffset.height * 0.08
                             )
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
@@ -5672,7 +5672,7 @@ struct MovieCardView: View {
 
     private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
         guard isHovering, size.width > 0, size.height > 0 else { return 0 }
-        let maxDegrees: CGFloat = 10
+        let maxDegrees: CGFloat = 6
         let normalized = isYaw
             ? hoverOffset.width / (size.width / 2)
             : -hoverOffset.height / (size.height / 2)
@@ -5784,8 +5784,8 @@ struct TVCardView: View {
                             }
                             .scaleEffect(isHovering ? 1.12 : 1.0)
                             .offset(
-                                x: hoverOffset.width * 0.14,
-                                y: hoverOffset.height * 0.14
+                                x: hoverOffset.width * 0.08,
+                                y: hoverOffset.height * 0.08
                             )
                         }
                         .frame(width: proxy.size.width, height: proxy.size.height)
@@ -5843,7 +5843,7 @@ struct TVCardView: View {
 
     private func parallaxAngle(for size: CGSize, isYaw: Bool) -> CGFloat {
         guard isHovering, size.width > 0, size.height > 0 else { return 0 }
-        let maxDegrees: CGFloat = 10
+        let maxDegrees: CGFloat = 6
         let normalized = isYaw
             ? hoverOffset.width / (size.width / 2)
             : -hoverOffset.height / (size.height / 2)
