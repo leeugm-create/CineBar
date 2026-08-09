@@ -13,7 +13,7 @@ enum Hao6vMagnetResolver {
     static func searchMagnet(for title: String, year: String? = nil) async -> String? {
         let list = await fetchLatestList()
         guard !list.isEmpty else { return nil }
-        let candidates = matchCandidates(list: list, title: title, year: year)
+        let candidates = matchTitle(list: list, title: title, year: year)
         if candidates.isEmpty { return nil }
         for entry in candidates {
             if let magnet = await fetchMagnet(url: entry.url) {
@@ -29,7 +29,7 @@ enum Hao6vMagnetResolver {
     }
 
     static func fetchLatestList() async -> [ListEntry] {
-        guard let data = await fetchData(from: listURL) else { return [] }
+        guard let data = await HTTPData(url: listURL) else { return [] }
         guard let html = decodeGB18030(data) else { return [] }
         return parseList(html: html)
     }
@@ -138,9 +138,10 @@ enum Hao6vMagnetResolver {
 
     /// 按 gb18030 解码网页（站点是 gb2312 老编码）。
     static func decodeGB18030(_ data: Data) -> String? {
-        guard let enc = String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(
-            CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)
-        )) else { return nil }
+        let cfEncoding = CFStringEncoding(CFStringEncodings.GB_18030_2000.rawValue)
+        let enc = String.Encoding(
+            rawValue: CFStringConvertEncodingToNSStringEncoding(cfEncoding)
+        )
         return String(data: data, encoding: enc)
     }
 
