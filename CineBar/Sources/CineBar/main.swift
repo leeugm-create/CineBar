@@ -357,6 +357,7 @@ enum CatalogSortMode: String, CaseIterable, Identifiable {
 enum MediaSection: String, CaseIterable, Identifiable {
     case movies
     case television
+    case anime
 
     var id: String { rawValue }
 
@@ -372,6 +373,26 @@ enum MediaSection: String, CaseIterable, Identifiable {
         case (.television, .enUS): return "TV"
         case (.television, .jaJP): return "テレビ"
         case (.television, .koKR): return "TV"
+        case (.anime, .zhCN): return "动漫"
+        case (.anime, .zhHK), (.anime, .zhTW): return "動漫"
+        case (.anime, .enUS): return "Anime"
+        case (.anime, .jaJP): return "アニメ"
+        case (.anime, .koKR): return "애니"
+        }
+    }
+}
+
+/// 动漫栏目内部细分：动画电影 / 动漫剧集（番剧）。
+enum AnimeBrowseKind: String, CaseIterable, Identifiable {
+    case movie
+    case tv
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .movie: return "动画电影"
+        case .tv: return "动漫剧集"
         }
     }
 }
@@ -411,6 +432,7 @@ enum TVBrowseSection: String, CaseIterable, Identifiable {
 enum MainBrowseSection: String, CaseIterable, Identifiable {
     case movies
     case television
+    case anime
     case watchlist
     case localLibrary
 
@@ -428,6 +450,11 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
         case (.television, .enUS): return "TV"
         case (.television, .jaJP): return "テレビ"
         case (.television, .koKR): return "TV"
+        case (.anime, .zhCN): return "动漫"
+        case (.anime, .zhHK), (.anime, .zhTW): return "動漫"
+        case (.anime, .enUS): return "Anime"
+        case (.anime, .jaJP): return "アニメ"
+        case (.anime, .koKR): return "애니"
         case (.watchlist, .zhCN): return "我的片单"
         case (.watchlist, .zhHK), (.watchlist, .zhTW): return "我的片單"
         case (.watchlist, .enUS): return "Watchlist"
@@ -3142,6 +3169,9 @@ final class MovieStore: ObservableObject {
     @Published var gridColumnCount: Int = 2 {
         didSet { defaults.set(gridColumnCount, forKey: "gridColumnCount") }
     }
+    /// 动漫栏目细分：动画电影 / 动漫剧集。
+    @Published var animeKind: AnimeBrowseKind = .movie
+    @Published var isLoadingAnime = false
     @Published var searchText = ""
     @Published var isLoading = false
     @Published var message = "演示模式 · 配置 TMDB Token 后显示真实数据"
@@ -3184,6 +3214,7 @@ final class MovieStore: ObservableObject {
     @Published var catalogCountryCode: String?
     @Published var catalogSortMode: CatalogSortMode = .popularity
     @Published var isCatalogResult = false
+    @Published var isShowingSearchResults = false
     @Published var canLoadMoreCatalog = false
     @Published var isLoadingMoreCatalog = false
     @Published var tvCatalogPeriod: ReleasePeriod = .options[0]
@@ -3923,6 +3954,10 @@ final class MovieStore: ObservableObject {
     func loadTrending() {
         canLoadMoreCatalog = false
         isCatalogResult = false
+        if mediaSection == .anime {
+            loadAnimeBrowse()
+            return
+        }
         if mediaSection == .television {
             loadTVBrowseSection(tvBrowseSection)
             return
@@ -3936,12 +3971,14 @@ final class MovieStore: ObservableObject {
         isShowingLocalLibrary = false
         searchText = ""
         peopleSearchResults = []
+        isShowingSearchResults = false
         loadMovieBrowseSection(section)
     }
 
     func loadMovieBrowseSection(_ section: MovieBrowseSection) {
         canLoadMoreCatalog = false
         isCatalogResult = false
+        isShowingSearchResults = false
         guard hasToken else {
             movies = Movie.demo
             message = "演示模式 · 配置 TMDB Token 后显示真实数据"
@@ -3958,6 +3995,11 @@ final class MovieStore: ObservableObject {
         // 中文界面热门电影：改用 Moovie 聚合站热度榜，不再拉取 TMDB trending。
         if section == .trending, appLanguage.isChinese {
             loadMoovieTrending()
+            return
+        }
+        // 中文界面即将上映：片单直接用豆瓣 coming（中国大陆上映日期以豆瓣为准）。
+        if section == .upcoming, appLanguage.isChinese {
+            loadUpcomingFromDouban()
             return
         }
         Task {
@@ -4027,6 +4069,109 @@ final class MovieStore: ObservableObject {
                 }
                 trendingItems = items
                 message = "热门电影 · 来自聚合站热度榜"
+            }
+        }
+    }
+
+    /// 动漫栏目：动画电影（TMDB genre 16 + 日本出品）或动漫剧集（番剧）。
+    func loadAnimeBrowse() {
+        guard hasToken else {
+            movies = Movie.demo
+            message = "演示模式 · 配置 TMDB Token 后显示真实数据"
+            return
+        }
+        canLoadMoreMovieBrowse = false
+        canLoadMoreTVBrowse = false
+        isLoadingAnime = true
+        isLoading = true
+        message = "正在获取动漫…"
+        Task {
+            let client = TMDBClient(
+                token: token,
+                language: appLanguage.apiCode
+            )
+            do {
+                if animeKind == .movie {
+                    let result = try await client.discover(
+                        startYear: nil,
+                        endYear: nil,
+                        genreIDs: [16],
+                        keywordQueries: [],
+                        originCountry: "JP",
+                        sortMode: .popularity,
+                        page: 1
+                    )
+                    await MainActor.run {
+                        isLoadingAnime = false
+                        isLoading = false
+                        movies = result.movies
+                        message = "动画电影 · \(result.movies.count) 部"
+                    }
+                } else {
+                    let result = try await client.discoverTV(
+                        startYear: nil,
+                        endYear: nil,
+                        genreID: 16,
+                        originCountry: "JP",
+                        sortMode: .popularity,
+                        page: 1
+                    )
+                    await MainActor.run {
+                        isLoadingAnime = false
+                        isLoading = false
+                        televisionShows = result.shows
+                        message = "动漫剧集 · \(result.shows.count) 部"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingAnime = false
+                    isLoading = false
+                    message = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    /// 动漫栏目内切换动画电影 / 动漫剧集。
+    func setAnimeKind(_ kind: AnimeBrowseKind) {
+        guard animeKind != kind else { return }
+        animeKind = kind
+        loadAnimeBrowse()
+    }
+
+    /// 即将上映（中文界面）：直接用豆瓣 coming 作为片单主体，
+    /// 中国大陆上映日期以豆瓣为准（TMDB 地区时序不可靠）。
+    func loadUpcomingFromDouban() {
+        canLoadMoreMovieBrowse = false
+        movieBrowseNextPage = 1
+        isLoading = true
+        message = "正在获取豆瓣即将上映…"
+        Task {
+            let items = (try? await DoubanComingClient().coming()) ?? []
+            await MainActor.run {
+                isLoading = false
+                guard !items.isEmpty else {
+                    message = "豆瓣即将上映源暂不可用"
+                    return
+                }
+                movies = items.compactMap { item in
+                    guard let fullDate = DoubanComingDate.fullDate(
+                        item.displayDate
+                    ) else { return nil }
+                    return Movie(
+                        id: item.subjectID,
+                        title: item.title,
+                        originalTitle: nil,
+                        overview: "",
+                        posterPath: nil,
+                        releaseDate: nil,
+                        localizedReleaseDate: fullDate,
+                        voteAverage: 0,
+                        voteCount: 0
+                    )
+                }
+                message = "豆瓣即将上映 · \(movies.count) 部"
             }
         }
     }
@@ -4221,6 +4366,7 @@ final class MovieStore: ObservableObject {
         isShowingWatchlist = false
         canLoadMoreCatalog = false
         isCatalogResult = false
+        isShowingSearchResults = true
         canLoadMoreTVCatalog = false
         isTVCatalogResult = false
         canLoadMoreMovieBrowse = false
@@ -4232,7 +4378,9 @@ final class MovieStore: ObservableObject {
                 language: appLanguage.apiCode
             )
             async let peopleRequest = client.searchPeople(query)
-            if mediaSection == .movies {
+            let searchMovies = mediaSection == .movies ||
+                (mediaSection == .anime && animeKind == .movie)
+            if searchMovies {
                 do {
                     let result = try await client.search(query)
                     movies = result
@@ -4271,6 +4419,7 @@ final class MovieStore: ObservableObject {
     func clearSearch() {
         searchText = ""
         peopleSearchResults = []
+        isShowingSearchResults = false
         isShowingWatchlist = false
         isShowingLocalLibrary = false
         loadTrending()
@@ -4294,7 +4443,11 @@ final class MovieStore: ObservableObject {
     var mainBrowseSection: MainBrowseSection {
         if isShowingLocalLibrary { return .localLibrary }
         if isShowingWatchlist { return .watchlist }
-        return mediaSection == .movies ? .movies : .television
+        switch mediaSection {
+        case .movies: return .movies
+        case .television: return .television
+        case .anime: return .anime
+        }
     }
 
     func setMainBrowseSection(_ section: MainBrowseSection) {
@@ -4310,6 +4463,13 @@ final class MovieStore: ObservableObject {
             isShowingLocalLibrary = false
             if mediaSection != .television {
                 setMediaSection(.television)
+            } else if isShowingWatchlist {
+                toggleWatchlist()
+            }
+        case .anime:
+            isShowingLocalLibrary = false
+            if mediaSection != .anime {
+                setMediaSection(.anime)
             } else if isShowingWatchlist {
                 toggleWatchlist()
             }
@@ -4566,7 +4726,6 @@ final class MovieStore: ObservableObject {
         doubanRating = nil
         loadCommunityRating(mediaType: .movie, mediaID: movie.id)
         guard movie.id > 0, hasToken else { return }
-
         isLoadingProviders = true
         isLoadingCast = true
         isLoadingTrailers = true
@@ -4672,6 +4831,9 @@ final class MovieStore: ObservableObject {
         loadTrending()
         if section == .television {
             loadDailyTVRecommendation()
+        }
+        if section == .anime {
+            loadAnimeBrowse()
         }
     }
 
@@ -4908,6 +5070,99 @@ final class MovieStore: ObservableObject {
             televisionBeforeFilter = []
         } else {
             loadTrendingTV()
+        }
+    }
+
+    /// 浏览区电影卡片统一点击入口。
+    /// 中文界面"即将上映"来自豆瓣、条目 id 是豆瓣 subjectID（非 TMDB），
+    /// 直接进 select 会用该 id 调 TMDB 失败，这里先按标题匹配 TMDB，
+    /// 匹配不到则用 id=0 的占位详情（只显示标题与豆瓣上映日期）。
+    func selectMovie(_ movie: Movie) {
+        let isDoubanUpcoming = mediaSection == .movies &&
+            movieBrowseSection == .upcoming && appLanguage.isChinese
+        guard isDoubanUpcoming, hasToken else {
+            select(movie)
+            return
+        }
+        Task {
+            let client = TMDBClient(
+                token: token,
+                language: appLanguage.apiCode
+            )
+            do {
+                let results = try await client.search(movie.title)
+                let normalized = DoubanRatingClient.normalize(movie.title)
+                let match = results.first {
+                    let candidate = DoubanRatingClient.normalize($0.title)
+                    return candidate == normalized ||
+                        candidate.contains(normalized) ||
+                        normalized.contains(candidate)
+                }
+                await MainActor.run {
+                    if let match {
+                        select(match)
+                    } else {
+                        select(Movie(
+                            id: 0,
+                            title: movie.title,
+                            originalTitle: nil,
+                            overview: "",
+                            posterPath: nil,
+                            releaseDate: nil,
+                            localizedReleaseDate: movie.localizedReleaseDate,
+                            voteAverage: 0,
+                            voteCount: 0
+                        ))
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    select(movie)
+                }
+            }
+        }
+    }
+
+    /// 热门榜卡片点击：先按标题在 TMDB 搜索匹配，匹配到进完整详情页；
+    /// 无 Token 或匹配不到时用豆瓣标题/评分构造占位详情。
+    func selectTrendingItem(_ item: MoovieStreamResolver.TrendingItem) {
+        func placeholder() -> Movie {
+            Movie(
+                id: Int(item.doubanID) ?? 0,
+                title: item.title,
+                originalTitle: nil,
+                overview: "",
+                posterPath: nil,
+                releaseDate: nil,
+                voteAverage: item.rating ?? 0,
+                voteCount: 0
+            )
+        }
+        guard hasToken else {
+            select(placeholder())
+            return
+        }
+        Task {
+            do {
+                let results = try await TMDBClient(
+                    token: token,
+                    language: appLanguage.apiCode
+                ).search(item.title)
+                let normalized = DoubanRatingClient.normalize(item.title)
+                let match = results.first {
+                    let candidate = DoubanRatingClient.normalize($0.title)
+                    return candidate == normalized ||
+                        candidate.contains(normalized) ||
+                        normalized.contains(candidate)
+                }
+                await MainActor.run {
+                    select(match ?? results.first ?? placeholder())
+                }
+            } catch {
+                await MainActor.run {
+                    select(placeholder())
+                }
+            }
         }
     }
 
@@ -5629,18 +5884,12 @@ struct PosterView: View {
 /// 双列网格卡片：大图海报 + 片名 + 评分 + 简介（方案 B）。
 /// 按用户确认：去掉年份与评分人数，简介最多 2 行，点击进详情。
 /// 海报带类 Apple TV 的鼠标视差 3D 交互。
-/// 聚合站热门电影卡片：点击直接在线播放（无需进详情页）。
+/// 聚合站热门电影卡片：点击进详情页（按标题匹配 TMDB）。
 struct MoovieTrendingCard: View {
+    @ObservedObject var store: MovieStore
     let item: MoovieStreamResolver.TrendingItem
     @State private var posterImage: NSImage?
-    @State private var playState: PlayState = .idle
     @State private var isHovering = false
-
-    enum PlayState {
-        case idle
-        case resolving
-        case failed
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -5659,24 +5908,6 @@ struct MoovieTrendingCard: View {
                             .help("豆瓣评分")
                     }
                 }
-                switch playState {
-                case .idle:
-                    Label("在线播放", systemImage: "play.circle")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                case .resolving:
-                    HStack(spacing: 5) {
-                        ProgressView()
-                            .controlSize(.mini)
-                        Text("解析中…")
-                            .font(.caption2)
-                    }
-                    .foregroundStyle(.secondary)
-                case .failed:
-                    Text("未能解析，点击重试")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                }
             }
             .padding(.horizontal, 2)
             .padding(.top, 7)
@@ -5686,40 +5917,13 @@ struct MoovieTrendingCard: View {
             isHovering = hovering
         }
         .onTapGesture {
-            play()
+            store.selectTrendingItem(item)
         }
         .task(id: item.posterURL) {
             if let url = item.posterURL {
                 posterImage = await cachedPosterImage(for: url)
             } else {
                 posterImage = nil
-            }
-        }
-    }
-
-    private func play() {
-        guard playState != .resolving else { return }
-        playState = .resolving
-        Task {
-            let candidates = await MoovieStreamResolver.search(
-                title: item.title,
-                year: nil
-            )
-            let found = await MoovieStreamResolver.firstPlayable(
-                candidates: candidates
-            )
-            await MainActor.run {
-                guard let found else {
-                    playState = .failed
-                    return
-                }
-                playState = .idle
-                MooviePlaybackController.shared.show(
-                    url: found.streamURL,
-                    title: "\(item.title) · \(found.candidate.sourceName)",
-                    danmaku: [],
-                    mode: .floating
-                )
             }
         }
     }
@@ -6917,6 +7121,50 @@ struct RatingSlider: NSViewRepresentable {
 
         @objc func valueChanged(_ sender: NSSlider) {
             value.wrappedValue = sender.doubleValue
+        }
+    }
+}
+
+/// 首页卡片列数滑块：2~5 四档，用 NSSlider 保证在面板窗口内可拖动。
+struct ColumnCountSlider: NSViewRepresentable {
+    @Binding var value: Double
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(value: $value)
+    }
+
+    func makeNSView(context: Context) -> NSSlider {
+        let slider = NSSlider(
+            value: value,
+            minValue: 2,
+            maxValue: 5,
+            target: context.coordinator,
+            action: #selector(Coordinator.valueChanged(_:))
+        )
+        slider.numberOfTickMarks = 4
+        slider.allowsTickMarkValuesOnly = true
+        slider.isContinuous = true
+        slider.controlSize = .small
+        slider.isEnabled = true
+        return slider
+    }
+
+    func updateNSView(_ slider: NSSlider, context: Context) {
+        if slider.doubleValue != value {
+            slider.doubleValue = value
+        }
+        context.coordinator.value = $value
+    }
+
+    final class Coordinator: NSObject {
+        var value: Binding<Double>
+
+        init(value: Binding<Double>) {
+            self.value = value
+        }
+
+        @objc func valueChanged(_ sender: NSSlider) {
+            value.wrappedValue = sender.doubleValue.rounded()
         }
     }
 }
@@ -11530,7 +11778,10 @@ struct ContentView: View {
                     }
                     Spacer()
                     Button {
-                        if store.mediaSection == .movies {
+                        if store.mediaSection == .anime {
+                            store.setMainBrowseSection(.movies)
+                            store.setMovieBrowseSection(.trending)
+                        } else if store.mediaSection == .movies {
                             store.setMovieBrowseSection(.trending)
                         } else {
                             store.setTVBrowseSection(.trending)
@@ -11540,7 +11791,11 @@ struct ContentView: View {
                     }
                     .help("本周热门")
                     Button {
-                        if store.mediaSection == .movies {
+                        if store.mediaSection == .anime {
+                            store.setMainBrowseSection(.movies)
+                            store.showCatalog.toggle()
+                            store.showTVCatalog = false
+                        } else if store.mediaSection == .movies {
                             store.showCatalog.toggle()
                             store.showTVCatalog = false
                         } else {
@@ -11551,9 +11806,9 @@ struct ContentView: View {
                         Image(systemName: "square.grid.2x2")
                     }
                     .help(
-                        store.mediaSection == .movies
-                            ? "分类选片"
-                            : "分类选剧"
+                        store.mediaSection == .television
+                            ? "分类选剧"
+                            : "分类选片"
                     )
                     Button {
                         NotificationCenter.default.post(
@@ -11598,6 +11853,22 @@ struct ContentView: View {
                         .pickerStyle(.segmented)
                         .labelsHidden()
                         .controlSize(.small)
+                    } else if store.mediaSection == .anime {
+                        Picker(
+                            "动漫细分",
+                            selection: Binding(
+                                get: { store.animeKind },
+                                set: { store.setAnimeKind($0) }
+                            )
+                        ) {
+                            ForEach(AnimeBrowseKind.allCases) { kind in
+                                Text(LocalizedStringKey(kind.title))
+                                    .tag(kind)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .controlSize(.small)
                     } else {
                         Picker(
                             "电视剧栏目",
@@ -11620,9 +11891,9 @@ struct ContentView: View {
                 HStack(spacing: 8) {
                     HStack(spacing: 4) {
                         TextField(
-                            store.mediaSection == .movies
-                                ? "搜索电影或演员"
-                                : "搜索电视剧或演员",
+                            store.mediaSection == .television
+                                ? "搜索电视剧或演员"
+                                : "搜索电影或演员",
                             text: $store.searchText
                         )
                         .textFieldStyle(.roundedBorder)
@@ -11752,21 +12023,18 @@ struct ContentView: View {
                     .menuStyle(.borderlessButton)
                     .fixedSize()
                 }
-                if !store.isShowingWatchlist && store.mediaSection == .movies {
+                if !store.isShowingWatchlist {
                     HStack(spacing: 6) {
                         Image(systemName: "square.grid.2x2")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                        Slider(
+                        ColumnCountSlider(
                             value: Binding(
                                 get: { Double(store.gridColumnCount) },
                                 set: { store.gridColumnCount = Int($0.rounded()) }
-                            ),
-                            in: 2...5,
-                            step: 1
+                            )
                         )
-                        .controlSize(.small)
-                        .frame(width: 110)
+                        .frame(width: 110, height: 20)
                         Text("\(store.gridColumnCount) 列")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
@@ -11902,16 +12170,23 @@ struct ContentView: View {
                             }
                             .padding(.bottom, 12)
                         }
-                    } else if store.mediaSection == .movies {
-                        if store.movieBrowseSection == .trending,
-                           store.appLanguage.isChinese {
+                    } else if store.mediaSection == .movies ||
+                                (store.mediaSection == .anime &&
+                                 store.animeKind == .movie) {
+                        // 热门榜分支仅在电影栏目、且未搜索、未筛选时生效，
+                        // 否则搜索/分类结果/动漫列表会被热门卡片区吞掉。
+                        if store.mediaSection == .movies,
+                           store.movieBrowseSection == .trending,
+                           store.appLanguage.isChinese,
+                           !store.isCatalogResult,
+                           !store.isShowingSearchResults {
                             if !store.trendingItems.isEmpty {
                                 LazyVGrid(
                                     columns: movieGridColumns,
                                     spacing: 14
                                 ) {
                                     ForEach(store.trendingItems) { item in
-                                        MoovieTrendingCard(item: item)
+                                        MoovieTrendingCard(store: store, item: item)
                                     }
                                 }
                                 .padding(.bottom, 8)
@@ -11960,7 +12235,7 @@ struct ContentView: View {
                                 ForEach(store.movies) { movie in
                                     VStack(alignment: .leading, spacing: 6) {
                                         Button {
-                                            store.select(movie)
+                                            store.selectMovie(movie)
                                         } label: {
                                             MovieCardView(store: store, movie: movie)
                                         }
@@ -12013,12 +12288,11 @@ struct ContentView: View {
                         }
                         .padding(.top, 6)
                         }
-                    } else {
+                    } else if store.mediaSection == .television ||
+                                (store.mediaSection == .anime &&
+                                 store.animeKind == .tv) {
                         LazyVGrid(
-                            columns: [
-                                GridItem(.flexible(), spacing: 12),
-                                GridItem(.flexible(), spacing: 12)
-                            ],
+                            columns: movieGridColumns,
                             spacing: 14
                         ) {
                             ForEach(store.televisionShows) { show in
