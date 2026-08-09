@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3-test.15</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 50&lt;/li&gt;&lt;li&gt;- 新增磁力下载：电影/电视剧详情页提供&amp;quot;磁力下载&amp;quot;按钮，命中后一键调起默认下载工具。&lt;/li&gt;&lt;li&gt;- 内置 9164 条 6v 磁力索引库（电影、动漫、剧集、综艺全站收录），本地查询毫秒级返回，不依赖在线接口。&lt;/li&gt;&lt;li&gt;- 每次启动自动增量抓取最新条目；设置-检查更新中可手动触发&amp;quot;全站抓取&amp;quot;重建索引，支持进度显示。&lt;/li&gt;&lt;li&gt;- 未收录的影片显示&amp;quot;等待更新&amp;quot;，之后可通过全站抓取补齐。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 52&lt;/li&gt;&lt;li&gt;- 磁力索引库改为增量更新：已抓取过的内容不再重复抓取，&amp;quot;更新抓取&amp;quot;只抓上次之后新发布的内容，并且随时都可以中断，下次从断点继续。&lt;/li&gt;&lt;li&gt;- 新用户装上应用就有完整磁力索引库（约 9000 部），不需要再花一个多小时先抓全站。&lt;/li&gt;&lt;li&gt;- 磁力下载与复制磁力按钮只在中/简体、繁体界面显示；其他语言界面保留正版观看平台入口，中文界面不再显示正版观看入口。&lt;/li&gt;&lt;li&gt;- 修复：设置中点击&amp;quot;检查更新&amp;quot;后，软件更新窗口会被设置窗口挡住一层，现已确保更新窗口正常显示在最上层。&lt;/li&gt;&lt;li&gt;- 详情页磁力按钮升级：命中磁力后提供&amp;quot;磁力下载&amp;quot;和&amp;quot;复制磁力&amp;quot;两个按钮；点击&amp;quot;复制磁力&amp;quot;会显示&amp;quot;已复制&amp;quot;的绿色确认反馈。&lt;/li&gt;&lt;li&gt;- 修复：浏览列表进入详情后点返回会回到列表顶部，现在返回后停留在之前浏览的位置。&lt;/li&gt;&lt;li&gt;- 修复磁力匹配误配：之前&amp;quot;奥德赛&amp;quot;&amp;quot;蜘蛛侠&amp;quot;等短片名会误命中名字里带同样字样的其它影片；现在必须标题完全一致或足够明确的名称匹配才行，拿不准的宁可提示&amp;quot;等待更新&amp;quot;。&lt;/li&gt;&lt;li&gt;- 磁力索引库&amp;quot;更新抓取&amp;quot;增加&amp;quot;取消抓取&amp;quot;按钮，随时可中止，已抓到的内容会保留。&lt;/li&gt;&lt;li&gt;- 设置-检查更新中的版本记录改为只显示最近 5 个版本，不再刷屏。&lt;/li&gt;&lt;li&gt;- 调整界面文案，不再显示磁力资源来源站点名称。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Sun, 09 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-50-universal.zip"
-        sparkle:version="50"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-52-universal.zip"
+        sparkle:version="52"
         sparkle:shortVersionString="0.8.3-test.15"
-        length="7012614"
+        length="7517165"
         type="application/octet-stream"
-        sparkle:edSignature="LKfLHL/9F0LTLgqk2wpzgRYq2tZ1HhjQfgzBsUHo8W0iNjxW4ax3v8fEHakQ+naPPXDHloPhNbwlXHecc5rsAg=="/>
+        sparkle:edSignature="r0BgZsG9B6MLkmgfrAMErymlrib2DZJWYTRUYVj6YJrKRZ1fo1plXvQX4NTysMdzDYr+DIbkJLuMn8ZU6ijoAg=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3-test.15</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 50&lt;/li&gt;&lt;li&gt;- 新增磁力下载：电影/电视剧详情页提供&amp;quot;磁力下载&amp;quot;按钮，命中后一键调起默认下载工具。&lt;/li&gt;&lt;li&gt;- 内置 9164 条 6v 磁力索引库（电影、动漫、剧集、综艺全站收录），本地查询毫秒级返回，不依赖在线接口。&lt;/li&gt;&lt;li&gt;- 每次启动自动增量抓取最新条目；设置-检查更新中可手动触发&amp;quot;全站抓取&amp;quot;重建索引，支持进度显示。&lt;/li&gt;&lt;li&gt;- 未收录的影片显示&amp;quot;等待更新&amp;quot;，之后可通过全站抓取补齐。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Sun, 09 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-50-universal.zip" sparkle:version="50" sparkle:shortVersionString="0.8.3-test.15" length="7012614" type="application/octet-stream" sparkle:edSignature="LKfLHL/9F0LTLgqk2wpzgRYq2tZ1HhjQfgzBsUHo8W0iNjxW4ax3v8fEHakQ+naPPXDHloPhNbwlXHecc5rsAg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
