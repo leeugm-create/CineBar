@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 57&lt;/li&gt;&lt;li&gt;- 新增：中文界面「热门」改走聚合站热度榜（约 50 部），不再使用 IMDB 热度数据；卡片点击直达详情页在线播放，无需 TMDB Token 即可使用。&lt;/li&gt;&lt;li&gt;- 新增：热门电影卡片显示海报、片名与豆瓣评分，榜单更新失败时提供一键重试。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 58&lt;/li&gt;&lt;li&gt;- 新增：新增「动漫」栏目，细分动画电影 / 动漫剧集（番剧），数据来自 TMDB 日本动画类目，支持 2~5 列卡片密度调节。&lt;/li&gt;&lt;li&gt;- 新增：电影与电视剧浏览区卡片列数滑块（2~5 列），可拖动调节并自动记住选择；修复滑块之前只能点按、无法拖动的问题。&lt;/li&gt;&lt;li&gt;- 改：中文界面「即将上映」改用豆瓣片单（中国大陆上映日期以豆瓣为准，不再依赖 TMDB 地区时序）。&lt;/li&gt;&lt;li&gt;- 改：本周热门 / 即将上映卡片点击进入详情页（按标题匹配 TMDB），移除卡片上的&amp;quot;在线播放&amp;quot;文字按钮。&lt;/li&gt;&lt;li&gt;- 修复：中文界面搜索影片、使用分类筛选时结果被&amp;quot;本周热门&amp;quot;卡片区覆盖的问题。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-57-universal.zip"
-        sparkle:version="57"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-58-universal.zip"
+        sparkle:version="58"
         sparkle:shortVersionString="0.8.3"
-        length="7831915"
+        length="7859287"
         type="application/octet-stream"
-        sparkle:edSignature="YnYahois9DMV+KX0LrCvBJbkAJWxA0dwmA30ygvlh1j6ykiPN3+ubjHA/3yVN8VguJDGkrhOapvzBAI/fFNBCA=="/>
+        sparkle:edSignature="Lf6L/K5kynyeUVzwqPJ1LD7Ni+rs/EBAENtD+ZQ2hEXz9UUQ4i3O6sQpbyHMnc5m+lefeJu9Xvawz9npGYevDA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.15 · Build 57&lt;/li&gt;&lt;li&gt;- 新增：中文界面「热门」改走聚合站热度榜（约 50 部），不再使用 IMDB 热度数据；卡片点击直达详情页在线播放，无需 TMDB Token 即可使用。&lt;/li&gt;&lt;li&gt;- 新增：热门电影卡片显示海报、片名与豆瓣评分，榜单更新失败时提供一键重试。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-57-universal.zip" sparkle:version="57" sparkle:shortVersionString="0.8.3" length="7831915" type="application/octet-stream" sparkle:edSignature="YnYahois9DMV+KX0LrCvBJbkAJWxA0dwmA30ygvlh1j6ykiPN3+ubjHA/3yVN8VguJDGkrhOapvzBAI/fFNBCA=="/>
     </item>
 <item>
       <title>CineBar 0.8.3-test.15</title>
