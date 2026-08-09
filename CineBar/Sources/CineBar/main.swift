@@ -6108,8 +6108,8 @@ struct Hao6vMagnetButton: View {
             guard status == .resolving, magnetTask == nil else { return }
             let year = year.isEmpty ? nil : year
             magnetTask = Task {
-                let found = await Hao6vMagnetResolver.searchMagnet(
-                    for: title, year: year
+                let found = await Hao6vMagnetResolver.magnetFor(
+                    title: title, year: year
                 )
                 guard !Task.isCancelled else { return }
                 if let found {
@@ -6147,6 +6147,89 @@ struct Hao6vMagnetButton: View {
         case .available: return "将在下载器中打开磁力链接"
         case .unavailable: return "该片暂无磁力资源，等更新后再看"
         case .resolving: return "来自 6v 电影网"
+        }
+    }
+}
+
+/// 磁力索引库设置卡：显示容量与上次更新时间，可手动触发全站扫描建库。
+struct MagnetIndexCard: View {
+    @State private var total = 0
+    @State private var done = 0
+    @State private var isScanning = false
+    @State private var scanTask: Task<Void, Never>?
+    @State private var lastUpdatedText = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("磁力下载索引库").font(.subheadline.bold())
+            HStack(spacing: 12) {
+                Label("已收录 \(total) 部", systemImage: "internaldrive")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Button {
+                    startScan()
+                } label: {
+                    Label(
+                        isScanning
+                            ? "抓取中 \(done)…"
+                            : "全站抓取",
+                        systemImage: isScanning
+                            ? "arrow.triangle.2.circlepath"
+                            : "icloud.and.arrow.down"
+                    )
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(isScanning)
+            }
+            if isScanning {
+                ProgressView(value: Double(done), total: Double(max(total, 1)))
+                    .controlSize(.small)
+                Text("正在抓取详情页，首次全站约需 20~60 分钟，期间可正常使用")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Text(lastUpdatedText)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear {
+            refresh()
+        }
+        .onDisappear {
+            scanTask?.cancel()
+        }
+    }
+
+    private func refresh() {
+        total = Hao6vMagnetStore.shared.count()
+        let date = Hao6vMagnetStore.shared.lastUpdatedDate()
+        if date.timeIntervalSince1970 > 0 {
+            lastUpdatedText = "上次更新："
+                + date.formatted(date: .abbreviated, time: .shortened)
+        } else {
+            lastUpdatedText = "尚未抓取过"
+        }
+    }
+
+    private func startScan() {
+        guard !isScanning else { return }
+        isScanning = true
+        total = Hao6vMagnetStore.shared.count()
+        scanTask = Task {
+            await Hao6vMagnetResolver.scanIndex { done, pageTotal, _ in
+                Task { @MainActor in
+                    self.total = max(
+                        self.total, Hao6vMagnetStore.shared.count()
+                    )
+                    self.done = done
+                    _ = pageTotal
+                }
+            }
+            await MainActor.run {
+                isScanning = false
+                refresh()
+            }
         }
     }
 }
@@ -9885,6 +9968,9 @@ struct SettingsRootView: View {
                 VersionHistoryCard()
             }
             settingsCard {
+                MagnetIndexCard()
+            }
+            settingsCard {
                 Text("关于").font(.subheadline.bold())
                 Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
                     .font(.caption).foregroundStyle(.secondary)
@@ -11339,6 +11425,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
                 self?.setUpdateBadge(visible: hasUpdate)
             }
         updaterService.startSilentUpdateChecks()
+
+        // 磁力库启动增量：只抓全部分类最新一页新增内容。
+        Task {
+            await Hao6vMagnetResolver.refreshLatest()
+        }
 
         let panel = CineBarPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
