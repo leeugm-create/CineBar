@@ -4203,8 +4203,52 @@ final class MovieStore: ObservableObject {
                         voteCount: 0
                     )
                 }
-                message = "豆瓣即将上映 · \(movies.count) 部"
+                message = "豆瓣即将上映 · \(movies.count) 部，正在匹配海报…"
             }
+            await enrichUpcomingWithTMDB(using: TMDBClient(
+                token: token,
+                language: appLanguage.apiCode
+            ))
+        }
+    }
+
+    /// 豆瓣即将上映没有海报，后台按标题在 TMDB 搜索匹配，
+    /// 命中则把卡片替换为带海报/简介/真实 id 的条目（保留豆瓣上映日期）。
+    /// 逐条限流，大陆新片在 TMDB 缺失时保持占位，不阻塞显示。
+    private func enrichUpcomingWithTMDB(
+        using client: TMDBClient
+    ) async {
+        for idx in movies.indices {
+            let placeholder = movies[idx]
+            guard placeholder.posterPath == nil,
+                  placeholder.id > 0,
+                  !placeholder.title.isEmpty else { continue }
+            let normalized = DoubanRatingClient.normalize(placeholder.title)
+            guard !normalized.isEmpty else { continue }
+            do {
+                let results = try await client.search(placeholder.title)
+                let match = results.first {
+                    let candidate = DoubanRatingClient.normalize($0.title)
+                    return candidate == normalized ||
+                        candidate.contains(normalized) ||
+                        normalized.contains(candidate)
+                }
+                guard let found = match ?? results.first,
+                      found.posterPath != nil else {
+                    try? await Task.sleep(nanoseconds: 120_000_000)
+                    continue
+                }
+                var enriched = found
+                enriched.localizedReleaseDate = placeholder.localizedReleaseDate
+                await MainActor.run {
+                    guard idx < movies.count else { return }
+                    movies[idx] = enriched
+                }
+            } catch {
+                // 网络/匹配失败，保持占位，跳到下一条。
+            }
+            // 限流，避免触发 TMDB 频率限制。
+            try? await Task.sleep(nanoseconds: 150_000_000)
         }
     }
 
@@ -5112,7 +5156,9 @@ final class MovieStore: ObservableObject {
     func selectMovie(_ movie: Movie) {
         let isDoubanUpcoming = mediaSection == .movies &&
             movieBrowseSection == .upcoming && appLanguage.isChinese
-        guard isDoubanUpcoming, hasToken else {
+        // 已用 TMDB 补全过海报的卡片（id 为真实 TMDB id）直接进完整详情，
+        // 无需再匹配；纯豆瓣占位（无海报）才走"先显示占位、后台匹配"。
+        guard isDoubanUpcoming, movie.posterPath == nil, hasToken else {
             select(movie)
             return
         }
