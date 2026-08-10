@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 61&lt;/li&gt;&lt;li&gt;- 修复：菜单栏蓝点点击弹出更新窗口时先激活应用，更新窗口现在会显示在最上层。&lt;/li&gt;&lt;li&gt;- 修复：本周热门卡片海报统一按 2:3 锁定尺寸，不再出现海报大小不一、网格留空不均的问题。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 62&lt;/li&gt;&lt;li&gt;- 修复：即将上映（豆瓣片单）自动按标题匹配 TMDB，补齐影片海报、简介与真实条目；匹配不到的国内新片保持渐变占位。&lt;/li&gt;&lt;li&gt;- 调整：动漫「本周热门动漫 / 动画电影 / 动漫剧集」不再限制日本地区，收录中日美欧全球热门动漫。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-61-universal.zip"
-        sparkle:version="61"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-62-universal.zip"
+        sparkle:version="62"
         sparkle:shortVersionString="0.8.3"
-        length="7882529"
+        length="7889204"
         type="application/octet-stream"
-        sparkle:edSignature="CzWXEEd61oZxMMmOPyz2svY8ae+V406Av7QrbjuCBJJJR0BpzL8ldIkaOtcejTMHT4DpZFoi6UTXMpYXFKehCg=="/>
+        sparkle:edSignature="cfeBuAObIAOOEWS+df5QcawIowEpNOuEfjxUhB/gobIYGqIWBRY5EqPrbA+JCG+ZN9aFH7MdS20CTxWgCfJKDA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 61&lt;/li&gt;&lt;li&gt;- 修复：菜单栏蓝点点击弹出更新窗口时先激活应用，更新窗口现在会显示在最上层。&lt;/li&gt;&lt;li&gt;- 修复：本周热门卡片海报统一按 2:3 锁定尺寸，不再出现海报大小不一、网格留空不均的问题。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Mon, 10 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-61-universal.zip" sparkle:version="61" sparkle:shortVersionString="0.8.3" length="7882529" type="application/octet-stream" sparkle:edSignature="CzWXEEd61oZxMMmOPyz2svY8ae+V406Av7QrbjuCBJJJR0BpzL8ldIkaOtcejTMHT4DpZFoi6UTXMpYXFKehCg=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
