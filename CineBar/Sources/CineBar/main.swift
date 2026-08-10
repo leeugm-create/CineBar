@@ -382,8 +382,9 @@ enum MediaSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// 动漫栏目内部细分：动画电影 / 动漫剧集（番剧）。
+/// 动漫栏目内部细分：本周热门 / 动画电影 / 动漫剧集。
 enum AnimeBrowseKind: String, CaseIterable, Identifiable {
+    case trending
     case movie
     case tv
 
@@ -391,6 +392,7 @@ enum AnimeBrowseKind: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
+        case .trending: return "本周热门动漫"
         case .movie: return "动画电影"
         case .tv: return "动漫剧集"
         }
@@ -3172,6 +3174,9 @@ final class MovieStore: ObservableObject {
     /// 动漫栏目细分：动画电影 / 动漫剧集。
     @Published var animeKind: AnimeBrowseKind = .movie
     @Published var isLoadingAnime = false
+    /// 动漫"本周热门动漫"：动画电影与番剧两个分区。
+    @Published var animeTrendingMovies: [Movie] = []
+    @Published var animeTrendingShows: [TVShow] = []
     @Published var searchText = ""
     @Published var isLoading = false
     @Published var message = "演示模式 · 配置 TMDB Token 后显示真实数据"
@@ -4073,7 +4078,7 @@ final class MovieStore: ObservableObject {
         }
     }
 
-    /// 动漫栏目：动画电影（TMDB genre 16 + 日本出品）或动漫剧集（番剧）。
+    /// 动漫栏目：本周热门（动画电影+番剧双分区）/ 动画电影 / 动漫剧集。
     func loadAnimeBrowse() {
         guard hasToken else {
             movies = Movie.demo
@@ -4091,7 +4096,34 @@ final class MovieStore: ObservableObject {
                 language: appLanguage.apiCode
             )
             do {
-                if animeKind == .movie {
+                switch animeKind {
+                case .trending:
+                    let moviesResult = try await client.discover(
+                        startYear: nil,
+                        endYear: nil,
+                        genreIDs: [16],
+                        keywordQueries: [],
+                        originCountry: "JP",
+                        sortMode: .popularity,
+                        page: 1
+                    )
+                    let showsResult = try await client.discoverTV(
+                        startYear: nil,
+                        endYear: nil,
+                        genreID: 16,
+                        originCountry: "JP",
+                        sortMode: .popularity,
+                        page: 1
+                    )
+                    await MainActor.run {
+                        isLoadingAnime = false
+                        isLoading = false
+                        animeTrendingMovies = moviesResult.movies
+                        animeTrendingShows = showsResult.shows
+                        message =
+                            "本周热门动漫 · 电影 \(animeTrendingMovies.count) + 番剧 \(animeTrendingShows.count)"
+                    }
+                case .movie:
                     let result = try await client.discover(
                         startYear: nil,
                         endYear: nil,
@@ -4107,7 +4139,7 @@ final class MovieStore: ObservableObject {
                         movies = result.movies
                         message = "动画电影 · \(result.movies.count) 部"
                     }
-                } else {
+                case .tv:
                     let result = try await client.discoverTV(
                         startYear: nil,
                         endYear: nil,
@@ -4379,7 +4411,7 @@ final class MovieStore: ObservableObject {
             )
             async let peopleRequest = client.searchPeople(query)
             let searchMovies = mediaSection == .movies ||
-                (mediaSection == .anime && animeKind == .movie)
+                (mediaSection == .anime && animeKind != .tv)
             if searchMovies {
                 do {
                     let result = try await client.search(query)
@@ -5074,9 +5106,9 @@ final class MovieStore: ObservableObject {
     }
 
     /// 浏览区电影卡片统一点击入口。
-    /// 中文界面"即将上映"来自豆瓣、条目 id 是豆瓣 subjectID（非 TMDB），
-    /// 直接进 select 会用该 id 调 TMDB 失败，这里先按标题匹配 TMDB，
-    /// 匹配不到则用 id=0 的占位详情（只显示标题与豆瓣上映日期）。
+    /// 中文界面"即将上映"来自豆瓣、条目 id 是豆瓣 subjectID（非 TMDB）。
+    /// 为不卡住点击：先立即用 id=0 的占位进详情页，再后台按标题匹配 TMDB，
+    /// 命中后再用真实数据刷新详情页，匹配不到则保持占位（显示标题与豆瓣上映日期）。
     func selectMovie(_ movie: Movie) {
         let isDoubanUpcoming = mediaSection == .movies &&
             movieBrowseSection == .upcoming && appLanguage.isChinese
@@ -5084,11 +5116,22 @@ final class MovieStore: ObservableObject {
             select(movie)
             return
         }
+        select(Movie(
+            id: 0,
+            title: movie.title,
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: nil,
+            localizedReleaseDate: movie.localizedReleaseDate,
+            voteAverage: 0,
+            voteCount: 0
+        ))
+        let client = TMDBClient(
+            token: token,
+            language: appLanguage.apiCode
+        )
         Task {
-            let client = TMDBClient(
-                token: token,
-                language: appLanguage.apiCode
-            )
             do {
                 let results = try await client.search(movie.title)
                 let normalized = DoubanRatingClient.normalize(movie.title)
@@ -5099,49 +5142,32 @@ final class MovieStore: ObservableObject {
                         normalized.contains(candidate)
                 }
                 await MainActor.run {
-                    if let match {
+                    if let match,
+                       selectedMovie?.id == 0,
+                       selectedMovie?.title == movie.title {
                         select(match)
-                    } else {
-                        select(Movie(
-                            id: 0,
-                            title: movie.title,
-                            originalTitle: nil,
-                            overview: "",
-                            posterPath: nil,
-                            releaseDate: nil,
-                            localizedReleaseDate: movie.localizedReleaseDate,
-                            voteAverage: 0,
-                            voteCount: 0
-                        ))
                     }
                 }
             } catch {
-                await MainActor.run {
-                    select(movie)
-                }
+                // 匹配失败保持占位详情，不打断用户。
             }
         }
     }
 
-    /// 热门榜卡片点击：先按标题在 TMDB 搜索匹配，匹配到进完整详情页；
-    /// 无 Token 或匹配不到时用豆瓣标题/评分构造占位详情。
+    /// 热门榜卡片点击：同理，先立即进详情页（占位，id=0 不触发网络），
+    /// 后台按标题匹配 TMDB，命中后用真实数据刷新。
     func selectTrendingItem(_ item: MoovieStreamResolver.TrendingItem) {
-        func placeholder() -> Movie {
-            Movie(
-                id: Int(item.doubanID) ?? 0,
-                title: item.title,
-                originalTitle: nil,
-                overview: "",
-                posterPath: nil,
-                releaseDate: nil,
-                voteAverage: item.rating ?? 0,
-                voteCount: 0
-            )
-        }
-        guard hasToken else {
-            select(placeholder())
-            return
-        }
+        select(Movie(
+            id: 0,
+            title: item.title,
+            originalTitle: nil,
+            overview: "",
+            posterPath: nil,
+            releaseDate: nil,
+            voteAverage: item.rating ?? 0,
+            voteCount: 0
+        ))
+        guard hasToken else { return }
         Task {
             do {
                 let results = try await TMDBClient(
@@ -5156,12 +5182,14 @@ final class MovieStore: ObservableObject {
                         normalized.contains(candidate)
                 }
                 await MainActor.run {
-                    select(match ?? results.first ?? placeholder())
+                    if let match,
+                       selectedMovie?.id == 0,
+                       selectedMovie?.title == item.title {
+                        select(match)
+                    }
                 }
             } catch {
-                await MainActor.run {
-                    select(placeholder())
-                }
+                // 匹配失败保持占位详情。
             }
         }
     }
@@ -12169,6 +12197,56 @@ struct ContentView: View {
                                 }
                             }
                             .padding(.bottom, 12)
+                        }
+                    } else if store.mediaSection == .anime &&
+                                store.animeKind == .trending {
+                        if !store.animeTrendingMovies.isEmpty {
+                            Text("动画电影")
+                                .font(.caption.bold())
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
+                                .padding(.vertical, 7)
+                            LazyVGrid(
+                                columns: movieGridColumns,
+                                spacing: 14
+                            ) {
+                                ForEach(store.animeTrendingMovies) { movie in
+                                    Button {
+                                        store.select(movie)
+                                    } label: {
+                                        MovieCardView(
+                                            store: store,
+                                            movie: movie
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding(.bottom, 12)
+                        }
+                        if !store.animeTrendingShows.isEmpty {
+                            Text("动漫番剧")
+                                .font(.caption.bold())
+                                .frame(
+                                    maxWidth: .infinity,
+                                    alignment: .leading
+                                )
+                                .padding(.vertical, 7)
+                            LazyVGrid(
+                                columns: movieGridColumns,
+                                spacing: 14
+                            ) {
+                                ForEach(store.animeTrendingShows) { show in
+                                    Button {
+                                        store.selectTV(show)
+                                    } label: {
+                                        TVCardView(store: store, show: show)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
                         }
                     } else if store.mediaSection == .movies ||
                                 (store.mediaSection == .anime &&
