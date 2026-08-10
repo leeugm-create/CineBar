@@ -4103,7 +4103,7 @@ final class MovieStore: ObservableObject {
                         endYear: nil,
                         genreIDs: [16],
                         keywordQueries: [],
-                        originCountry: "JP",
+                        originCountry: nil,
                         sortMode: .popularity,
                         page: 1
                     )
@@ -4111,7 +4111,7 @@ final class MovieStore: ObservableObject {
                         startYear: nil,
                         endYear: nil,
                         genreID: 16,
-                        originCountry: "JP",
+                        originCountry: nil,
                         sortMode: .popularity,
                         page: 1
                     )
@@ -4129,7 +4129,7 @@ final class MovieStore: ObservableObject {
                         endYear: nil,
                         genreIDs: [16],
                         keywordQueries: [],
-                        originCountry: "JP",
+                        originCountry: nil,
                         sortMode: .popularity,
                         page: 1
                     )
@@ -4144,7 +4144,7 @@ final class MovieStore: ObservableObject {
                         startYear: nil,
                         endYear: nil,
                         genreID: 16,
-                        originCountry: "JP",
+                        originCountry: nil,
                         sortMode: .popularity,
                         page: 1
                     )
