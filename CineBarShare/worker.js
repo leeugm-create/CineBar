@@ -31,6 +31,172 @@ export const mediaPath = (pathname) => {
 const canonicalPath = (mediaType, mediaID) =>
   `/${mediaType === "movie" ? "m" : "t"}/${mediaID}`;
 
+// ---------------------------------------------------------------------------
+// Moovie (moovie.c2v2.com) 在线正片源解析。与 macOS 版 CineBar 共用同一套
+// 搜索接口与播放页结构：搜索接口返回多家资源源的播放页链接，播放页内嵌
+// HLS (m3u8) 直链。m3u8 CDN 返回 access-control-allow-origin: *，网页端
+// 可直接用 hls.js 播放，无需代理。
+// ---------------------------------------------------------------------------
+
+const MOOVIE_BASE = "https://moovie.c2v2.com";
+const MOOVIE_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
+const moovieFetch = async (path, timeoutMs = 25000, retries = 2) => {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`${MOOVIE_BASE}${path}`, {
+        headers: {
+          "user-agent": MOOVIE_UA,
+          accept: "text/html,application/xhtml+xml",
+        },
+        signal: controller.signal,
+      });
+      if (!response.ok) return null;
+      return await response.text();
+    } catch {
+      if (attempt === retries) return null;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return null;
+};
+
+const isDerivativeTitle = (title) =>
+  /解说|预告|花絮/.test(title);
+
+/** 按片名+年份搜索可播放的正片源（解析逻辑与 App 端 parseSearchResults 一致）。 */
+const moovieSearch = async (title, year) => {
+  const query = normalize(title);
+  if (!query) return [];
+  const params = new URLSearchParams({ kw: query });
+  if (year) params.set("year", year);
+  const html = await moovieFetch(`/api/htmx/search?${params}`);
+  if (!html) return [];
+  return moovieParseResults(html, query);
+};
+
+/** 从搜索接口返回的 HTML 解析候选源列表（离线纯函数）。 */
+const moovieParseResults = (html, query) => {
+  const results = [];
+  const pattern = /href="(\/play\/[^"]+)"[^>]*class="search-result-card"[\s\S]*?card-title">([^<]+)<\/h3>[\s\S]*?card-year">([^<]+)</gi;
+  let match;
+  while ((match = pattern.exec(html)) !== null) {
+    const playPath = match[1];
+    const cardTitle = match[2];
+    const cardYear = match[3];
+    const segments = playPath.split("/").filter((s, i) => i !== 0 && s);
+    if (segments.length < 3) continue;
+    const sourceName = decodeURIComponent(segments[1]);
+    if (!sourceName) continue;
+    const doubanID = (playPath.match(/douban_id=([^&]+)/) ?? [])[1] ?? "";
+    results.push({
+      playPath,
+      sourceName,
+      title: cardTitle,
+      year: cardYear,
+      doubanID,
+    });
+  }
+  const q = query.toLowerCase();
+  const titleMatches = results.filter((r) => r.title.toLowerCase().includes(q));
+  const filtered = titleMatches.length > 0 ? titleMatches : results.filter((r) => !isDerivativeTitle(r.title));
+  return filtered.sort((a, b) => {
+    const aExact = a.title.toLowerCase() === q ? 1 : 0;
+    const bExact = b.title.toLowerCase() === q ? 1 : 0;
+    if (aExact !== bExact) return bExact - aExact;
+    const aDeriv = isDerivativeTitle(a.title) ? 1 : 0;
+    const bDeriv = isDerivativeTitle(b.title) ? 1 : 0;
+    if (aDeriv !== bDeriv) return aDeriv - bDeriv;
+    const aMapped = a.doubanID && a.doubanID !== "0" ? 1 : 0;
+    const bMapped = b.doubanID && b.doubanID !== "0" ? 1 : 0;
+    return bMapped - aMapped;
+  });
+};
+
+/** 从播放页 HTML 提取 m3u8 直链（与 App 端 extractStreamURL 一致）。 */
+const moovieExtractStreamURL = (html) => {
+  const match = html.match(/initPlayer\('artplayer-app',\s*'([^']+)'/);
+  if (!match) return null;
+  return match[1].replace(/\\\//g, "/");
+};
+
+/** 打开播放页并提取 HLS 直链。 */
+const moovieResolveStreamURL = async (playPath) => {
+  const html = await moovieFetch(playPath);
+  if (!html) return null;
+  return moovieExtractStreamURL(html);
+};
+
+/** 从播放页 HTML 提取剧集列表（与 App 端 parseEpisodeList 一致）。 */
+const moovieParseEpisodes = (html) => {
+  const listMatch = html.match(/episodeList\s*=\s*\[[\s\S]*?\]/);
+  if (!listMatch) return [];
+  const episodes = [];
+  const itemPattern = /\{\s*"title"\s*:\s*"([^"]*)",\s*"url"\s*:\s*"([^"]*)"\s*\}/g;
+  let match;
+  while ((match = itemPattern.exec(listMatch[0])) !== null) {
+    episodes.push({ title: match[1], playPath: match[2] });
+  }
+  return episodes;
+};
+
+/** 拉取播放页并解析剧集列表。 */
+const moovieLoadEpisodes = async (playPath) => {
+  const html = await moovieFetch(playPath);
+  if (!html) return [];
+  return moovieParseEpisodes(html);
+};
+
+const jsonResponse = (payload, status = 200, cacheControl = "no-store") =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": cacheControl,
+      "x-content-type-options": "nosniff",
+    },
+  });
+
+/** GET /api/stream?title=&year=&original= 返回 moovie 候选源列表。
+ *  中文标题搜不到时用 original（原片名）再试一次；带 year 无结果时去掉
+ *  year 再试（moovie 的 year 过滤会误伤部分条目）。 */
+const handleStreamAPI = async (url) => {
+  const title = normalize(url.searchParams.get("title"));
+  const year = normalize(url.searchParams.get("year"));
+  const original = normalize(url.searchParams.get("original"));
+  if (!title || title.length > 120) {
+    return jsonResponse({ error: "invalid title" }, 400);
+  }
+  let sources = await moovieSearch(title, year);
+  if (sources.length === 0 && year) {
+    sources = await moovieSearch(title, "");
+  }
+  if (sources.length === 0 && original && original.toLowerCase() !== title.toLowerCase()) {
+    sources = await moovieSearch(original, "");
+  }
+  return jsonResponse({ query: { title, year }, sources }, 200, "public, max-age=600");
+};
+
+/** GET /api/stream/source?path=/play/... 解析该源 m3u8（与剧集列表）。 */
+const handleStreamSourceAPI = async (url) => {
+  const path = normalize(url.searchParams.get("path"));
+  if (!path.startsWith("/play/") || path.length > 300) {
+    return jsonResponse({ error: "invalid path" }, 400);
+  }
+  const [streamURL, episodes] = await Promise.all([
+    moovieResolveStreamURL(path),
+    moovieLoadEpisodes(path),
+  ]);
+  if (!streamURL && episodes.length === 0) {
+    return jsonResponse({ error: "unresolvable" }, 502);
+  }
+  return jsonResponse({ path, streamURL, episodes }, 200, "no-store");
+};
+
 const validatedDownloadURL = (value) => {
   try {
     const url = new URL(normalize(value));
@@ -128,6 +294,9 @@ const loadMetadata = async (route, env) => {
   const isMovie = route.mediaType === "movie";
   return {
     title: normalize(isMovie ? payload.title : payload.name).slice(0, 120),
+    originalTitle: normalize(
+      isMovie ? payload.original_title : payload.original_name,
+    ).slice(0, 120),
     year: normalize(
       isMovie ? payload.release_date : payload.first_air_date,
     ).slice(0, 4),
@@ -222,6 +391,30 @@ const sharePage = (url, route, metadata, downloadURL) => {
     .cast{margin-top:24px}.cast h2{font-size:16px;margin:0 0 10px;color:#f8fafc}
     .cast-list{display:grid;gap:8px}.cast-member{display:flex;gap:8px;flex-wrap:wrap;
     color:#d8def0}.cast-member span{color:#a9b4d0}
+    .stream{margin-top:26px;border-top:1px solid #ffffff1f;padding-top:22px}
+    .stream-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+    .stream-head h2{font-size:18px;margin:0;color:#f8fafc}
+    .stream-badge{padding:4px 9px;border-radius:999px;background:#f59e0b22;
+    color:#fbbf24;font-size:12px;border:1px solid #f59e0b44}
+    .stream-btn{padding:10px 16px;border-radius:12px;background:#f59e0b;color:#111827;
+    border:0;font-weight:750;font-size:15px;cursor:pointer}
+    .stream-btn:disabled{opacity:.55;cursor:wait}
+    .stream-state{color:#a9b4d0;font-size:14px;margin:14px 0 0}
+    .stream-error{color:#fca5a5;font-size:14px;margin:14px 0 0}
+    .stream-sources{display:grid;gap:8px;margin-top:14px}
+    .stream-source{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 13px;
+    border:1px solid #ffffff1f;border-radius:12px;background:#ffffff0a;cursor:pointer;text-align:left}
+    .stream-source:hover{border-color:#f59e0b66;background:#f59e0b0d}
+    .stream-source .src-name{font-weight:700;color:#f8fafc}
+    .stream-source .src-meta{color:#a9b4d0;font-size:13px}
+    .stream-source .src-flag{margin-left:auto;color:#fbbf24;font-size:13px}
+    .player-shell{margin-top:16px;position:relative}
+    .player-shell video{width:100%;max-height:480px;border-radius:14px;background:#000}
+    .episodes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .ep{padding:7px 12px;border-radius:9px;border:1px solid #ffffff2e;background:#ffffff0a;
+    color:#d8def0;font-size:13px;cursor:pointer}
+    .ep:hover{border-color:#f59e0b88;color:#fff}
+    .ep.playing{border-color:#f59e0b;background:#f59e0b22;color:#fbbf24}
     @media(max-width:650px){.card{grid-template-columns:1fr;padding:20px}.poster{max-width:280px;margin:auto}}
   </style>
 </head>
@@ -231,8 +424,160 @@ const sharePage = (url, route, metadata, downloadURL) => {
 <div class="content"><h1>${escapeHTML(title)}</h1><div class="meta">
 ${year ? `<span class="pill">${escapeHTML(year)}</span>` : ""}
 ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : ""}
-</div><p>${escapeHTML(summary)}</p>${castBlock}${downloadBlock}<div class="from">由 CineBar for macOS 分享</div>
-</div></section></main></body></html>`, {
+</div><p>${escapeHTML(summary)}</p>${castBlock}${downloadBlock}
+<section class="stream" id="stream" data-title="${escapeHTML(title)}" data-year="${escapeHTML(year)}" data-original="${escapeHTML(metadata?.originalTitle ?? "")}">
+  <div class="stream-head">
+    <h2>在线播放</h2>
+    <span class="stream-badge">实验性 · 第三方源</span>
+  </div>
+  <div class="stream-state" id="stream-state">加载资源源…</div>
+</section>
+<div class="from">由 CineBar for macOS 分享</div>
+</div></section></main>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.13/dist/hls.min.js"></script>
+<script>
+(function () {
+  var host = "https://share.cinebar.cc";
+  var root = document.getElementById("stream");
+  if (!root) return;
+  var state = document.getElementById("stream-state");
+  var title = root.dataset.title || "";
+  var year = root.dataset.year || "";
+  var original = root.dataset.original || "";
+  var candidates = [];
+  var currentSource = null;
+  var currentEpisodes = [];
+
+  function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function setState(text) { state.textContent = text; }
+  function setError(text) {
+    state.className = "stream-error";
+    state.textContent = text;
+  }
+  function clearError() {
+    state.className = "stream-state";
+    setState("");
+  }
+
+  function loadVideo(m3u8, anchor) {
+    root.querySelectorAll(".player-shell").forEach(function (el) { el.remove(); });
+    var shell = document.createElement("div");
+    shell.className = "player-shell";
+    shell.innerHTML = '<video controls playsinline></video>';
+    (anchor || root).insertAdjacentElement("afterend", shell);
+    var video = shell.querySelector("video");
+    if (window.Hls && Hls.isSupported()) {
+      var hls = new Hls({ maxBufferLength: 30 });
+      hls.loadSource(m3u8);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, function (_, data) {
+        if (data.fatal) {
+          setError("播放出错（源不可用或已失效），试试其他源。");
+        }
+      });
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = m3u8;
+    } else {
+      setError("当前浏览器不支持 HLS 播放。");
+    }
+  }
+
+  function loadSource(path, isEpisode, anchor) {
+    clearError();
+    setState(isEpisode ? "正在解析该集播放地址…" : "正在解析播放地址…");
+    fetch(host + "/api/stream/source?path=" + encodeURIComponent(path), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(function (body) {
+        if (body.error) return setError("无法解析该源：" + esc(body.error));
+        if (!isEpisode && body.episodes && body.episodes.length > 0) {
+          currentEpisodes = body.episodes;
+          renderEpisodes(anchor);
+        }
+        if (body.streamURL) {
+          setState(isEpisode ? "正在播放该集" : "正在播放，如遇卡顿可切换源");
+          loadVideo(body.streamURL, anchor);
+        } else if (isEpisode) {
+          setError("该集暂无可用播放地址。");
+        } else {
+          setState("该源没有直接播放地址，看看其他源。");
+        }
+      })
+      .catch(function () { setError("加载失败，请稍后重试。"); });
+  }
+
+  function renderEpisodes(anchor) {
+    var old = root.querySelector(".episodes");
+    if (old) old.remove();
+    if (!currentEpisodes.length) return;
+    var wrap = document.createElement("div");
+    wrap.className = "episodes";
+    currentEpisodes.forEach(function (ep, i) {
+      var b = document.createElement("button");
+      b.className = "ep" + (i === 0 ? " playing" : "");
+      b.type = "button";
+      b.textContent = ep.title;
+      b.addEventListener("click", function () {
+        root.querySelectorAll(".ep").forEach(function (x) { x.classList.remove("playing"); });
+        b.classList.add("playing");
+        var target = (ep.playPath || "").indexOf("/") === 0 ? ep.playPath
+          : (ep.playPath || "");
+        loadSource(target, true, b);
+      });
+      wrap.appendChild(b);
+    });
+    (anchor || root).insertAdjacentElement("afterend", wrap);
+  }
+
+  function renderSources() {
+    clearError();
+    var old = root.querySelector(".stream-sources");
+    if (old) old.remove();
+    if (!candidates.length) {
+      return setState("暂未找到该片的在线资源（第三方聚合源），可稍后再试或下载 CineBar 在 App 内观看。");
+    }
+    setState("找到 " + candidates.length + " 个源，点击选择：");
+    var wrap = document.createElement("div");
+    wrap.className = "stream-sources";
+    candidates.forEach(function (s, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "stream-source";
+      b.innerHTML = '<span class="src-name">' + esc(s.sourceName) + "</span>" +
+        '<span class="src-meta">' + esc(s.title + (s.year ? "（" + s.year + "）" : "")) + "</span>" +
+        '<span class="src-flag">' + (i === 0 ? "推荐" : "备用") + "</span>";
+      b.addEventListener("click", function () {
+        currentSource = s;
+        loadSource(s.playPath, false, b);
+      });
+      wrap.appendChild(b);
+    });
+    root.appendChild(wrap);
+  }
+
+  function searchStreams() {
+    clearError();
+    setState("正在搜索在线资源源…");
+    var params = new URLSearchParams({ title: title });
+    if (year) params.set("year", year);
+    if (original && original.toLowerCase() !== title.toLowerCase()) {
+      params.set("original", original);
+    }
+    fetch(host + "/api/stream?" + params.toString(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
+      .then(function (body) {
+        candidates = body.sources || [];
+        renderSources();
+      })
+      .catch(function () { setError("在线资源加载失败，请稍后重试。"); });
+  }
+
+  searchStreams();
+})();
+</script></body></html>`, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=3600",
@@ -281,6 +626,12 @@ export default {
           "cache-control": "public, max-age=86400",
         },
       });
+    }
+    if (request.method === "GET" && url.pathname === "/api/stream/source") {
+      return handleStreamSourceAPI(url);
+    }
+    if (request.method === "GET" && url.pathname === "/api/stream") {
+      return handleStreamAPI(url);
     }
     const route = mediaPath(url.pathname);
     if (request.method === "GET" && route) {

@@ -12723,6 +12723,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 
     @objc private func menuBarClicked() {
+        if updaterService.hasUpdateAvailable {
+            // 有可用更新（菜单栏蓝点）：收起面板，直接弹出 Sparkle 更新窗口。
+            if panel?.isVisible == true {
+                autoHideTimer?.invalidate()
+                NotificationCenter.default.post(
+                    name: .cineBarPanelWillHide,
+                    object: nil
+                )
+                panel?.orderOut(nil)
+            }
+            updaterService.checkForUpdates()
+            return
+        }
         togglePanel()
     }
 
