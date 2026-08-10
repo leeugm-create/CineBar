@@ -54,7 +54,7 @@ test("publishes the approved CineBar identity and download entry", async () => {
   const site = `${home}\n${zh}\n${support}`;
   assert.match(site, /找到下一部好片/);
   assert.doesNotMatch(site, /今晚看什么？/);
-  assert.match(site, /一个找电影、电视剧的 app/);
+  assert.match(site, /在线观看电影、电视剧与动漫/);
   assert.match(site, /leeugm@vip\.qq\.com/);
   assert.match(site, /测试版/);
   assert.match(
@@ -97,7 +97,7 @@ test("discloses the current release and multilingual coverage", async () => {
   assert.doesNotMatch(site, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(site, /支持简体中文、繁体中文、英语、日语与韩语/);
   assert.match(site, /测试版/);
-  assert.match(site, /一次看全/);
+  assert.match(site, /观看平台/);
   assert.doesNotMatch(site, /已经.*公证/);
 });
 
@@ -132,6 +132,24 @@ test("contains accessible navigation and all required sections", async () => {
   assert.match(site, /右键/);
   assert.match(site, /TMDB/);
   assert.match(site, /Metacritic/);
+});
+
+test("keeps the current product demo compact and parallel", async () => {
+  const home = await read("app/home.tsx");
+  const css = await read("app/globals.css");
+  const gifBuilder = await read("scripts/make_product_gif.py");
+  assert.match(home, /className="hero-gif"/);
+  assert.match(home, /className="showcase-grid"/);
+  assert.match(home, /className="showcase-gif"/);
+  assert.doesNotMatch(home, /showcase-movies\.png|showcase-tv\.png/);
+  await access(new URL("../public/cinebar-product-tour.gif", import.meta.url));
+  assert.match(gifBuilder, /showcase-movies-current\.png/);
+  assert.match(gifBuilder, /showcase-tv-current\.png/);
+  assert.match(gifBuilder, /showcase-anime-current\.png/);
+  assert.match(css, /\.hero-gif-frame[\s\S]*max-width:\s*620px/);
+  assert.match(css, /\.showcase-grid[\s\S]*grid-template-columns:\s*minmax\(0, 1\.1fr\) minmax\(260px, 0\.9fr\)/);
+  assert.match(css, /\.showcase-gif-frame[\s\S]*max-width|width:\s*min\(100%, 560px\)/);
+  assert.match(css, /\.hero h1 \.title-line[\s\S]*white-space:\s*nowrap/);
 });
 
 test("follows system appearance and reduced-motion preferences", async () => {

@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 const title = "CineBar — 找到下一部好片";
-const description = "macOS 菜单栏里的电影与电视剧发现工具。";
+const description = "macOS 菜单栏里的电影、电视剧与动漫发现和在线观影工具。";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://cinebar.cc"),

@@ -16,11 +16,19 @@ export type Messages = {
   heroTitle1: string;
   heroTitle2: string;
   heroLede: string;
+  heroNote: string;
+  heroSecondary: string;
   download: string;
   install: string;
   installTitle: string;
   compat: string;
   demoHint: string;
+  showcaseTitle: string;
+  showcaseLead: string;
+  showcaseMovies: string;
+  showcaseTV: string;
+  showcaseLibrary: string;
+  showcaseNote: string;
   search: string;
   searchOpen: string;
   searchHint: string;
@@ -40,6 +48,7 @@ export type Messages = {
   ratingsLead: string;
   ratingSources: readonly RatingSource[];
   navFeatures: string;
+  navShowcase: string;
   navInstall: string;
   navSupport: string;
   featuresTitle: string;
@@ -75,12 +84,20 @@ export const messages: Record<Locale, Messages> = {
     heroVersion: "CineBar for macOS · 0.8.3-test.16（Build 62）测试版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
-    heroLede: "一个找电影、电视剧的 app。",
+    heroLede: "在菜单栏发现并在线观看电影、电视剧与动漫。",
+    heroNote: "支持在线观影，也能打开本地片库；具体平台与片源因地区而异。",
+    heroSecondary: "查看产品演示 →",
     download: "下载 macOS 测试版",
     install: "查看安装说明 →",
     installTitle: "三步开始使用",
     compat: "支持 Apple 芯片与 Intel Mac · 免费 · 无广告 · 无订阅",
-    demoHint: "悬停菜单栏，看它在 Mac 上的样子",
+    demoHint: "CineBar 产品界面演示",
+    showcaseTitle: "从发现到观看，界面一眼就懂",
+    showcaseLead: "电影、电视剧与动漫集中在菜单栏里：查看评分、演员、剧照、预告和可观看平台，再决定今晚看什么。",
+    showcaseMovies: "电影发现",
+    showcaseTV: "电视剧与动漫",
+    showcaseLibrary: "本地片库也在这里",
+    showcaseNote: "在线内容与本地视频统一管理；匹配后的影片可以继续查看完整资料。",
     search: "找片名、剧名…",
     searchOpen: "搜索",
     searchHint: "输入至少两个字开始搜索",
@@ -96,9 +113,9 @@ export const messages: Record<Locale, Messages> = {
     watchlist: "我的片单",
     dailyRec: "每日推荐",
     dailyBy: "根据你的类型与地区偏好",
-    ratingsTitle: "电影电视剧，点了就能看",
+    ratingsTitle: "评分、演员和上映信息，都在一处",
     ratingsLead:
-      "详情页直接播放正片：电影即点即播，剧集按季选集；弹幕开关、倍速、浮窗与全屏随叫随到。评分也一次看全——豆瓣、TMDB、IMDb、烂番茄、Metacritic、CineBar 社区评分，全部聚在一处，不用一个个网站去翻。",
+      "详情页集中展示评分、演员、剧照、预告、上映日期和观看平台；支持在线观影或打开本地片库，具体内容以地区和片源为准。",
     ratingSources: [
       { id: "douban", label: "豆瓣" },
       { id: "tmdb", label: "TMDB" },
@@ -108,6 +125,7 @@ export const messages: Record<Locale, Messages> = {
       { id: "cinebar", label: "CineBar 社区" },
     ],
     navFeatures: "功能",
+    navShowcase: "演示",
     navInstall: "安装",
     navSupport: "支持",
     featuresTitle: "找片需要的信息，一处看清",
@@ -121,7 +139,7 @@ export const messages: Record<Locale, Messages> = {
       ["多语言", "支持简体中文、繁体中文、英语、日语与韩语。"],
     ],
     steps: [
-      "从上方 xxx地址下载测试包并解压，把 CineBar.app 移入“应用程序”文件夹。",
+      "从上方固定下载链接获取测试包并解压，把 CineBar.app 移入“应用程序”文件夹。",
       "双击或右键打开 CineBar（首次打开时若系统询问，选择“打开”）。",
       "若弹出“Apple 无法验证开发者”，请打开“系统设置”→“隐私与安全”→“安全性”，找到被阻止的 CineBar，点击“仍要打开”，输入密码或验证 Touch ID，然后重新打开 CineBar 即可。",
     ],
@@ -163,12 +181,20 @@ export const messages: Record<Locale, Messages> = {
     heroVersion: "CineBar for macOS · 0.8.3-test.16（Build 62）測試版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
-    heroLede: "一個找電影、電視劇的 app。",
+    heroLede: "在選單列發現並在線觀看電影、電視劇與動畫。",
+    heroNote: "支援線上觀影，也能開啟本機片庫；具體平台與片源因地區而異。",
+    heroSecondary: "查看產品演示 →",
     download: "下載 macOS 測試版",
     install: "查看安裝說明 →",
     installTitle: "三步開始使用",
     compat: "支援 Apple 晶片與 Intel Mac · 免費 · 無廣告 · 無訂閱",
-    demoHint: "將游標移到選單欄，看看它在 Mac 上的樣子",
+    demoHint: "CineBar 產品介面演示",
+    showcaseTitle: "從發現到觀看，介面一眼就懂",
+    showcaseLead: "電影、電視劇與動畫集中在選單列裡：查看評分、演員、劇照、預告與可觀看平台，再決定今晚看什麼。",
+    showcaseMovies: "電影發現",
+    showcaseTV: "電視劇與動畫",
+    showcaseLibrary: "本機片庫也在這裡",
+    showcaseNote: "線上內容與本地影片統一管理；配對後可繼續查看完整資料。",
     search: "搜尋片名、劇名…",
     searchOpen: "搜尋",
     searchHint: "輸入至少兩個字開始搜尋",
@@ -184,9 +210,9 @@ export const messages: Record<Locale, Messages> = {
     watchlist: "我的片單",
     dailyRec: "每日推薦",
     dailyBy: "根據你的類型與地區偏好",
-    ratingsTitle: "電影電視劇，點了就能看",
+    ratingsTitle: "評分、演員和上映資訊，都在一處",
     ratingsLead:
-      "詳情頁直接播放正片：電影即點即播，劇集按季選集；彈幕開關、倍速、浮窗與全螢幕隨叫隨到。評分也一次看全——豆瓣、TMDB、IMDb、爛番茄、Metacritic、CineBar 社群評分，全部集中在一處，不用一個一個網站去翻。",
+      "詳情頁集中展示評分、演員、劇照、預告、上映日期與觀看平台；支援線上觀影或開啟本機片庫，具體內容以地區和片源為準。",
     ratingSources: [
       { id: "douban", label: "豆瓣" },
       { id: "tmdb", label: "TMDB" },
@@ -196,6 +222,7 @@ export const messages: Record<Locale, Messages> = {
       { id: "cinebar", label: "CineBar 社群" },
     ],
     navFeatures: "功能",
+    navShowcase: "演示",
     navInstall: "安裝",
     navSupport: "支持",
     featuresTitle: "找片需要的資訊，一處看清",
@@ -209,7 +236,7 @@ export const messages: Record<Locale, Messages> = {
       ["多語言", "支援簡體中文、繁體中文、英語、日語與韓語。"],
     ],
     steps: [
-      "從上方 xxx連結下載測試包並解壓，把 CineBar.app 移入「應用程式」資料夾。",
+      "從上方固定下載連結取得測試包並解壓，把 CineBar.app 移入「應用程式」資料夾。",
       "雙擊或右鍵開啟 CineBar（首次開啟時若系統詢問，選擇「開啟」）。",
       "若出現「Apple 無法驗證開發者」，請開啟「系統設定」→「隱私權與安全性」→「安全性」，找到被阻擋的 CineBar，點擊「仍要開啟」，輸入密碼或驗證 Touch ID，然後重新開啟 CineBar 即可。",
     ],
@@ -251,12 +278,20 @@ export const messages: Record<Locale, Messages> = {
     heroVersion: "CineBar for macOS · 0.8.3-test.16 (Build 62) Beta",
     heroTitle1: "Find your",
     heroTitle2: "next great film",
-    heroLede: "An app for finding movies & TV shows.",
+    heroLede: "Find and watch movies, TV shows and anime from your Mac menu bar.",
+    heroNote: "Watch online or open your local library; availability varies by region and source.",
+    heroSecondary: "See the product tour →",
     download: "Download the macOS beta",
     install: "See the install guide →",
     installTitle: "Three steps to get started",
     compat: "Apple Silicon & Intel Mac · Free · No ads · No subscription",
-    demoHint: "Hover over the menu bar to see it on a Mac",
+    demoHint: "CineBar product tour",
+    showcaseTitle: "From discovery to watching, at a glance",
+    showcaseLead: "Movies, shows and anime live in your menu bar: check ratings, cast, stills, trailers and where to watch before you press play.",
+    showcaseMovies: "Movie discovery",
+    showcaseTV: "TV shows & anime",
+    showcaseLibrary: "Your local library too",
+    showcaseNote: "Keep online picks and local videos together, then open matched titles with their full details.",
     search: "Search movies, shows…",
     searchOpen: "Search",
     searchHint: "Type at least two characters",
@@ -272,8 +307,8 @@ export const messages: Record<Locale, Messages> = {
     watchlist: "My watchlist",
     dailyRec: "Daily Picks",
     dailyBy: "Based on your taste & region",
-    ratingsTitle: "Movies & shows, play on tap",
-    ratingsLead: "Play right from the detail page: movies start instantly, TV shows pick a season and episode. Danmaku toggle, playback speed, floating window and fullscreen are all at hand. And every score — TMDB, IMDb, Rotten Tomatoes, Metacritic, CineBar community and Douban — in one place, no web surfing.",
+    ratingsTitle: "Ratings, cast and release details in one place",
+    ratingsLead: "See ratings, cast, stills, trailers, release dates and watch platforms together. Watch online when a source is available, or open your local library.",
     ratingSources: [
       { id: "tmdb", label: "TMDB" },
       { id: "imdb", label: "IMDb" },
@@ -283,6 +318,7 @@ export const messages: Record<Locale, Messages> = {
       { id: "douban", label: "Douban" },
     ],
     navFeatures: "Features",
+    navShowcase: "Tour",
     navInstall: "Install",
     navSupport: "Support",
     featuresTitle: "Everything you need to pick a film, in one screen",
@@ -296,7 +332,7 @@ export const messages: Record<Locale, Messages> = {
       ["Multilingual", "Supports Simplified & Traditional Chinese, English, Japanese and Korean."],
     ],
     steps: [
-      "Download and unzip the beta from the fixed Build 62 link above, then move CineBar.app into your Applications folder.",
+      "Download and unzip the beta from the fixed link above, then move CineBar.app into your Applications folder.",
       "Double-click CineBar — or right-click and choose Open on first launch if asked.",
       "If macOS says it can't verify the developer, open System Settings → Privacy & Security → Security, find the blocked CineBar, click Open Anyway (or “Still Open”), confirm with your password or Touch ID, then open CineBar again.",
     ],
@@ -338,12 +374,20 @@ export const messages: Record<Locale, Messages> = {
     heroVersion: "CineBar for macOS · 0.8.3-test.16（Build 62）テスト版",
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
-    heroLede: "映画・ドラマを探せるアプリ。",
+    heroLede: "メニューバーから映画・ドラマ・アニメを見つけて視聴。",
+    heroNote: "オンライン視聴にもローカルライブラリにも対応。作品と地域によって提供状況が異なります。",
+    heroSecondary: "プロダクトを見る →",
     download: "macOS テスト版をダウンロード",
     install: "インストール手順を見る →",
     installTitle: "3ステップで使い始める",
     compat: "Apple シリコンと Intel Mac に対応 · 無料 · 広告なし · サブスクなし",
-    demoHint: "メニューバーにカーソルを当てると、Mac で見ているように表示",
+    demoHint: "CineBar プロダクトデモ",
+    showcaseTitle: "発見から視聴まで、ひと目でわかる",
+    showcaseLead: "映画・ドラマ・アニメをメニューバーに集約。評価、キャスト、静止画、予告編、視聴先を確認してから再生できます。",
+    showcaseMovies: "映画を探す",
+    showcaseTV: "ドラマとアニメ",
+    showcaseLibrary: "ローカルライブラリも",
+    showcaseNote: "オンライン作品とローカル動画をまとめて管理し、マッチした作品は詳しい情報も開けます。",
     search: "映画、ドラマを検索…",
     searchOpen: "検索",
     searchHint: "2文字以上入力してください",
@@ -359,8 +403,8 @@ export const messages: Record<Locale, Messages> = {
     watchlist: "マイリスト",
     dailyRec: "今日のおすすめ",
     dailyBy: "あなたの好みと地域に基づく",
-    ratingsTitle: "映画もドラマも、タップで再生",
-    ratingsLead: "詳細ページから本編を直接再生：映画は即再生、ドラマはシーズン・話数ごとに選択。弾幕のON/OFF、再生速度、フローティング、フルスクリーンもすぐに使えます。評価もまとめて確認——TMDB、IMDb、Rotten Tomatoes、Metacritic、CineBar コミュニティ、Douban まで、サイトを回らずに一画面で。",
+    ratingsTitle: "評価、キャスト、公開情報をひとつに",
+    ratingsLead: "評価、キャスト、静止画、予告編、公開日、視聴先をまとめて確認。オンライン視聴にもローカルライブラリにも対応します。",
     ratingSources: [
       { id: "tmdb", label: "TMDB" },
       { id: "imdb", label: "IMDb" },
@@ -370,6 +414,7 @@ export const messages: Record<Locale, Messages> = {
       { id: "douban", label: "Douban" },
     ],
     navFeatures: "機能",
+    navShowcase: "デモ",
     navInstall: "インストール",
     navSupport: "サポート",
     featuresTitle: "映画を選ぶのに必要な情報を、ひとつの画面で",
@@ -383,7 +428,7 @@ export const messages: Record<Locale, Messages> = {
       ["多言語対応", "簡体字・繁体字中国語、英語、日本語、韓国語に対応。"],
     ],
     steps: [
-      "上記の固定リンク（Build 62）からテスト版をダウンロードして解凍し、CineBar.app を Applications フォルダに移します。",
+      "上記の固定リンクからテスト版をダウンロードして解凍し、CineBar.app を Applications フォルダに移します。",
       "CineBar をダブルクリック、または右クリックで「開く」を選んで起動します（初回は確認が出る場合があります）。",
       "「Apple が開発元を検証できません」と表示されたら、「システム設定」→「プライバシーとセキュリティ」→「セキュリティ」でブロックされた CineBar の「このまま開く」をクリックし、パスワードまたは Touch ID で確認して、再度 CineBar を開きます。",
     ],
@@ -425,12 +470,20 @@ export const messages: Record<Locale, Messages> = {
     heroVersion: "CineBar for macOS · 0.8.3-test.16 (Build 62) 베타",
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
-    heroLede: "영화·드라마를 찾아주는 앱.",
+    heroLede: "메뉴 바에서 영화·드라마·애니메이션을 찾고 시청하세요.",
+    heroNote: "온라인 시청과 로컬 라이브러리를 모두 지원하며, 작품과 지역에 따라 이용 가능 여부가 달라집니다.",
+    heroSecondary: "제품 둘러보기 →",
     download: "macOS 베타 다운로드",
     install: "설치 방법 보기 →",
     installTitle: "3단계로 시작",
     compat: "Apple 실리콘과 Intel Mac · 무료 · 광고 없음 · 구독 없음",
-    demoHint: "메뉴 바에 커서를 올리면 Mac 화면처럼 보입니다",
+    demoHint: "CineBar 제품 데모",
+    showcaseTitle: "발견부터 시청까지 한눈에",
+    showcaseLead: "영화·드라마·애니메이션을 메뉴 바에 모아 평점, 출연진, 스틸컷, 예고편과 시청 플랫폼을 확인하세요.",
+    showcaseMovies: "영화 찾기",
+    showcaseTV: "드라마와 애니메이션",
+    showcaseLibrary: "로컬 라이브러리도 함께",
+    showcaseNote: "온라인 콘텐츠와 로컬 영상을 한곳에서 관리하고, 매칭된 작품은 상세 정보까지 열 수 있습니다.",
     search: "영화·드라마 검색…",
     searchOpen: "검색",
     searchHint: "두 글자 이상 입력하세요",
@@ -446,8 +499,8 @@ export const messages: Record<Locale, Messages> = {
     watchlist: "내 목록",
     dailyRec: "오늘의 추천",
     dailyBy: "취향과 지역에 기반한 추천",
-    ratingsTitle: "영화와 드라마, 탭하면 재생",
-    ratingsLead: "상세 페이지에서 본편을 바로 재생: 영화는 즉시, 드라마는 시즌·회차별 선택. 탄막 켜기/끄기, 재생 속도, 플로팅, 전체 화면도 바로 사용 가능합니다. 평점도 한곳에서 — TMDB, IMDb, Rotten Tomatoes, Metacritic, CineBar 커뮤니티, Douban 평점까지, 사이트를 돌지 않고 확인하세요.",
+    ratingsTitle: "평점, 출연진과 개봉 정보를 한곳에서",
+    ratingsLead: "평점, 출연진, 스틸컷, 예고편, 개봉일과 시청 플랫폼을 한곳에서 확인하세요. 온라인 시청과 로컬 라이브러리를 모두 지원합니다.",
     ratingSources: [
       { id: "tmdb", label: "TMDB" },
       { id: "imdb", label: "IMDb" },
@@ -457,6 +510,7 @@ export const messages: Record<Locale, Messages> = {
       { id: "douban", label: "Douban" },
     ],
     navFeatures: "기능",
+    navShowcase: "데모",
     navInstall: "설치",
     navSupport: "지원",
     featuresTitle: "영화를 고를 때 필요한 모든 것, 한 화면에서",
@@ -470,7 +524,7 @@ export const messages: Record<Locale, Messages> = {
       ["다국어 지원", "중국어(간체·번체), 영어, 일본어, 한국어 지원."],
     ],
     steps: [
-      "위의 고정 링크(Build 62)에서 테스트 버전을 다운로드해 압축을 풀고, CineBar.app을 응용 프로그램 폴더로 옮깁니다.",
+      "위의 고정 링크에서 테스트 버전을 다운로드해 압축을 풀고, CineBar.app을 응용 프로그램 폴더로 옮깁니다.",
       "CineBar를 더블 클릭하거나 마우스 오른쪽 버튼 클릭 후 '열기'를 선택해 실행합니다(첫 실행 시 시스템이 묻는 경우).",
       "'Apple이 개발자를 확인할 수 없다'는 메시지가 나오면 '시스템 설정'→'개인정보 및 보안'→'보안'에서 차단된 CineBar를 찾아 '그래도 열기'를 클릭하고 암호 또는 Touch ID로 확인한 뒤 CineBar를 다시 실행합니다.",
     ],
