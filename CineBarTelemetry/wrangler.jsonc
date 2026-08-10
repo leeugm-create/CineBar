@@ -4,10 +4,19 @@
   "main": "worker.js",
   "compatibility_date": "2026-08-03",
   "routes": [
-    { "pattern": "telemetry.cinebar.cc", "custom_domain": true }
+    {
+      "pattern": "telemetry.cinebar.cc",
+      "custom_domain": true
+    }
   ],
+  "secrets": {
+    "required": [
+      "TELEMETRY_ADMIN_TOKEN"
+    ]
+  },
   "vars": {
-    "CINEBAR_RELEASE_VERSION": "0.8.3-test.10"
+    "CINEBAR_RELEASE_VERSION": "0.8.3-test.10",
+    "TELEMETRY_ADMIN_TOKEN": "__SET_VIA_DEPLOY_VAR__"
   },
   "d1_databases": [
     {
