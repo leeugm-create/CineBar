@@ -355,22 +355,6 @@ async function loadSiteStatsDB(env: Env): Promise<SiteStatsPayload | null> {
   }
 }
 
-async function handleSiteStats(request: Request, env: Env, url: URL): Promise<Response> {
-  if (!isAdminAnalyticsRequest(request, env)) {
-    return adminAnalyticsUnauthorized(url);
-  }
-  const payload = await loadSiteStatsDB(env);
-  const body = JSON.stringify(payload ?? { error: "unavailable" });
-  const response = new Response(body, {
-    status: payload ? 200 : 503,
-    headers: {
-      "cache-control": "no-store",
-      "content-type": "application/json; charset=utf-8",
-    },
-  });
-  return addSecurityHeaders(response, url);
-}
-
 function addSecurityHeaders(response: Response, url: URL): Response {
   const headers = new Headers(response.headers);
   headers.set("content-security-policy", CONTENT_SECURITY_POLICY);
@@ -409,8 +393,14 @@ const worker = {
       return adminAnalyticsUnauthorized(url);
     }
 
-    if (url.pathname === "/api/admin/site-stats" && request.method === "GET") {
-      return await handleSiteStats(request, env, url);
+    // Worker 不能 fetch 回自己的域名，SSR 无法在 /admin/analytics 里自调用取 D1；
+    // 这里鉴权通过后预先查好网页统计，经请求头注入给 SSR，再由页面用 headers() 读取。
+    let adminRequest = request;
+    if (url.pathname === "/admin/analytics") {
+      const stats = await loadSiteStatsDB(env);
+      const header = new Headers(request.headers);
+      if (stats) header.set("x-cinebar-stats", JSON.stringify(stats));
+      adminRequest = new Request(request, { headers: header });
     }
 
     if (shouldRecordPageVisit(request, url)) {
@@ -449,7 +439,7 @@ const worker = {
       return addSecurityHeaders(response, url);
     }
 
-    const response = await handler.fetch(request, env, ctx);
+    const response = await handler.fetch(adminRequest, env, ctx);
     return addSecurityHeaders(response, url);
   },
 };

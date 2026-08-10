@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 
 type Bucket = { value: string | number; installs: number };
 
@@ -48,22 +49,17 @@ async function loadSummary(): Promise<TelemetrySummary | null> {
 }
 
 async function loadSiteStats(): Promise<SiteStats | null> {
-  const token = process.env.CINEBAR_TELEMETRY_ADMIN_TOKEN;
+  // 网页统计由 Worker 在渲染前查好 D1 并经 x-cinebar-stats 请求头注入
+  //（Worker 禁止 fetch 回自身域名，SSR 无法自调用取 D1）。
   try {
-    const response = await fetch(
-      new URL("/api/admin/site-stats", "https://cinebar.cc"),
-      {
-        headers: token ? { Authorization: `Basic ${btoa(`admin:${token}`)}` } : {},
-        cache: "no-store",
-      },
-    );
-    if (!response.ok) return null;
-    const json = await response.json();
-    if (!json || json.error) return null;
-    return json as SiteStats;
+    const raw = (await headers()).get("x-cinebar-stats");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || parsed.error) return null;
+    return parsed as SiteStats;
   } catch {
     return null;
-  }
+   }
 }
 
 function BucketList({ title, rows }: { title: string; rows: Bucket[] }) {
@@ -108,7 +104,7 @@ export default async function AnalyticsPage() {
       {!site ? (
         <section className="analytics-card analytics-empty">
           <h2>网页统计暂不可用</h2>
-          <p>数据表尚未建立或 D1 数据库暂不可用。</p>
+          <p>数据尚未建立，或 Worker 未能读入统计。</p>
         </section>
       ) : (
         <>
