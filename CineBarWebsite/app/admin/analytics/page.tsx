@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { getDb } from "../../../db";
 
 type Bucket = { value: string | number; installs: number };
 
@@ -49,44 +48,19 @@ async function loadSummary(): Promise<TelemetrySummary | null> {
 }
 
 async function loadSiteStats(): Promise<SiteStats | null> {
+  const token = process.env.CINEBAR_TELEMETRY_ADMIN_TOKEN;
   try {
-    const db = getDb();
-    const now = Math.floor(Date.now() / 1000);
-    const weekAgo = now - 7 * 86400;
-
-    const [total, unique, week] = await Promise.all([
-      db.run("SELECT COUNT(*) AS n FROM page_visits"),
-      db.run("SELECT COUNT(DISTINCT ip_hash) AS n FROM page_visits"),
-      db.run("SELECT COUNT(*) AS n FROM page_visits WHERE ts >= ?", weekAgo),
-    ]);
-
-    const pathRows = await db.all<{ path: string; views: number }>(
-      "SELECT path, COUNT(*) AS views FROM page_visits GROUP BY path ORDER BY views DESC LIMIT 10",
+    const response = await fetch(
+      new URL("/api/admin/site-stats", "https://cinebar.cc"),
+      {
+        headers: token ? { Authorization: `Basic ${btoa(`admin:${token}`)}` } : {},
+        cache: "no-store",
+      },
     );
-    const countryRows = await db.all<{ country: string; views: number }>(
-      "SELECT country, COUNT(*) AS views FROM page_visits GROUP BY country ORDER BY views DESC LIMIT 12",
-    );
-    const dayRows = await db.all<{ day: string; views: number }>(
-      "SELECT strftime('%m-%d', ts, 'unixepoch') AS day, COUNT(*) AS views FROM page_visits GROUP BY day ORDER BY day DESC LIMIT 14",
-    );
-    const latestRows = await db.all<{ ts: number; path: string; country: string; locale: string }>(
-      "SELECT ts, path, country, locale FROM page_visits ORDER BY id DESC LIMIT 12",
-    );
-
-    return {
-      total_views: Number(total.results?.[0]?.n ?? 0),
-      unique_visitors: Number(unique.results?.[0]?.n ?? 0),
-      views_7d: Number(week.results?.[0]?.n ?? 0),
-      by_path: pathRows.results ?? [],
-      by_country: countryRows.results ?? [],
-      by_day: dayRows.results ?? [],
-      latest: (latestRows.results ?? []).map((r) => ({
-        ts: new Date((r.ts as number) * 1000).toLocaleString("zh-CN", { hour12: false }),
-        path: String(r.path),
-        country: String(r.country),
-        locale: String(r.locale),
-      })),
-    };
+    if (!response.ok) return null;
+    const json = await response.json();
+    if (!json || json.error) return null;
+    return json as SiteStats;
   } catch {
     return null;
   }

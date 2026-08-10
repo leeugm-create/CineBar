@@ -285,6 +285,92 @@ function adminAnalyticsUnauthorized(url: URL): Response {
   return addSecurityHeaders(response, url);
 }
 
+type SiteStatsPayload = {
+  total_views: number;
+  unique_visitors: number;
+  views_7d: number;
+  by_path: { path: string; views: number }[];
+  by_country: { country: string; views: number }[];
+  by_day: { day: string; views: number }[];
+  latest: { ts: string; path: string; country: string; locale: string }[];
+};
+
+/** 网页访问统计读取（在 Worker 层，env.DB 可直接用）。
+ *  供 /api/admin/site-stats 使用，避免 Next SSR 读不到 D1 binding。 */
+async function loadSiteStatsDB(env: Env): Promise<SiteStatsPayload | null> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const weekAgo = now - 7 * 86400;
+
+    const [total, unique, week, pathRows, countryRows, dayRows, latestRows] =
+      await Promise.all([
+        env.DB.prepare("SELECT COUNT(*) AS n FROM page_visits").first(),
+        env.DB.prepare(
+          "SELECT COUNT(DISTINCT ip_hash) AS n FROM page_visits"
+        ).first(),
+        env.DB.prepare(
+          "SELECT COUNT(*) AS n FROM page_visits WHERE ts >= ?"
+        ).bind(weekAgo).first(),
+        env.DB.prepare(
+          "SELECT path, COUNT(*) AS views FROM page_visits GROUP BY path ORDER BY views DESC LIMIT 10"
+        ).all(),
+        env.DB.prepare(
+          "SELECT country, COUNT(*) AS views FROM page_visits GROUP BY country ORDER BY views DESC LIMIT 12"
+        ).all(),
+        env.DB.prepare(
+          "SELECT strftime('%m-%d', ts, 'unixepoch') AS day, COUNT(*) AS views FROM page_visits GROUP BY day ORDER BY day DESC LIMIT 14"
+        ).all(),
+        env.DB.prepare(
+          "SELECT ts, path, country, locale FROM page_visits ORDER BY id DESC LIMIT 12"
+        ).all(),
+      ]);
+
+    return {
+      total_views: Number(total?.n ?? 0),
+      unique_visitors: Number(unique?.n ?? 0),
+      views_7d: Number(week?.n ?? 0),
+      by_path: (pathRows?.results ?? []).map((r) => ({
+        path: String(r.path),
+        views: Number(r.views),
+      })),
+      by_country: (countryRows?.results ?? []).map((r) => ({
+        country: String(r.country),
+        views: Number(r.views),
+      })),
+      by_day: (dayRows?.results ?? []).map((r) => ({
+        day: String(r.day),
+        views: Number(r.views),
+      })),
+      latest: (latestRows?.results ?? []).map((r) => ({
+        ts: new Date(Number(r.ts) * 1000).toLocaleString("zh-CN", {
+          hour12: false,
+        }),
+        path: String(r.path),
+        country: String(r.country),
+        locale: String(r.locale),
+      })),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function handleSiteStats(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!isAdminAnalyticsRequest(request, env)) {
+    return adminAnalyticsUnauthorized(url);
+  }
+  const payload = await loadSiteStatsDB(env);
+  const body = JSON.stringify(payload ?? { error: "unavailable" });
+  const response = new Response(body, {
+    status: payload ? 200 : 503,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "application/json; charset=utf-8",
+    },
+  });
+  return addSecurityHeaders(response, url);
+}
+
 function addSecurityHeaders(response: Response, url: URL): Response {
   const headers = new Headers(response.headers);
   headers.set("content-security-policy", CONTENT_SECURITY_POLICY);
@@ -321,6 +407,10 @@ const worker = {
     // Otherwise a guessed URL would reveal aggregate installation counts.
     if (url.pathname === "/admin/analytics" && !isAdminAnalyticsRequest(request, env)) {
       return adminAnalyticsUnauthorized(url);
+    }
+
+    if (url.pathname === "/api/admin/site-stats" && request.method === "GET") {
+      return await handleSiteStats(request, env, url);
     }
 
     if (shouldRecordPageVisit(request, url)) {
