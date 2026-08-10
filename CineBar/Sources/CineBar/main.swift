@@ -5958,32 +5958,45 @@ struct MoovieTrendingCard: View {
 
     private var cardPoster: some View {
         ZStack {
-            Group {
-                if let posterImage {
-                    Image(nsImage: posterImage)
-                        .resizable()
-                        .scaledToFill()
-                } else if item.posterURL != nil {
-                    ZStack {
-                        Color.secondary.opacity(0.12)
-                        ProgressView().controlSize(.small)
+            GeometryReader { proxy in
+                ZStack {
+                    Group {
+                        if let posterImage {
+                            Image(nsImage: posterImage)
+                                .resizable()
+                                .scaledToFill()
+                        } else if item.posterURL != nil {
+                            ZStack {
+                                Color.secondary.opacity(0.12)
+                                ProgressView().controlSize(.small)
+                            }
+                        } else {
+                            cardPlaceholder
+                        }
                     }
-                } else {
-                    cardPlaceholder
+                    .scaleEffect(isHovering ? 1.04 : 1.0)
+                    .offset(y: isHovering ? -4 : 0)
                 }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
+                .shadow(
+                    color: .black.opacity(isHovering ? 0.28 : 0.10),
+                    radius: isHovering ? 14 : 8,
+                    y: isHovering ? 8 : 4
+                )
+                .animation(
+                    .easeOut(duration: 0.25),
+                    value: isHovering
+                )
+                .contentShape(
+                    RoundedRectangle(cornerRadius: 9, style: .continuous)
+                )
             }
-            .scaleEffect(isHovering ? 1.04 : 1.0)
-            .offset(y: isHovering ? -4 : 0)
         }
         .aspectRatio(2 / 3, contentMode: .fit)
         .frame(maxWidth: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .shadow(
-            color: .black.opacity(isHovering ? 0.28 : 0.10),
-            radius: isHovering ? 14 : 8,
-            y: isHovering ? 8 : 4
-        )
-        .animation(.easeOut(duration: 0.25), value: isHovering)
     }
 
     private var cardPlaceholder: some View {
