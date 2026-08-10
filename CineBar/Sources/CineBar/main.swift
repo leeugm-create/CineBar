@@ -12811,6 +12811,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
                 )
                 panel?.orderOut(nil)
             }
+            // 先激活应用，否则弹出的更新窗口不会置于最上层。
+            NSApplication.shared.activate(ignoringOtherApps: true)
             updaterService.checkForUpdates()
             return
         }
