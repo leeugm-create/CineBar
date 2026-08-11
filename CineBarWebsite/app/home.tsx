@@ -44,6 +44,7 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
           <span>CineBar</span>
         </a>
         <SiteSearch m={m} locale={locale} />
+        <p className="mobile-search-lede">{m.mobileSearchLede}</p>
         <LangSelect locale={locale} />
         <ThemeToggle label={m.appearance} />
         <nav aria-label="Main">

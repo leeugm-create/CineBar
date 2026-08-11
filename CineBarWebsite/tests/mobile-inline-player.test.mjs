@@ -37,11 +37,16 @@ test("targets legacy mobile WebViews for media-query compatibility", async () =>
 });
 
 test("mobile homepage keeps only the brand and search surface", async () => {
+  const home = await read("app/home.tsx");
+  const i18n = await read("app/i18n.ts");
   const css = await read("app/globals.css");
 
+  assert.match(home, /className=["']mobile-search-lede["']/);
+  assert.match(i18n, /mobileSearchLede:/);
   assert.match(
     css,
     /\.site-home \.hero,\s*\.site-home \.section,\s*\.site-home footer\s*\{\s*display:\s*none/,
   );
   assert.match(css, /\.site-home \.site-header[\s\S]*\.site-home \.site-search/);
+  assert.match(css, /\.site-home \.search-toggle\s*\{[\s\S]*width:\s*64px[\s\S]*height:\s*64px/);
 });

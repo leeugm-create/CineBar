@@ -16,6 +16,7 @@ export type Messages = {
   heroTitle1: string;
   heroTitle2: string;
   heroLede: string;
+  mobileSearchLede: string;
   heroNote: string;
   heroSecondary: string;
   download: string;
@@ -92,6 +93,7 @@ export const messages: Record<Locale, Messages> = {
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在菜单栏发现并在线观看电影、电视剧与动漫。",
+    mobileSearchLede: "搜索电影、电视剧即可观看。",
     heroNote: "支持在线观影，也能打开本地片库；具体平台与片源因地区而异。",
     heroSecondary: "查看产品演示 →",
     download: "下载 macOS 测试版",
@@ -196,6 +198,7 @@ export const messages: Record<Locale, Messages> = {
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在選單列發現並在線觀看電影、電視劇與動畫。",
+    mobileSearchLede: "搜尋電影、電視劇即可觀看。",
     heroNote: "支援線上觀影，也能開啟本機片庫；具體平台與片源因地區而異。",
     heroSecondary: "查看產品演示 →",
     download: "下載 macOS 測試版",
@@ -300,6 +303,7 @@ export const messages: Record<Locale, Messages> = {
     heroTitle1: "Find your",
     heroTitle2: "next great film",
     heroLede: "Find and watch movies, TV shows and anime from your Mac menu bar.",
+    mobileSearchLede: "Search movies and TV shows to watch.",
     heroNote: "Watch online or open your local library; availability varies by region and source.",
     heroSecondary: "See the product tour →",
     download: "Download the macOS beta",
@@ -403,6 +407,7 @@ export const messages: Record<Locale, Messages> = {
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
     heroLede: "メニューバーから映画・ドラマ・アニメを見つけて視聴。",
+    mobileSearchLede: "映画やドラマを検索して視聴できます。",
     heroNote: "オンライン視聴にもローカルライブラリにも対応。作品と地域によって提供状況が異なります。",
     heroSecondary: "プロダクトを見る →",
     download: "macOS テスト版をダウンロード",
@@ -506,6 +511,7 @@ export const messages: Record<Locale, Messages> = {
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
     heroLede: "메뉴 바에서 영화·드라마·애니메이션을 찾고 시청하세요.",
+    mobileSearchLede: "영화와 드라마를 검색해 시청하세요.",
     heroNote: "온라인 시청과 로컬 라이브러리를 모두 지원하며, 작품과 지역에 따라 이용 가능 여부가 달라집니다.",
     heroSecondary: "제품 둘러보기 →",
     download: "macOS 베타 다운로드",
