@@ -12,6 +12,11 @@ struct MooviePlayerView: View {
     @Binding var danmakuVisible: Bool
     /// 是否暂停（打开独立播放窗口时暂停内嵌播放器，避免双路播放）。
     var paused: Bool = false
+    /// 是否把播放器注册到控制器供窗口键盘快捷键（空格/方向键）使用。
+    /// 仅独立播放窗口设为 true。
+    var registerPlayer: Bool = false
+    /// 是否把播放器注册为"内嵌播放"（主面板内联播放），供主面板键盘快捷键使用。
+    var registerInline: Bool = false
 
     var body: some View {
         ZStack {
@@ -20,6 +25,8 @@ struct MooviePlayerView: View {
                 url: url,
                 rate: $playbackRate,
                 paused: paused,
+                registerPlayer: registerPlayer,
+                registerInline: registerInline,
                 onTick: { currentTime = $0 }
             )
             if danmakuVisible, !danmaku.isEmpty {
@@ -35,6 +42,8 @@ struct MoovieVideoView: NSViewRepresentable {
     let url: URL
     @Binding var rate: Double
     var paused: Bool = false
+    var registerPlayer: Bool = false
+    var registerInline: Bool = false
     let onTick: (Double) -> Void
 
     final class VideoNSView: NSView {
@@ -111,6 +120,14 @@ struct MoovieVideoView: NSViewRepresentable {
         let view = VideoNSView()
         view.setOnTick(onTick)
         view.play(url, rate: rate, paused: paused)
+        Task { @MainActor in
+            if registerPlayer {
+                MooviePlaybackController.shared.registerKeyboardPlayer(view.player)
+            }
+            if registerInline {
+                MooviePlaybackController.shared.registerInlinePlayer(view.player)
+            }
+        }
         return view
     }
 
@@ -238,6 +255,19 @@ final class MooviePlayerWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
+    /// 播放快捷键：空格播放/暂停、左右快退/快进 15 秒。
+    /// AVPlayerView 内建键盘在内嵌 SwiftUI/NSHostingView 里拿不到焦点，
+    /// 这里在窗口层统一处理，保证独立播放窗口按键始终生效。
+    override func keyDown(with event: NSEvent) {
+        if [49, 123, 124].contains(event.keyCode) {
+            Task { @MainActor in
+                MooviePlaybackController.shared.handleKey(from: event)
+            }
+            return
+        }
+        super.keyDown(with: event)
+    }
+
     override func cancelOperation(_ sender: Any?) {
         // 只有自己可见时响应 ESC，避免事件沿响应链误关主面板。
         guard isVisible else { return }
@@ -264,6 +294,58 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
     private var currentMode: MooviePlaybackMode?
     private var previousPresentationOptions: NSApplication.PresentationOptions?
     private var isSwitchingOrClosing = false
+
+    /// 当前独立播放窗口所用播放器（用于空格/左右方向键快捷键）。
+    private weak var keyboardPlayer: AVPlayer?
+    /// 最近注册的内嵌播放器（主面板详情页内联播放）。
+    private weak var inlinePlayer: AVPlayer?
+
+    func registerKeyboardPlayer(_ player: AVPlayer) {
+        keyboardPlayer = player
+    }
+
+    func registerInlinePlayer(_ player: AVPlayer) {
+        inlinePlayer = player
+    }
+
+    func clearInlinePlayer() {
+        inlinePlayer = nil
+    }
+
+    /// 主面板是否存在活动的内嵌播放器（决定是否拦截空格/方向键）。
+    var hasInlinePlayer: Bool {
+        (inlinePlayer?.currentItem) != nil
+    }
+
+    /// 播放快捷键：空格播放/暂停、左右快退/快进 15 秒。
+    /// 优先作用于最近的内嵌播放器，其次独立播放窗口播放器。
+    func handleKey(from event: NSEvent) {
+        let players = [inlinePlayer, keyboardPlayer]
+            .compactMap { $0 }
+            .filter { $0.currentItem != nil }
+        guard let player = players.first else { return }
+        switch event.keyCode {
+        case 49: // 空格
+            if player.rate != 0 {
+                player.pause()
+            } else {
+                player.play()
+            }
+        case 123: // 左方向键：快退 15 秒
+            seek(delta: -15, on: player)
+        case 124: // 右方向键：快进 15 秒
+            seek(delta: 15, on: player)
+        default:
+            break
+        }
+    }
+
+    private func seek(delta: Double, on player: AVPlayer) {
+        let current = player.currentTime().seconds
+        guard current.isFinite else { return }
+        let target = CMTime(seconds: max(0, current + delta), preferredTimescale: 600)
+        player.seek(to: target)
+    }
 
     func show(
         url: URL,
@@ -418,7 +500,8 @@ struct MooviePlayerWindowView: View {
                 danmaku: danmaku,
                 currentTime: $currentTime,
                 playbackRate: $playbackRate,
-                danmakuVisible: $danmakuVisible
+                danmakuVisible: $danmakuVisible,
+                registerPlayer: true
             )
 
             HStack(spacing: 10) {

@@ -288,6 +288,35 @@ enum MoovieStreamResolver {
         return nil
     }
 
+    /// 把季标签解析为季号整数；无季标识或无法解析时返回 nil。
+    /// "第二季"→2、"第十季"→10、"S02"/"S2"→2、"Season 3"→3。
+    static func seasonNumber(from title: String) -> Int? {
+        guard let label = seasonLabel(from: title) else { return nil }
+        // S02 / S2 / Season 3 形式
+        let asciiPattern = #"(\d+)"#
+        if let regex = try? NSRegularExpression(pattern: asciiPattern),
+           let match = regex.firstMatch(
+               in: label,
+               range: NSRange(location: 0, length: (label as NSString).length)
+           ) {
+            let digits = (label as NSString).substring(with: match.range)
+            if let n = Int(digits), n > 0 { return n }
+        }
+        // 中文数字：第X季
+        let cnDigits: [Character: Int] = [
+            "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+            "六": 6, "七": 7, "八": 8, "九": 9
+        ]
+        let cn = ["十": 10, "二十": 20, "三十": 30]
+        for (word, value) in cn {
+            if label.contains(word) { return value }
+        }
+        for (ch, value) in cnDigits {
+            if label.contains(ch) { return value }
+        }
+        return nil
+    }
+
     /// 从播放页 HTML 提取正片片名（initPlayer 里的 vodName），供弹幕匹配。
     static func vodName(playPath: String) async -> String? {
         guard let url = URL(string: playPath, relativeTo: siteBase) else { return nil }

@@ -5338,13 +5338,79 @@ final class MovieStore: ObservableObject {
         }
     }
 
+    /// 按季/集在 Moovie 聚合站定位并独立窗口播放某一集（中文界面）。
+    /// 季与集的每一集播放按钮入口。
+    func playTVEpisode(
+        show: TVShow,
+        seasonNumber: Int,
+        episodeNumber: Int
+    ) {
+        guard appLanguage.isChinese else { return }
+        let year = show.firstAirDate.map {
+            $0.count >= 4 ? String($0.prefix(4)) : ""
+        } ?? ""
+        let aTitle = show.name
+        let aSeason = seasonNumber
+        let aEpisode = episodeNumber
+        Task {
+            let candidates = await MoovieStreamResolver.search(
+                title: aTitle,
+                year: year.isEmpty ? nil : year
+            )
+            guard !candidates.isEmpty else {
+                await MainActor.run {
+                    message = "未找到《\(aTitle)》的可播放源"
+                }
+                return
+            }
+            var matched: (candidate: MoovieStreamResolver.StreamCandidate, playPath: String)?
+            for candidate in candidates {
+                let candidateSeason = MoovieStreamResolver.seasonNumber(
+                    from: candidate.title
+                )
+                let seasonMatches =
+                    candidateSeason == aSeason ||
+                    (candidateSeason == nil && aSeason == 1)
+                guard seasonMatches else { continue }
+                let episodes = await MoovieStreamResolver.loadEpisodes(
+                    playPath: candidate.playPath
+                )
+                if let episode = episodes.first(where: {
+                    $0.numericOrder == aEpisode
+                }) {
+                    matched = (candidate, episode.playPath)
+                    break
+                }
+            }
+            guard let target = matched else {
+                await MainActor.run {
+                    message =
+                        "未找到《\(aTitle)》第\(aSeason)季第\(aEpisode)集的可播放源"
+                }
+                return
+            }
+            if let url = await MoovieStreamResolver.resolveStreamURL(
+                playPath: target.playPath
+            ) {
+                await MainActor.run {
+                    MooviePlaybackController.shared.show(
+                        url: url,
+                        title:
+                            "\(aTitle) 第\(aSeason)季 第\(aEpisode)集 · \(target.candidate.sourceName)",
+                        danmaku: [],
+                        mode: .floating
+                    )
+                }
+            }
+        }
+    }
+
     func openStills(for movie: Movie) {
         showMovieStills = true
         if movieStills.isEmpty {
             loadStills(movieID: movie.id)
         }
     }
-
     func loadStills(movieID: Int) {
         guard movieID > 0, hasToken, !isLoadingStills else { return }
         isLoadingStills = true
@@ -6779,7 +6845,8 @@ struct MooviePlaySection: View {
                         currentTime: $currentTime,
                         playbackRate: $playbackRate,
                         danmakuVisible: $danmakuVisible,
-                        paused: inlinePaused
+                        paused: inlinePaused,
+                        registerInline: true
                     )
                     .frame(height: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
@@ -6789,6 +6856,9 @@ struct MooviePlaySection: View {
         .onDisappear {
             playTask?.cancel()
             playTask = nil
+            Task { @MainActor in
+                MooviePlaybackController.shared.clearInlinePlayer()
+            }
         }
         .onReceive(
             NotificationCenter.default.publisher(
@@ -9793,6 +9863,28 @@ struct TVDetailView: View {
                                                             .lineLimit(4)
                                                         }
                                                         Spacer(minLength: 4)
+                                                        if store.appLanguage.isChinese {
+                                                            Button {
+                                                                store.playTVEpisode(
+                                                                    show: show,
+                                                                    seasonNumber: episode.seasonNumber,
+                                                                    episodeNumber: episode.episodeNumber
+                                                                )
+                                                            } label: {
+                                                                Label(
+                                                                    "播放",
+                                                                    systemImage: "play.circle.fill"
+                                                                )
+                                                                .font(.caption.bold())
+                                                                .foregroundStyle(.orange)
+                                                                .labelStyle(.iconOnly)
+                                                                .help(
+                                                                    "播放本集：第\(episode.seasonNumber)季 第\(episode.episodeNumber)集"
+                                                                )
+                                                            }
+                                                            .buttonStyle(.plain)
+                                                            .frame(width: 30)
+                                                        }
                                                     }
                                                     .padding(.vertical, 5)
                                                     Divider()
@@ -12510,13 +12602,29 @@ struct ContentView: View {
     }
 }
 
-final class CineBarPanel: NSPanel {
+ final class CineBarPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
     // 拦截 ESC：播放窗口关闭后残余按键事件可能传到主面板，
     // NSPanel 默认会关闭面板，表现为"程序被退出"。
     override func cancelOperation(_ sender: Any?) {}
+
+    // 内嵌播放快捷键：空格播放/暂停、左右快退/快进 15 秒。
+    // 仅在存在活动的内嵌播放器时拦截（此时焦点通常不在文本输入/滚动区）。
+    override func keyDown(with event: NSEvent) {
+        let handled = MainActor.assumeIsolated {
+            if [49, 123, 124].contains(event.keyCode),
+               MooviePlaybackController.shared.hasInlinePlayer {
+                MooviePlaybackController.shared.handleKey(from: event)
+                return true
+            }
+            return false
+        }
+        if !handled {
+            super.keyDown(with: event)
+        }
+    }
 }
 
 enum PanelPlacement {
