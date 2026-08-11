@@ -5350,70 +5350,54 @@ final class MovieStore: ObservableObject {
     }
 
     /// 按季/集在 Moovie 聚合站定位并独立窗口播放某一集（中文界面）。
-    /// 季与集的每一集播放按钮入口。
-    func playTVEpisode(
+    /// 解析某一集的 m3u8 直链（中文界面按剧名+季+集在聚合站定位）。
+    /// 找到返回 URL；找不到或出错返回 nil 并写入 message。
+    func resolveTVEpisodeURL(
         show: TVShow,
         seasonNumber: Int,
         episodeNumber: Int
-    ) {
-        guard appLanguage.isChinese else { return }
+    ) async -> URL? {
+        guard appLanguage.isChinese else { return nil }
         let year = show.firstAirDate.map {
             $0.count >= 4 ? String($0.prefix(4)) : ""
         } ?? ""
         let aTitle = show.name
         let aSeason = seasonNumber
         let aEpisode = episodeNumber
-        Task {
-            let candidates = await MoovieStreamResolver.search(
-                title: aTitle,
-                year: year.isEmpty ? nil : year
+        let candidates = await MoovieStreamResolver.search(
+            title: aTitle,
+            year: year.isEmpty ? nil : year
+        )
+        guard !candidates.isEmpty else {
+            await MainActor.run {
+                message = "未找到《\(aTitle)》的可播放源"
+            }
+            return nil
+        }
+        for candidate in candidates {
+            let candidateSeason = MoovieStreamResolver.seasonNumber(
+                from: candidate.title
             )
-            guard !candidates.isEmpty else {
-                await MainActor.run {
-                    message = "未找到《\(aTitle)》的可播放源"
-                }
-                return
-            }
-            var matched: (candidate: MoovieStreamResolver.StreamCandidate, playPath: String)?
-            for candidate in candidates {
-                let candidateSeason = MoovieStreamResolver.seasonNumber(
-                    from: candidate.title
-                )
-                let seasonMatches =
-                    candidateSeason == aSeason ||
-                    (candidateSeason == nil && aSeason == 1)
-                guard seasonMatches else { continue }
-                let episodes = await MoovieStreamResolver.loadEpisodes(
-                    playPath: candidate.playPath
-                )
-                if let episode = episodes.first(where: {
-                    $0.numericOrder == aEpisode
-                }) {
-                    matched = (candidate, episode.playPath)
-                    break
-                }
-            }
-            guard let target = matched else {
-                await MainActor.run {
-                    message =
-                        "未找到《\(aTitle)》第\(aSeason)季第\(aEpisode)集的可播放源"
-                }
-                return
-            }
-            if let url = await MoovieStreamResolver.resolveStreamURL(
-                playPath: target.playPath
+            let seasonMatches =
+                candidateSeason == aSeason ||
+                (candidateSeason == nil && aSeason == 1)
+            guard seasonMatches else { continue }
+            let episodes = await MoovieStreamResolver.loadEpisodes(
+                playPath: candidate.playPath
+            )
+            if let episode = episodes.first(where: {
+                $0.numericOrder == aEpisode
+            }), let url = await MoovieStreamResolver.resolveStreamURL(
+                playPath: episode.playPath
             ) {
-                await MainActor.run {
-                    MooviePlaybackController.shared.show(
-                        url: url,
-                        title:
-                            "\(aTitle) 第\(aSeason)季 第\(aEpisode)集 · \(target.candidate.sourceName)",
-                        danmaku: [],
-                        mode: .floating
-                    )
-                }
+                return url
             }
         }
+        await MainActor.run {
+            message =
+                "未找到《\(aTitle)》第\(aSeason)季第\(aEpisode)集的可播放源"
+        }
+        return nil
     }
 
     func openStills(for movie: Movie) {
@@ -9319,6 +9303,9 @@ struct TVDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var inlineTrailerKey: String?
     @State private var inlineTrailerTitle = ""
+    /// 当前在"季与集"下方内嵌播放的集（就地展开播放窗口，不弹独立窗口）。
+    @State private var inlinePlayURL: URL?
+    @State private var inlinePlayingEpisodeID: Int?
 
     private var sharePayload: SharePayload? {
         guard let url = store.brandedShareURL(for: show) else {
@@ -9878,11 +9865,20 @@ struct TVDetailView: View {
                                                         if store.appLanguage.isChinese,
                                                            episode.hasAired {
                                                             Button {
-                                                                store.playTVEpisode(
-                                                                    show: show,
-                                                                    seasonNumber: episode.seasonNumber,
-                                                                    episodeNumber: episode.episodeNumber
-                                                                )
+                                                                // 就地解析直链，在简介下方内嵌播放窗口。
+                                                                inlinePlayingEpisodeID = episode.id
+                                                                Task {
+                                                                    let url =
+                                                                        await store
+                                                                        .resolveTVEpisodeURL(
+                                                                            show: show,
+                                                                            seasonNumber: episode.seasonNumber,
+                                                                            episodeNumber: episode.episodeNumber
+                                                                        )
+                                                                    await MainActor.run {
+                                                                        inlinePlayURL = url
+                                                                    }
+                                                                }
                                                             } label: {
                                                                 Label(
                                                                     "在线播放",
@@ -9899,6 +9895,26 @@ struct TVDetailView: View {
                                                         }
                                                     }
                                                     .padding(.vertical, 5)
+
+                                                    if inlinePlayingEpisodeID == episode.id,
+                                                       let inlinePlayURL,
+                                                       store.appLanguage.isChinese {
+                                                        MooviePlayerView(
+                                                            url: inlinePlayURL,
+                                                            danmaku: [],
+                                                            currentTime: .constant(0),
+                                                            playbackRate: .constant(1),
+                                                            danmakuVisible: .constant(true),
+                                                            registerInline: true
+                                                        )
+                                                        .frame(height: 220)
+                                                        .clipShape(
+                                                            RoundedRectangle(
+                                                                cornerRadius: 8
+                                                            )
+                                                        )
+                                                        .padding(.bottom, 4)
+                                                    }
                                                     Divider()
                                                 }
                                             }
