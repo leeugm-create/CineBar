@@ -1234,3 +1234,285 @@ footer {
 
   .install-panel { padding: 24px 18px; }
 }
+
+.inline-player-card {
+  margin: 8px 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.inline-player-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.inline-player-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.inline-player-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-player-title small,
+.inline-player-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.inline-player-close,
+.inline-player-retry,
+.inline-player-play {
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--foreground) 8%, transparent);
+  color: var(--foreground);
+  font: inherit;
+  cursor: pointer;
+}
+
+.inline-player-close {
+  display: inline-flex;
+  flex: 0 0 44px;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.inline-player-stage {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  background: #070a17;
+}
+
+.inline-player-video,
+.inline-player-poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.inline-player-video {
+  background: #000;
+  object-fit: contain;
+}
+
+.inline-player-poster {
+  position: relative;
+  background-color: #161a2b;
+  background-position: center;
+  background-size: cover;
+}
+
+.inline-player-poster::before {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(180deg, transparent 15%, rgba(0, 0, 0, 0.68));
+}
+
+.inline-player-overlay {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  padding: 20px;
+}
+
+.inline-player-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--primary-background);
+  color: var(--primary-foreground);
+  font-weight: 750;
+}
+
+.inline-player-state {
+  margin: 0;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 650;
+  text-align: center;
+}
+
+.inline-player-error {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
+
+.inline-player-retry {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  color: #fff;
+}
+
+.inline-player-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 9px 14px 12px;
+}
+
+@media (max-width: 560px) {
+  .site-home .site-header {
+    align-items: center;
+    gap: 0;
+    min-height: 64px;
+    padding: 10px 0;
+  }
+
+  .site-home .brand {
+    flex: 1 1 auto;
+  }
+
+  .site-home .brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .site-home .lang-select,
+  .site-home .theme-toggle,
+  .site-home nav {
+    display: none;
+  }
+
+  .site-home .site-search {
+    margin: 0;
+  }
+
+  .site-home .search-toggle {
+    width: 44px;
+    height: 44px;
+  }
+
+  .site-home .site-search.open {
+    flex: 1 1 100%;
+    order: 3;
+    margin-top: 8px;
+  }
+
+  .site-home .site-search.open .search-input {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  .site-home .search-panel {
+    position: static;
+    width: 100%;
+    max-height: none;
+    margin-top: 8px;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .site-home .search-results {
+    display: grid;
+    gap: 8px;
+  }
+
+  .site-home .search-results li + li {
+    border-top: 0;
+  }
+
+  .site-home .search-results a {
+    min-height: 72px;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+
+  .site-home .search-poster {
+    width: 44px;
+    height: 66px;
+  }
+
+  .site-home .search-copy strong {
+    font-size: 0.95rem;
+  }
+
+  .site-home .search-copy small {
+    line-height: 1.4;
+  }
+
+  .search-watch-status {
+    color: var(--muted);
+  }
+
+  .search-watch-status.available {
+    color: var(--accent);
+    font-weight: 750;
+  }
+
+  .site-home .inline-player-card {
+    margin: 0 0 10px;
+    border-radius: 14px;
+  }
+
+  .site-home .hero {
+    padding: 28px 0 44px;
+  }
+
+  .site-home .hero-grid {
+    display: block;
+  }
+
+  .site-home .hero-version,
+  .site-home .hero-note,
+  .site-home .hero-actions,
+  .site-home .hero-proof,
+  .site-home .hero-visual,
+  .site-home .hero-compat {
+    display: none;
+  }
+
+  .site-home .hero h1 {
+    font-size: clamp(2.7rem, 14vw, 4.8rem);
+    line-height: 1.05;
+  }
+
+  .site-home .hero-lede {
+    max-width: 22rem;
+    margin-top: 18px;
+    font-size: 1.05rem;
+    line-height: 1.55;
+  }
+
+  .site-home .section {
+    padding-block: 46px;
+  }
+
+  .site-home .showcase-gif-frame {
+    max-width: 100%;
+  }
+}

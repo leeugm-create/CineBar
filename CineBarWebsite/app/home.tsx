@@ -31,7 +31,7 @@ function SupportCta({ m, locale }: { m: Messages; locale: Locale }) {
 
 export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
   return (
-    <main>
+    <main className="site-home">
       <header className="site-header">
         <a className="brand" href={locale === "zh-Hans" ? "/" : `/${locale}`}>
           <img
@@ -84,7 +84,7 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
           <div className="hero-visual" aria-label={m.demoHint}>
             <figure className="hero-gif">
               <div className="hero-gif-frame">
-                <img src="/cinebar-product-tour.gif" alt={m.demoHint} loading="eager" />
+                <img src="/cinebar-product-tour.gif" alt={m.demoHint} loading="lazy" />
               </div>
               <figcaption>{m.demoHint}</figcaption>
             </figure>

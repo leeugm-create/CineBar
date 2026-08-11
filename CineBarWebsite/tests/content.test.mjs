@@ -68,6 +68,23 @@ test("publishes the approved CineBar identity and download entry", async () => {
   assert.match(site, /VVVZUSU9QUJBW/);
 });
 
+test("localizes the mobile inline player states", async () => {
+  const i18n = await read("app/i18n.ts");
+  for (const key of [
+    "playerPlay",
+    "playerClose",
+    "playerRetry",
+    "playerNoSource",
+    "playerLoading",
+    "playerError",
+    "playerSource",
+  ]) {
+    assert.match(i18n, new RegExp(`${key}:`));
+  }
+  assert.match(i18n, /暂无可在线播放源/);
+  assert.match(i18n, /No playable source available/);
+});
+
 test("keeps the public website anonymous without GPT account sign-in", async () => {
   const page = await read("app/page.tsx");
   const layout = await read("app/layout.tsx");
