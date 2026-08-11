@@ -612,6 +612,17 @@ struct TVEpisode: Codable, Identifiable, Hashable {
             seasonNumber: seasonNumber
         )
     }
+
+    /// 该集是否已经播出：无播出日期视为已播出；
+    /// 有日期且日期晚于今天（未播出）视为尚未推出。
+    var hasAired: Bool {
+        guard let airDate, !airDate.isEmpty else { return true }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        guard let date = formatter.date(from: airDate) else { return true }
+        return date <= Date()
+    }
 }
 
 struct TVSeasonDetails: Codable {
@@ -9863,7 +9874,9 @@ struct TVDetailView: View {
                                                             .lineLimit(4)
                                                         }
                                                         Spacer(minLength: 4)
-                                                        if store.appLanguage.isChinese {
+                                                        // 未播出的剧集不显示播放按钮，待播出后再提供在线播放。
+                                                        if store.appLanguage.isChinese,
+                                                           episode.hasAired {
                                                             Button {
                                                                 store.playTVEpisode(
                                                                     show: show,
