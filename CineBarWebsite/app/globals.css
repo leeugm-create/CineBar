@@ -1377,6 +1377,10 @@ footer {
   padding: 9px 14px 12px;
 }
 
+.search-watch-status {
+  display: none;
+}
+
 @media (max-width: 560px) {
   .site-home .site-header {
     align-items: center;
@@ -1466,6 +1470,7 @@ footer {
   }
 
   .search-watch-status {
+    display: inline;
     color: var(--muted);
   }
 
