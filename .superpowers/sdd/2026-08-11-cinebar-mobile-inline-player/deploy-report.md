@@ -3,7 +3,7 @@
 - 部署日期：2026-08-11（Asia/Shanghai）
 - 公网地址：[https://cinebar.cc/](https://cinebar.cc/)
 - Cloudflare Worker：`cinebar-website`
-- Cloudflare Version ID：`54bcd1ed-1874-416d-8a52-7ad8fd84409b`
+- Cloudflare Version ID：`7074eb20-15a2-41f2-9d48-133296211406`
 - 更新清单：[https://cinebar.cc/appcast.xml](https://cinebar.cc/appcast.xml)
 
 ## 本次内容
@@ -29,6 +29,13 @@
 - 公网 CSS：包含 `@media (max-width:560px)`，不再只输出旧 WebView 无法识别的范围语法。
 - 公网 appcast：Build 65 → 64 → 63，Build 65 EdDSA 签名和长度字段存在。
 - 公网 Build 65 下载：HTTP 200；官网下载按钮不再返回 404。
+
+## 手机端极简首页
+
+- 手机断点只保留顶部 CineBar Logo 与搜索入口。
+- 首页宣传、演示 GIF、评分、功能、安装、支持、联系和页脚均不在手机端显示。
+- 搜索打开后，结果和内嵌播放器仍在搜索区域显示；桌面端布局不变。
+- 公网 CSS 已确认包含 `.site-home .hero,.site-home .section,.site-home footer{display:none}`。
 
 ## 移动端兼容性修复（待部署）
 
