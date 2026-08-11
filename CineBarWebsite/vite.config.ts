@@ -44,6 +44,12 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    build: {
+      // Keep generated media queries readable by older mobile browsers and
+      // embedded WebViews (they do not understand range syntax such as
+      // `@media (width<=560px)`).
+      target: ["safari13", "ios13", "chrome80"],
+    },
     server: isCodexSeatbeltSandbox
       ? { watch: { useFsEvents: false, usePolling: true } }
       : undefined,

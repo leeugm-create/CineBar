@@ -26,3 +26,12 @@ test("mobile homepage has a scoped search-first layout", async () => {
   assert.match(css, /\.inline-player-card/);
   assert.match(css, /aspect-ratio:\s*16\s*\/\s*9/);
 });
+
+test("targets legacy mobile WebViews for media-query compatibility", async () => {
+  const vite = await read("vite.config.ts");
+
+  assert.match(vite, /target:\s*\[/);
+  assert.match(vite, /["']safari13["']/);
+  assert.match(vite, /["']ios13["']/);
+  assert.match(vite, /["']chrome80["']/);
+});
