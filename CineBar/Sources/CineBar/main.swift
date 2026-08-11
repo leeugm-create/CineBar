@@ -12853,23 +12853,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 
     private func liquidGlassContainer(for contentView: NSView) -> NSView {
-        guard #available(macOS 26.0, *),
-              let glassType = NSClassFromString("NSGlassEffectView") as? NSView.Type
-        else {
-            return contentView
-        }
-
-        let glassView = glassType.init(frame: .zero)
-        let contentSelector = NSSelectorFromString("setContentView:")
-        guard glassView.responds(to: contentSelector) else {
-            return contentView
-        }
-
-        glassView.setValue(contentView, forKey: "contentView")
-        if glassView.responds(to: NSSelectorFromString("setCornerRadius:")) {
-            glassView.setValue(18.0, forKey: "cornerRadius")
-        }
-        return glassView
+        // macOS 26+ 液态玻璃容器（NSGlassEffectView）会拦截面板的背景拖动
+        // （isMovableByWindowBackground 失效），导致主面板无法移动。
+        // 暂时返回原内容视图以恢复拖动，玻璃背景效果后续再单独处理。
+        return contentView
     }
 
     @objc private func appearanceDidChange(_ notification: Notification) {
