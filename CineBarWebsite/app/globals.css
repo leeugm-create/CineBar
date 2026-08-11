@@ -1383,6 +1383,20 @@ footer {
 
 @media (max-width: 560px) {
   .site-home .site-header {
+    flex-wrap: wrap;
+  }
+
+  .site-home .brand > span {
+    display: none;
+  }
+
+  .site-home .hero,
+  .site-home .section,
+  .site-home footer {
+    display: none;
+  }
+
+  .site-home .site-header {
     align-items: center;
     gap: 0;
     min-height: 64px;
@@ -1390,7 +1404,7 @@ footer {
   }
 
   .site-home .brand {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .site-home .brand-mark {
@@ -1406,7 +1420,7 @@ footer {
   }
 
   .site-home .site-search {
-    margin: 0;
+    margin: 0 0 0 auto;
   }
 
   .site-home .search-toggle {
@@ -1417,6 +1431,7 @@ footer {
   .site-home .site-search.open {
     flex: 1 1 100%;
     order: 3;
+    margin-right: 0;
     margin-top: 8px;
   }
 

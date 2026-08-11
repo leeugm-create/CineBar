@@ -35,3 +35,13 @@ test("targets legacy mobile WebViews for media-query compatibility", async () =>
   assert.match(vite, /["']ios13["']/);
   assert.match(vite, /["']chrome80["']/);
 });
+
+test("mobile homepage keeps only the brand and search surface", async () => {
+  const css = await read("app/globals.css");
+
+  assert.match(
+    css,
+    /\.site-home \.hero,\s*\.site-home \.section,\s*\.site-home footer\s*\{\s*display:\s*none/,
+  );
+  assert.match(css, /\.site-home \.site-header[\s\S]*\.site-home \.site-search/);
+});
