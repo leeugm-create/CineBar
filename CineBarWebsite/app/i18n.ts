@@ -39,6 +39,13 @@ export type Messages = {
   searchHistory: string;
   searchClear: string;
   searchNoHistory: string;
+  playerPlay: string;
+  playerClose: string;
+  playerRetry: string;
+  playerNoSource: string;
+  playerLoading: string;
+  playerError: string;
+  playerSource: string;
   today: string;
   trending: string;
   watchlist: string;
@@ -108,6 +115,13 @@ export const messages: Record<Locale, Messages> = {
     searchHistory: "搜索历史",
     searchClear: "清除",
     searchNoHistory: "暂无搜索历史",
+    playerPlay: "播放",
+    playerClose: "关闭播放器",
+    playerRetry: "重试",
+    playerNoSource: "暂无可在线播放源",
+    playerLoading: "正在加载播放源…",
+    playerError: "播放失败，请稍后重试",
+    playerSource: "可在线播放",
     today: "每日推荐",
     trending: "本周热门",
     watchlist: "我的片单",
@@ -205,6 +219,13 @@ export const messages: Record<Locale, Messages> = {
     searchHistory: "搜尋紀錄",
     searchClear: "清除",
     searchNoHistory: "暫無搜尋紀錄",
+    playerPlay: "播放",
+    playerClose: "關閉播放器",
+    playerRetry: "重試",
+    playerNoSource: "暫無可線上播放來源",
+    playerLoading: "正在載入播放來源…",
+    playerError: "播放失敗，請稍後重試",
+    playerSource: "可線上播放",
     today: "每日推薦",
     trending: "本週熱門",
     watchlist: "我的片單",
@@ -302,6 +323,13 @@ export const messages: Record<Locale, Messages> = {
     searchHistory: "Search History",
     searchClear: "Clear",
     searchNoHistory: "No search history",
+    playerPlay: "Play",
+    playerClose: "Close player",
+    playerRetry: "Retry",
+    playerNoSource: "No playable source available",
+    playerLoading: "Loading playback source…",
+    playerError: "Playback failed. Try again later.",
+    playerSource: "Watch online",
     today: "Daily Picks",
     trending: "Trending this week",
     watchlist: "My watchlist",
@@ -398,6 +426,13 @@ export const messages: Record<Locale, Messages> = {
     searchHistory: "検索履歴",
     searchClear: "クリア",
     searchNoHistory: "検索履歴はありません",
+    playerPlay: "再生",
+    playerClose: "プレーヤーを閉じる",
+    playerRetry: "再試行",
+    playerNoSource: "オンライン再生できるソースがありません",
+    playerLoading: "再生ソースを読み込み中…",
+    playerError: "再生に失敗しました。もう一度お試しください。",
+    playerSource: "オンラインで再生",
     today: "今日のおすすめ",
     trending: "今週のトレンド",
     watchlist: "マイリスト",
@@ -494,6 +529,13 @@ export const messages: Record<Locale, Messages> = {
     searchHistory: "검색 기록",
     searchClear: "지우기",
     searchNoHistory: "검색 기록이 없습니다",
+    playerPlay: "재생",
+    playerClose: "플레이어 닫기",
+    playerRetry: "다시 시도",
+    playerNoSource: "온라인 재생 가능한 소스가 없습니다",
+    playerLoading: "재생 소스를 불러오는 중…",
+    playerError: "재생에 실패했습니다. 잠시 후 다시 시도하세요.",
+    playerSource: "온라인 재생",
     today: "오늘의 추천",
     trending: "이번 주 인기",
     watchlist: "내 목록",

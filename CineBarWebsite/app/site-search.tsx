@@ -1,16 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { Locale, Messages } from "./i18n";
-
-type SearchHit = {
-  type: "movie" | "tv";
-  id: number;
-  title: string;
-  year: string;
-  poster: string | null;
-  rating: number | null;
-};
+import InlinePlayer, { type SearchHit } from "./inline-player";
 
 const HISTORY_KEY = "cinebar.search.history";
 const HISTORY_MAX = 8;
@@ -37,6 +29,7 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [data, setData] = useState<{ q: string; results: SearchHit[] } | null>(null);
+  const [selected, setSelected] = useState<SearchHit | null>(null);
   const [inflight, setInflight] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -57,8 +50,15 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   }, [open]);
 
   useEffect(() => {
+    setSelected(null);
+  }, [q]);
+
+  useEffect(() => {
     function onDown(e: MouseEvent) {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSelected(null);
+      }
     }
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -115,11 +115,18 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
     return `https://share.cinebar.cc/${slug}/${r.id}?t=${encodeURIComponent(r.title)}`;
   }
 
+  function activateResult(event: ReactMouseEvent<HTMLAnchorElement>, result: SearchHit) {
+    if (typeof window === "undefined") return;
+    if (!window.matchMedia("(max-width: 560px)").matches) return;
+    event.preventDefault();
+    setSelected(result);
+  }
+
   const visible = !current || current.length === 0 ? null : (
     <ul className="search-results">
       {current.map((r) => (
         <li key={`${r.type}${r.id}`}>
-          <a href={href(r)} target="_blank" rel="noreferrer">
+          <a href={href(r)} target="_blank" rel="noreferrer" onClick={(event) => activateResult(event, r)}>
             {r.poster ? (
               <img
                 className="search-poster"
@@ -138,6 +145,9 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
                 {r.type === "movie" ? m.searchMovie : m.searchTV}
                 {r.year ? ` · ${r.year.slice(0, 4)}` : ""}
                 {r.rating && r.rating > 0 ? ` · ⭐ ${r.rating.toFixed(1)}` : ""}
+                <span className={`search-watch-status${r.watch?.length ? " available" : ""}`}>
+                  {r.watch?.length ? ` · ${m.playerSource}` : ` · ${m.playerNoSource}`}
+                </span>
               </small>
             </span>
           </a>
@@ -191,6 +201,9 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
             )}
             {!loading && !eligible && !searched && query.trim() !== "" && (
               <p className="search-state">{m.searchHint}</p>
+            )}
+            {!loading && eligible && selected && (
+              <InlinePlayer hit={selected} m={m} onClose={() => setSelected(null)} />
             )}
             {!loading && eligible && visible}
           </div>
