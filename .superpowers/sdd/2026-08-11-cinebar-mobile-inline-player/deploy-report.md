@@ -3,7 +3,7 @@
 - 部署日期：2026-08-11（Asia/Shanghai）
 - 公网地址：[https://cinebar.cc/](https://cinebar.cc/)
 - Cloudflare Worker：`cinebar-website`
-- Cloudflare Version ID：`7074eb20-15a2-41f2-9d48-133296211406`
+- Cloudflare Version ID：`64af72ca-4a1a-48e5-94da-a5703324df35`
 - 更新清单：[https://cinebar.cc/appcast.xml](https://cinebar.cc/appcast.xml)
 
 ## 本次内容
@@ -36,6 +36,7 @@
 - 首页宣传、演示 GIF、评分、功能、安装、支持、联系和页脚均不在手机端显示。
 - 搜索打开后，结果和内嵌播放器仍在搜索区域显示；桌面端布局不变。
 - 公网 CSS 已确认包含 `.site-home .hero,.site-home .section,.site-home footer{display:none}`。
+- Logo 保留图标与 `CineBar` 主标文字；搜索按钮居中放大至 64px，下方显示“搜索电影、电视剧即可观看。”（其他语言同步本地化）。
 
 ## 移动端兼容性修复（待部署）
 
