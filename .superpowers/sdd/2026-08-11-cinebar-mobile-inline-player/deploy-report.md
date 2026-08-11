@@ -3,7 +3,7 @@
 - 部署日期：2026-08-11（Asia/Shanghai）
 - 公网地址：[https://cinebar.cc/](https://cinebar.cc/)
 - Cloudflare Worker：`cinebar-website`
-- Cloudflare Version ID：`ea1c32d9-e351-4f90-9352-600c61b77979`
+- Cloudflare Version ID：`54bcd1ed-1874-416d-8a52-7ad8fd84409b`
 - 更新清单：[https://cinebar.cc/appcast.xml](https://cinebar.cc/appcast.xml)
 
 ## 本次内容
@@ -22,6 +22,13 @@
 - 公网首页：HTTP 200。
 - 手机 UA 请求：已返回 `site-home` 和搜索文案。
 - 公网 `appcast.xml`：HTTP 200。
+
+## 公网复核
+
+- 手机 UA 首页：HTTP 200，引用 `/assets/index-BGXj08Ab.css`。
+- 公网 CSS：包含 `@media (max-width:560px)`，不再只输出旧 WebView 无法识别的范围语法。
+- 公网 appcast：Build 65 → 64 → 63，Build 65 EdDSA 签名和长度字段存在。
+- 公网 Build 65 下载：HTTP 200；官网下载按钮不再返回 404。
 
 ## 移动端兼容性修复（待部署）
 
