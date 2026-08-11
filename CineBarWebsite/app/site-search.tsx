@@ -50,10 +50,6 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   }, [open]);
 
   useEffect(() => {
-    setSelected(null);
-  }, [q]);
-
-  useEffect(() => {
     function onDown(e: MouseEvent) {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) {
         setOpen(false);
@@ -104,6 +100,11 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   function clearHistory() {
     setHistory([]);
     saveHistory([]);
+  }
+
+  function updateQuery(value: string) {
+    setSelected(null);
+    setQuery(value);
   }
 
   const current = data && data.q === q ? data.results : null;
@@ -164,9 +165,12 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
             ref={inputRef}
             className="search-input"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => updateQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setOpen(false);
+              if (e.key === "Escape") {
+                setOpen(false);
+                setSelected(null);
+              }
             }}
             placeholder={m.search}
             aria-label={m.search}
@@ -188,7 +192,7 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
                 <ul className="search-history-list">
                   {history.map((item) => (
                     <li key={item}>
-                      <button type="button" onClick={() => setQuery(item)}>
+                      <button type="button" onClick={() => updateQuery(item)}>
                         {item}
                       </button>
                     </li>
@@ -203,7 +207,7 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
               <p className="search-state">{m.searchHint}</p>
             )}
             {!loading && eligible && selected && (
-              <InlinePlayer hit={selected} m={m} onClose={() => setSelected(null)} />
+              <InlinePlayer key={`${selected.type}-${selected.id}`} hit={selected} m={m} onClose={() => setSelected(null)} />
             )}
             {!loading && eligible && visible}
           </div>

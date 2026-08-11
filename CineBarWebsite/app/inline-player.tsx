@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { Messages } from "./i18n";
 
 export type WatchSource = {
@@ -48,11 +48,6 @@ export default function InlinePlayer({
   const [failed, setFailed] = useState(false);
   const source = useMemo(() => safeSource(hit.watch?.[0]), [hit.watch]);
   const poster = posterURL(hit.poster);
-
-  useEffect(() => {
-    setArmed(false);
-    setFailed(false);
-  }, [hit.type, hit.id]);
 
   function retry() {
     setFailed(false);
@@ -128,4 +123,3 @@ export default function InlinePlayer({
     </section>
   );
 }
-
