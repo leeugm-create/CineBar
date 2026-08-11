@@ -1385,13 +1385,19 @@ footer {
   display: none;
 }
 
+.mobile-search-stack {
+  display: contents;
+}
+
 @media (max-width: 560px) {
   .site-home .site-header {
+    align-items: stretch;
     flex-direction: column;
     flex-wrap: nowrap;
     gap: 14px;
-    min-height: 0;
-    padding: 24px 0 28px;
+    min-height: calc(100vh - 48px);
+    min-height: calc(100svh - 48px);
+    padding: 24px 0 40px;
   }
 
   .site-home .brand > span {
@@ -1405,7 +1411,18 @@ footer {
   }
 
   .site-home .brand {
+    align-self: flex-start;
     flex: 0 0 auto;
+  }
+
+  .site-home .mobile-search-stack {
+    display: flex;
+    flex: 1 1 auto;
+    width: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
   }
 
   .site-home .brand-mark {
@@ -1423,6 +1440,10 @@ footer {
   .site-home .site-search {
     width: auto;
     margin: 0;
+  }
+
+  .site-home .site-search.open {
+    flex: 0 0 auto;
   }
 
   .site-home .search-toggle {
