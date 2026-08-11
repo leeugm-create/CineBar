@@ -9872,18 +9872,17 @@ struct TVDetailView: View {
                                                                 )
                                                             } label: {
                                                                 Label(
-                                                                    "播放",
-                                                                    systemImage: "play.circle.fill"
+                                                                    "在线播放",
+                                                                    systemImage: "play.fill"
                                                                 )
                                                                 .font(.caption.bold())
-                                                                .foregroundStyle(.orange)
-                                                                .labelStyle(.iconOnly)
-                                                                .help(
-                                                                    "播放本集：第\(episode.seasonNumber)季 第\(episode.episodeNumber)集"
-                                                                )
                                                             }
-                                                            .buttonStyle(.plain)
-                                                            .frame(width: 30)
+                                                            .buttonStyle(.borderedProminent)
+                                                            .tint(.blue)
+                                                            .controlSize(.small)
+                                                            .help(
+                                                                "在线播放本集：第\(episode.seasonNumber)季 第\(episode.episodeNumber)集"
+                                                            )
                                                         }
                                                     }
                                                     .padding(.vertical, 5)
