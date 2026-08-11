@@ -12637,22 +12637,6 @@ struct ContentView: View {
     // 拦截 ESC：播放窗口关闭后残余按键事件可能传到主面板，
     // NSPanel 默认会关闭面板，表现为"程序被退出"。
     override func cancelOperation(_ sender: Any?) {}
-
-    // 内嵌播放快捷键：空格播放/暂停、左右快退/快进 15 秒。
-    // 仅在存在活动的内嵌播放器时拦截（此时焦点通常不在文本输入/滚动区）。
-    override func keyDown(with event: NSEvent) {
-        let handled = MainActor.assumeIsolated {
-            if [49, 123, 124].contains(event.keyCode),
-               MooviePlaybackController.shared.hasInlinePlayer {
-                MooviePlaybackController.shared.handleKey(from: event)
-                return true
-            }
-            return false
-        }
-        if !handled {
-            super.keyDown(with: event)
-        }
-    }
 }
 
 enum PanelPlacement {
@@ -12691,6 +12675,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var settingsWindow: NSWindow?
     private var autoHideTimer: Timer?
     private var activityMonitor: Any?
+    /// 内嵌播放键盘：空格播放/暂停、左右快退/快进 15 秒。
+    /// 用 local monitor 而非 override panel keyDown，避免影响面板背景拖动。
+    private var playbackKeyMonitor: Any?
     private var sparkleWindowObserver: NSObjectProtocol?
     private var isMediaPlaybackActive = false
     private var updateBadgeView: NSView?
@@ -12826,6 +12813,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
                 self?.scheduleAutoHide()
             }
             return event
+        }
+        // 内嵌播放键盘：有内嵌播放器时，用空格/左右键控制；焦点在文本输入时放行。
+        playbackKeyMonitor = NSEvent.addLocalMonitorForEvents(
+            matching: .keyDown
+        ) { [weak self] event in
+            guard [49, 123, 124].contains(event.keyCode),
+                  event.window === self?.panel,
+                  self?.panel?.isVisible == true else { return event }
+            let handled = MainActor.assumeIsolated {
+                MooviePlaybackController.shared.hasInlinePlayer
+            }
+            guard handled else { return event }
+            // 焦点在文本输入时允许正常打字（不吞空格）。
+            if let fr = self?.panel?.firstResponder, fr is NSTextView {
+                return event
+            }
+            MainActor.assumeIsolated {
+                MooviePlaybackController.shared.handleKey(from: event)
+            }
+            return nil
         }
         // Sparkle 更新窗口是普通层级窗口，会被 .popUpMenu 的设置窗口压住；
         // 一旦出现这类窗口成为 key（例如"软件更新"面板），提到设置窗之上。
