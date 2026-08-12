@@ -2422,6 +2422,53 @@ let slider = RatingNSSlider()
             ) == true
         )
         precondition(MoovieStreamResolver.parseTrendingMovies(from: "<html>空</html>").isEmpty)
+
+        // ---- CineAI：意图路由（离线规则，4 能力分类） ----
+        precondition(CineAIIntentRouter.route("帮我找一部时间循环的电影") == .findMovie)
+        precondition(CineAIIntentRouter.route("有没有类似盗梦空间的") == .findMovie)
+        precondition(CineAIIntentRouter.route("老白最后死了吗") == .spoilerSafe)
+        precondition(CineAIIntentRouter.route("这部剧结局是谁死了") == .spoilerSafe)
+        precondition(CineAIIntentRouter.route("今晚看什么") == .recommend)
+        precondition(CineAIIntentRouter.route("有什么好看的真探推荐") == .recommend)
+        precondition(CineAIIntentRouter.route("这部剧讲什么") == .mediaIntro)
+        precondition(CineAIIntentRouter.route("介绍一下庆余年剧情") == .mediaIntro)
+
+        // ---- CineAI：观影进度存储（防剧透数据源） ----
+        let progressStore = CineAIProgressStore(
+            defaults: UserDefaults(
+                suiteName: "CineAITest-\(UUID().uuidString)"
+            )!
+        )
+        precondition(progressStore.progress(for: 111) == nil)
+        progressStore.recordProgress(seriesID: 111, season: 2, episode: 5)
+        precondition(progressStore.progress(for: 111)?.code == "S02E05")
+        // 倒退忽略：记录到更旧的一季应被忽略，保持 S02E05
+        progressStore.recordProgress(seriesID: 111, season: 1, episode: 20)
+        precondition(progressStore.progress(for: 111)?.code == "S02E05")
+        // 同季更旧一集也忽略
+        progressStore.recordProgress(seriesID: 111, season: 2, episode: 3)
+        precondition(progressStore.progress(for: 111)?.code == "S02E05")
+        // 推进到 S03E01 生效
+        progressStore.recordProgress(seriesID: 111, season: 3, episode: 1)
+        precondition(progressStore.progress(for: 111)?.code == "S03E01")
+        // 手动 set 允许任意回退
+        progressStore.setProgress(seriesID: 111, season: 1, episode: 1)
+        precondition(progressStore.progress(for: 111)?.code == "S01E01")
+
+        // ---- CineAI：RAG 调度（Stub 不联网，验证编译与约束 prompt） ----
+        let rag = CineAIRAG(
+            provider: StubAIProvider(),
+            data: .init(
+                fetchFacts: { _ in "示例：某片，8.8 分，2020 年" },
+                searchMovies: { _ in "候选1、候选2" }
+            )
+        )
+        do {
+            let ragResult = try await rag.answer(.findMovie, input: "找一部科幻片")
+            precondition(ragResult.text == "（测试占位回答）")
+        } catch {
+            preconditionFailure("CineAI RAG should not throw with Stub provider: \(error)")
+        }
     }
 }
 

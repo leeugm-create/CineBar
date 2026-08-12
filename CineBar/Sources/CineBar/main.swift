@@ -3159,6 +3159,8 @@ struct CommunityRatingClient {
 
 @MainActor
 final class MovieStore: ObservableObject {
+    /// CineAI 观影进度（防剧透数据源）。单 macOS 端，UserDefaults 持久化。
+    let cineAIProgress = CineAIProgressStore()
     @Published var movies: [Movie] = Movie.demo
     @Published var televisionShows: [TVShow] = [TVShow.demo]
     @Published var mediaSection: MediaSection = .movies
@@ -5369,6 +5371,12 @@ final class MovieStore: ObservableObject {
         episodeNumber: Int
     ) async -> [EpisodeSource] {
         guard appLanguage.isChinese else { return [] }
+        // 用户点某集播放 = 视为看到该集，记录为 CineAI 防剧透进度。
+        cineAIProgress.recordProgress(
+            seriesID: show.id,
+            season: seasonNumber,
+            episode: episodeNumber
+        )
         let year = show.firstAirDate.map {
             $0.count >= 4 ? String($0.prefix(4)) : ""
         } ?? ""
