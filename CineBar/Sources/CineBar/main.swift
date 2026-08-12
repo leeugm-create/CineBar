@@ -12020,7 +12020,7 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
                     PanelDragView()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity)
                         .help("按住这里拖动窗口")
                     Button {
                         if store.mediaSection == .anime {
