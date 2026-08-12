@@ -16,9 +16,37 @@ extension MovieStore {
                 },
                 searchMovies: { query in
                     await selfRef.cineAISearchMovies(query)
+                },
+                spoilerContext: {
+                    await selfRef.cineAISpoilerContext()
                 }
             )
         )
+    }
+
+    /// 防剧透上下文：当前剧的进度 + 已看集的标题资料。
+    /// 只取"进度以内"的集资料，之后的集不进上下文（防剧透核心）。
+    private func cineAISpoilerContext() async -> String {
+        guard let show = selectedTVShow,
+              let progress = cineAIProgress.progress(for: show.id) else {
+            return ""
+        }
+        var lines = [
+            "剧名：《\(show.name)》，你已看到 \(progress.code)（第\(progress.seasonNumber)季第\(progress.episodeNumber)集）。"
+        ]
+        // 已加载的季/集：收集进度以内的集标题。
+        for (season, episodes) in seasonEpisodes.sorted(by: { $0.key < $1.key }) {
+            guard season < progress.seasonNumber ||
+                    (season == progress.seasonNumber) else { break }
+            let seen = episodes
+                .filter { $0.episodeNumber <= (season == progress.seasonNumber ? progress.episodeNumber : 999_999) }
+                .sorted { $0.episodeNumber < $1.episodeNumber }
+            if !seen.isEmpty {
+                let titles = seen.map { "S\(String(format: "%02d", season))E\(String(format: "%02d", $0.episodeNumber)) \($0.name)" }
+                lines.append(titles.joined(separator: "\n"))
+            }
+        }
+        return lines.joined(separator: "\n")
     }
 
     // MARK: - 数据源实现

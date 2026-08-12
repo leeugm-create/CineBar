@@ -15,6 +15,8 @@ struct CineAIRAG {
         var fetchFacts: (String) async -> String = { _ in "" }
         /// 找片：把自然语言转成检索词，返回候选片名/简介文本块。
         var searchMovies: (String) async -> String = { _ in "" }
+        /// 防剧透：当前剧的上下文（进度 + 已看集资料）。返回文本块；空表示无。
+        var spoilerContext: () async -> String = { "" }
     }
 
     let provider: AIProvider
@@ -46,10 +48,14 @@ struct CineAIRAG {
             ]
         case .spoilerSafe:
             // 防剧透：进度与已看内容由调用方预处理好注入。
-            return [
-                system("你是 CineAI。用户的观影进度有限。回答时：不得透露用户尚未看到的剧情；若用户问的是还没看到的内容，温和地挡回去并提示进度。回答用中文，简洁。"),
-                user(input),
-            ]
+            let context = await data.spoilerContext()
+            var systemContent = "你是 CineAI。用户的观影进度有限。回答时：不得透露用户尚未看到的剧情；若用户问的是还没看到的内容，温和地挡回去并提示进度。回答用中文，简洁。"
+            var userContent = input
+            if !context.isEmpty {
+                systemContent += " 只能依据下面提供的已观看到的内容来回答，不得推测或透露其后的剧情。"
+                userContent = "用户当前已看到的内容（以此为界，到此为止，之后的剧情严禁透露）：\n\(context)\n\n用户问：\(input)"
+            }
+            return [system(systemContent), user(userContent)]
         case .mediaIntro:
             let facts = await data.fetchFacts(input)
             return [
