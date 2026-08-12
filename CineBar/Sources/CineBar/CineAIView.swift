@@ -1,5 +1,23 @@
 import SwiftUI
 
+/// 从文本里提取《片名》（中文《…》内容，去空/去重，保持出现顺序）。
+/// 供回答气泡的海报条复用。
+func cineAITitles(from text: String, limit: Int = Int.max) -> [String] {
+    guard let regex = try? NSRegularExpression(pattern: #"《([^》]+)》"#) else { return [] }
+    let ns = text as NSString
+    let matches = regex.matches(in: text, range: NSRange(location: 0, length: ns.length))
+    var titles: [String] = []
+    var seen = Set<String>()
+    for m in matches {
+        let t = ns.substring(with: m.range(at: 1)).trimmingCharacters(in: .whitespaces)
+        if !t.isEmpty, seen.insert(t).inserted {
+            titles.append(t)
+            if titles.count >= limit { break }
+        }
+    }
+    return titles
+}
+
 /// CineAI 的 Provider 工厂（产品正式路径**只走服务端代理**，不走任何直连）。
 ///
 /// 硬防线：baseURL 的 host 必须在允许的代理白名单内，否则拒绝——
@@ -185,6 +203,11 @@ struct CineAIView: View {
         .onAppear {
             // 进入聊天：光标自动落到输入框，随时可打字。
             inputFocused = true
+            // 从菜单栏右键搜索框带入的查询：直接发送。
+            if let pending = store.cineAIPendingQuery, !pending.isEmpty {
+                store.cineAIPendingQuery = nil
+                send(pending)
+            }
         }
     }
 
@@ -257,6 +280,7 @@ struct CineAIView: View {
                             Color.secondary.opacity(0.10),
                             in: RoundedRectangle(cornerRadius: 10)
                         )
+                    AIPosterStrip(message: msg.content, store: store)
                 }
             }
             if msg.role == "assistant" {
@@ -377,6 +401,106 @@ struct CineAIView: View {
                 }
             }
             await MainActor.run { busy = false }
+        }
+    }
+}
+
+/// 回答气泡下方的海报条：从消息里提取《片名》（最多 5 部），
+/// 逐部 TMDB 解析并展示海报小卡；点击海报进入对应详情页。
+/// 无海报命中或解析失败时不做任何展示（降级为纯文字，不影响聊天）。
+private struct AIPosterStrip: View {
+    let message: String
+    @ObservedObject var store: MovieStore
+
+    @State private var movies: [Movie] = []
+    @State private var loaded = false
+
+    private static let maxPosters = 5
+    /// 已展示片名缓存，避免同一回复重复解析。
+    private static var titleCache: [String: [Movie]] = [:]
+
+    var body: some View {
+        Group {
+            if !movies.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(movies.enumerated()), id: \.offset) { _, movie in
+                            AIPosterCard(movie: movie) {
+                                store.selectMovieByTitle(movie.title)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        .onAppear {
+            guard !loaded else { return }
+            loaded = true
+            load()
+        }
+    }
+
+    private func load() {
+        let titles = cineAITitles(from: message, limit: Self.maxPosters)
+        let cacheKey = message
+        if let cached = Self.titleCache[cacheKey] {
+            movies = cached
+            return
+        }
+        Task {
+            var resolved: [Movie] = []
+            for title in titles {
+                if let m = await store.cineAIMovieByTitle(title) {
+                    resolved.append(m)
+                }
+            }
+            Self.titleCache[cacheKey] = resolved
+            await MainActor.run { movies = resolved }
+        }
+    }
+}
+
+/// 单张海报小卡：海报图 + 片名叠底，点击进详情。
+private struct AIPosterCard: View {
+    let movie: Movie
+    let action: () -> Void
+
+    @State private var posterImage: NSImage?
+
+    var body: some View {
+        Button {
+            action()
+        } label: {
+            VStack(spacing: 2) {
+                Group {
+                    if let posterImage {
+                        Image(nsImage: posterImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 72, height: 104)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    } else {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(Color.secondary.opacity(0.15))
+                            .frame(width: 72, height: 104)
+                            .overlay(
+                                Text(verbatim: String(movie.title.prefix(2)))
+                                    .font(.caption.bold())
+                                    .foregroundStyle(.secondary)
+                            )
+                    }
+                }
+                Text(movie.title)
+                    .font(.system(size: 10))
+                    .lineLimit(1)
+                    .frame(width: 72)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+        .task {
+            guard posterImage == nil, let url = movie.posterURL else { return }
+            posterImage = await cachedPosterImage(for: url)
         }
     }
 }

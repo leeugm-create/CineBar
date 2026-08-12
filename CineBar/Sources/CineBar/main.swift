@@ -25,7 +25,7 @@ final class ScrollActivity: ObservableObject {
     }
 }
 
-private func cachedPosterImage(for url: URL) async -> NSImage? {
+func cachedPosterImage(for url: URL) async -> NSImage? {
     let key = url as NSURL
     if let cached = posterImageCache.object(forKey: key) {
         return cached
@@ -3170,6 +3170,8 @@ final class MovieStore: ObservableObject {
         didSet { cineAISaveMessages() }
     }
     @Published var isShowingCineAI = false
+    /// 从右键菜单的 AI 搜索框带入的待发送查询：CineAIView 出现时消费并自动发送，用完置 nil。
+    @Published var cineAIPendingQuery: String?
     /// 顶栏放大镜：是否显示普通"搜索电影/演员"框（默认 false = 主页显示 AI 框）。
     @Published var isShowingSearchBar = false
     @Published var movies: [Movie] = Movie.demo
@@ -13201,9 +13203,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let aiItem = NSMenuItem(
-            title: "AI 搜索框", action: #selector(contextMenuAI), keyEquivalent: "")
-        aiItem.target = self
+        let aiItem = NSMenuItem()
+        aiItem.view = makeAISearchMenuItemView()
         menu.addItem(aiItem)
 
         let settingsItem = NSMenuItem(
@@ -13231,8 +13232,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 
     @objc private func contextMenuAI() {
+        store.cineAIPendingQuery = nil
         store.isShowingCineAI = true
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
+    }
+
+    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
+    /// 内置提示文字（placeholder），回车即发送并打开 AI 面板。
+    private func makeAISearchMenuItemView() -> NSView {
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 34))
+
+        let field = NSTextField()
+        field.frame = NSRect(x: 8, y: 6, width: container.bounds.width - 16, height: 22)
+        field.autoresizingMask = [.width]
+        field.placeholderString = "问问 CineAI…找一部80年代喜剧港片"
+        field.font = NSFont.systemFont(ofSize: 13)
+        field.isBezeled = true
+        field.bezelStyle = .roundedBezel
+        field.usesSingleLineMode = true
+        field.cell?.wraps = false
+        field.cell?.isScrollable = true
+        field.target = self
+        field.action = #selector(aiSearchFieldSubmit(_:))
+        field.tag = 0
+        container.addSubview(field)
+        return container
+    }
+
+    @objc private func aiSearchFieldSubmit(_ sender: NSTextField) {
+        let query = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        store.cineAIPendingQuery = query
+        contextMenuAI()
     }
 
     @objc private func contextMenuSettings() {

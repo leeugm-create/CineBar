@@ -186,6 +186,28 @@ extension MovieStore {
         }
     }
 
+    /// 按片名异步解析为带海报的 TMDB 电影（供回答气泡渲染海报条）。
+    /// 匹配逻辑与 selectMovieByTitle 一致：归一化标题精确/包含命中，否则取搜索首条。
+    /// 无 token、无匹配、或 TMDB 出错时返回 nil（UI 静默降级为纯文字，不打断聊天）。
+    func cineAIMovieByTitle(_ title: String) async -> Movie? {
+        let query = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty, hasToken else { return nil }
+        do {
+            let results = try await TMDBClient(
+                token: token,
+                language: appLanguage.apiCode
+            ).search(query)
+            let normalized = DoubanRatingClient.normalize(query)
+            let match = results.first {
+                let t = DoubanRatingClient.normalize($0.title)
+                return t == normalized || t.contains(normalized) || normalized.contains(t)
+            } ?? results.first
+            return match
+        } catch {
+            return nil
+        }
+    }
+
     /// 防剧透问题的本地硬拦截：结局类问题 + 该剧未看完 → 本地直接挡回（不进模型、不耗 token）。
     /// 返回非 nil 表示要拦截（文案给用户）；nil 放行交给 RAG。
     func spoilerShield(for question: String) -> String? {
