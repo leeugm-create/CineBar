@@ -13478,6 +13478,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         false
     }
 
+    /// 兜底：应用退出前强制恢复 Dock/菜单栏，避免「全屏播放中异常退出发散时
+    /// presentationOptions 的 autoHideDock 残留导致 Dock 一直自动隐藏」。
+    func applicationWillTerminate(_ notification: Notification) {
+        resetSystemUIOverrides()
+    }
+
+    /// 从全屏/浮层回复到普通状态时，把被临时改动的 autoHideDock/autoHideMenuBar
+    /// 复位为系统默认（不隐藏），防止异常路径下 Dock/菜单栏被长期自动隐藏。
+    func applicationDidResignActive(_ notification: Notification) {
+        resetSystemUIOverrides()
+    }
+
+    private func resetSystemUIOverrides() {
+        let options = NSApplication.shared.presentationOptions
+        if options.contains(.autoHideDock) || options.contains(.autoHideMenuBar) {
+            NSApplication.shared.presentationOptions = []
+        }
+    }
+
     nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
