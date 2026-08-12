@@ -92,7 +92,7 @@ export type Messages = {
 export const messages: Record<Locale, Messages> = {
   "zh-Hans": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 83）测试版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 84）测试版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在菜单栏发现并在线观看电影、电视剧与动漫。",
@@ -205,7 +205,7 @@ export const messages: Record<Locale, Messages> = {
   },
   "zh-Hant": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 83）測試版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 84）測試版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在選單列發現並在線觀看電影、電視劇與動畫。",
@@ -318,7 +318,7 @@ export const messages: Record<Locale, Messages> = {
   },
   en: {
     metaTitle: "CineBar — Find your next great film",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 83) Beta",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 84) Beta",
     heroTitle1: "Find your",
     heroTitle2: "next great film",
     heroLede: "Find and watch movies, TV shows and anime from your Mac menu bar.",
@@ -430,7 +430,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ja: {
     metaTitle: "CineBar — 次の名作を見つけよう",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 83）テスト版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 84）テスト版",
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
     heroLede: "メニューバーから映画・ドラマ・アニメを見つけて視聴。",
@@ -542,7 +542,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ko: {
     metaTitle: "CineBar — 다음 영화를 찾아보세요",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 83) 베타",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 84) 베타",
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
     heroLede: "메뉴 바에서 영화·드라마·애니메이션을 찾고 시청하세요.",
