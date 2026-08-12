@@ -48,6 +48,16 @@ function estimateInputTokens(chatText) {
 
 export default {
   async fetch(request, env, ctx) {
+    try {
+      return await handle(request, env);
+    } catch (e) {
+      // 未预期异常：包一层返回 detail，便于定位（生产可去掉 detail）。
+      return json({ error: "internal", detail: String(e && e.stack ? e.stack : e) }, 500);
+    }
+  },
+};
+
+async function handle(request, env) {
     const url = new URL(request.url);
     if (url.pathname !== "/v1/chat/completions" || request.method !== "POST") {
       return json({ error: "not found" }, 404);
@@ -150,5 +160,4 @@ export default {
     ).bind(cacheKey, JSON.stringify(upstream), Date.now()).run();
 
     return json({ cached: false, result: upstream });
-  },
-};
+}
