@@ -1,18 +1,30 @@
 import SwiftUI
 
-/// CineAI 的 Provider 工厂。
+/// CineAI 的 Provider 工厂（产品正式路径**只走服务端代理**，不走任何直连）。
 ///
-/// 产品正式路径固定走「服务端代理」：客户端只发 messages + 匿名 device，
-/// 不接触任何 DeepSeek Key（Key 由代理保管并做限额/缓存）。
-/// 代理地址可用 UserDefaults 覆盖（本地/测试），默认 `cineai.cinebar.cc`。
+/// 硬防线：baseURL 的 host 必须在允许的代理白名单内，否则拒绝——
+/// 防止 UserDefaults 被误配/污染成直连 DeepSeek 而绕过代理/限额。
 struct CineAIProviderFactory {
+    /// 允许的代理 host（含默认域名）。其它一律拒绝。
+    private static let allowedProxyHosts: Set<String> = [
+        "cineai.cinebar.cc",
+    ]
+    private static let defaultProxy = "https://cineai.cinebar.cc"
+
     static func make() -> AIProvider {
         let d = UserDefaults.standard
         let base = d.string(forKey: "cineai.proxyBaseURL")
-            ?? "https://cineai.cinebar.cc"
-        return CineAIProxyProvider(
-            baseURL: URL(string: base) ?? URL(string: "https://cineai.cinebar.cc")!
-        )
+            ?? defaultProxy
+        let url = URL(string: base)
+        guard let url,
+              let host = url.host,
+              allowedProxyHosts.contains(host.lowercased()) else {
+            // 非法/被污染的 baseURL：拒绝走它，回落到受控代理域。
+            return CineAIProxyProvider(
+                baseURL: URL(string: defaultProxy)!
+            )
+        }
+        return CineAIProxyProvider(baseURL: url)
     }
 }
 
