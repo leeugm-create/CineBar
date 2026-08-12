@@ -48,12 +48,12 @@ struct CineAIView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 8) {
-            // 快捷入口
+        VStack(spacing: 4) {
+            // 快捷入口：点击直接触发对应能力（立即发送）。
             HStack(spacing: 6) {
                 ForEach(Self.quickPrompts, id: \.0) { title, prompt in
                     Button {
-                        input = prompt
+                        send(prompt)
                     } label: {
                         Text(title)
                             .font(.caption.bold())
@@ -65,6 +65,7 @@ struct CineAIView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .disabled(busy)
                 }
                 Spacer()
                 Button("返回") { store.isShowingCineAI = false }
@@ -73,16 +74,26 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
 
-            // 消息列表
+            Divider()
+
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        ForEach(Array(messages.enumerated()), id: \.offset) { _, msg in
-                            chatBubble(msg)
+                        // 只显示 user/assistant；system 不当作气泡。
+                        let visible = messages.filter { $0.role != "system" }
+                        if visible.isEmpty {
+                            welcomeView
+                        } else {
+                            ForEach(Array(visible.enumerated()), id: \.offset) { _, msg in
+                                chatBubble(msg)
+                            }
+                            if busy {
+                                thinkingBubble
+                            }
                         }
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 4)
+                    .padding(.vertical, 6)
                 }
                 .onChange(of: messages.count) { _ in
                     if !messages.isEmpty {
@@ -116,6 +127,41 @@ struct CineAIView: View {
         }
     }
 
+    /// 空态引导：告诉用户 4 个能力能干嘛。
+    private var welcomeView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("CineAI 影视助手")
+                .font(.headline)
+            Text("可以直接跟我聊：")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("🎬 今晚看什么 —— 给我片单/按心情推荐")
+                Text("🔍 帮我找一部电影 —— 用一句话描述想看的片")
+                Text("📺 这部剧讲什么 —— 问某部剧/片的剧情")
+                Text("🚫 无剧透问答 —— 记住你的观看到哪，不剧透后面")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// 发送中气泡：提示模型正在回答，避免"点了没反应"。
+    private var thinkingBubble: some View {
+        HStack {
+            ProgressView().controlSize(.small)
+            Text("正在思考…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 40)
+        }
+        .padding(10)
+        .background(Color.secondary.opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+    }
+
     private func chatBubble(_ msg: AIChatMessage) -> some View {
         HStack {
             if msg.role == "user" {
@@ -137,8 +183,10 @@ struct CineAIView: View {
         }
     }
 
-    private func send() {
-        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+    /// 发送：支持显式传入 prompt（快捷入口直接触发）；否则用输入框内容。
+    private func send(_ promptOverride: String? = nil) {
+        let text = (promptOverride ?? input)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !busy else { return }
         input = ""
         let userMsg = AIChatMessage(role: "user", content: text)
