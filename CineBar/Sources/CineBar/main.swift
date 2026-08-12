@@ -625,6 +625,13 @@ struct TVEpisode: Codable, Identifiable, Hashable {
     }
 }
 
+/// 某一集的一个可播放线路（m3u8 直链 + 来源名），可切换。
+struct EpisodeSource: Identifiable, Hashable {
+    var id: String { "\(label)|\(url.absoluteString)" }
+    let url: URL
+    let label: String
+}
+
 struct TVSeasonDetails: Codable {
     let id: Int
     let name: String
@@ -5352,12 +5359,14 @@ final class MovieStore: ObservableObject {
     /// 按季/集在 Moovie 聚合站定位并独立窗口播放某一集（中文界面）。
     /// 解析某一集的 m3u8 直链（中文界面按剧名+季+集在聚合站定位）。
     /// 找到返回 URL；找不到或出错返回 nil 并写入 message。
-    func resolveTVEpisodeURL(
+    /// 解析某一集的所有候选线路的 m3u8 直链（中文界面按剧名+季+集在聚合站定位）。
+    /// 返回多条可切换的线路；找不到返回空并写 message。
+    func resolveTVEpisodeSources(
         show: TVShow,
         seasonNumber: Int,
         episodeNumber: Int
-    ) async -> URL? {
-        guard appLanguage.isChinese else { return nil }
+    ) async -> [EpisodeSource] {
+        guard appLanguage.isChinese else { return [] }
         let year = show.firstAirDate.map {
             $0.count >= 4 ? String($0.prefix(4)) : ""
         } ?? ""
@@ -5372,8 +5381,9 @@ final class MovieStore: ObservableObject {
             await MainActor.run {
                 message = "未找到《\(aTitle)》的可播放源"
             }
-            return nil
+            return []
         }
+        var sources: [EpisodeSource] = []
         for candidate in candidates {
             let candidateSeason = MoovieStreamResolver.seasonNumber(
                 from: candidate.title
@@ -5385,19 +5395,20 @@ final class MovieStore: ObservableObject {
             let episodes = await MoovieStreamResolver.loadEpisodes(
                 playPath: candidate.playPath
             )
-            if let episode = episodes.first(where: {
+            guard let episode = episodes.first(where: {
                 $0.numericOrder == aEpisode
             }), let url = await MoovieStreamResolver.resolveStreamURL(
                 playPath: episode.playPath
-            ) {
-                return url
+            ) else { continue }
+            sources.append(EpisodeSource(url: url, label: candidate.sourceName))
+        }
+        if sources.isEmpty {
+            await MainActor.run {
+                message =
+                    "未找到《\(aTitle)》第\(aSeason)季第\(aEpisode)集的可播放源"
             }
         }
-        await MainActor.run {
-            message =
-                "未找到《\(aTitle)》第\(aSeason)季第\(aEpisode)集的可播放源"
-        }
-        return nil
+        return sources
     }
 
     func openStills(for movie: Movie) {
@@ -9304,8 +9315,10 @@ struct TVDetailView: View {
     @State private var inlineTrailerKey: String?
     @State private var inlineTrailerTitle = ""
     /// 当前在"季与集"下方内嵌播放的集（就地展开播放窗口，不弹独立窗口）。
-    @State private var inlinePlayURL: URL?
+    @State private var inlineSources: [EpisodeSource] = []
+    @State private var inlineSourceIndex = 0
     @State private var inlinePlayingEpisodeID: Int?
+    @State private var inlineResolving = false
 
     private var sharePayload: SharePayload? {
         guard let url = store.brandedShareURL(for: show) else {
@@ -9865,18 +9878,21 @@ struct TVDetailView: View {
                                                         if store.appLanguage.isChinese,
                                                            episode.hasAired {
                                                             Button {
-                                                                // 就地解析直链，在简介下方内嵌播放窗口。
+                                                                // 就地解析多条线路，在简介下方内嵌播放窗口。
                                                                 inlinePlayingEpisodeID = episode.id
+                                                                inlineResolving = true
                                                                 Task {
-                                                                    let url =
+                                                                    let sources =
                                                                         await store
-                                                                        .resolveTVEpisodeURL(
+                                                                        .resolveTVEpisodeSources(
                                                                             show: show,
                                                                             seasonNumber: episode.seasonNumber,
                                                                             episodeNumber: episode.episodeNumber
                                                                         )
                                                                     await MainActor.run {
-                                                                        inlinePlayURL = url
+                                                                        inlineSources = sources
+                                                                        inlineSourceIndex = 0
+                                                                        inlineResolving = false
                                                                     }
                                                                 }
                                                             } label: {
@@ -9897,23 +9913,83 @@ struct TVDetailView: View {
                                                     .padding(.vertical, 5)
 
                                                     if inlinePlayingEpisodeID == episode.id,
-                                                       let inlinePlayURL,
                                                        store.appLanguage.isChinese {
-                                                        MooviePlayerView(
-                                                            url: inlinePlayURL,
-                                                            danmaku: [],
-                                                            currentTime: .constant(0),
-                                                            playbackRate: .constant(1),
-                                                            danmakuVisible: .constant(true),
-                                                            registerInline: true
-                                                        )
-                                                        .frame(height: 220)
-                                                        .clipShape(
-                                                            RoundedRectangle(
-                                                                cornerRadius: 8
-                                                            )
-                                                        )
-                                                        .padding(.bottom, 4)
+                                                        if inlineResolving {
+                                                            HStack(spacing: 6) {
+                                                                ProgressView().controlSize(.mini)
+                                                                Text("正在解析播放线路…")
+                                                                    .font(.caption)
+                                                                    .foregroundStyle(.secondary)
+                                                            }
+                                                            .padding(.vertical, 6)
+                                                        } else if inlineSources.isEmpty {
+                                                            VStack(alignment: .leading, spacing: 6) {
+                                                                Text("暂无可用播放线路")
+                                                                    .font(.caption)
+                                                                    .foregroundStyle(.secondary)
+                                                                Button("重新解析") {
+                                                                    inlinePlayingEpisodeID = nil
+                                                                }
+                                                                .font(.caption)
+                                                            }
+                                                            .padding(.vertical, 4)
+                                                        } else {
+                                                            VStack(alignment: .leading, spacing: 6) {
+                                                                MooviePlayerView(
+                                                                    url: inlineSources[inlineSourceIndex].url,
+                                                                    danmaku: [],
+                                                                    currentTime: .constant(0),
+                                                                    playbackRate: .constant(1),
+                                                                    danmakuVisible: .constant(true),
+                                                                    registerInline: true
+                                                                )
+                                                                .frame(height: 220)
+                                                                .clipShape(
+                                                                    RoundedRectangle(
+                                                                        cornerRadius: 8
+                                                                    )
+                                                                )
+                                                                HStack(spacing: 8) {
+                                                                    Text(
+                                                                        "线路：\(inlineSources[inlineSourceIndex].label)"
+                                                                    )
+                                                                    .font(.caption)
+                                                                    .foregroundStyle(.secondary)
+                                                                    Spacer()
+                                                                    if inlineSources.count > 1 {
+                                                                        Menu {
+                                                                            ForEach(
+                                                                                inlineSources.indices,
+                                                                                id: \.self
+                                                                            ) { idx in
+                                                                                Button {
+                                                                                    inlineSourceIndex = idx
+                                                                                } label: {
+                                                                                    if idx == inlineSourceIndex {
+                                                                                        Label(
+                                                                                            inlineSources[idx].label,
+                                                                                            systemImage: "checkmark"
+                                                                                        )
+                                                                                    } else {
+                                                                                        Text(inlineSources[idx].label)
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        } label: {
+                                                                            Label(
+                                                                                "换线路",
+                                                                                systemImage:
+                                                                                    "arrow.triangle.2.circlepath"
+                                                                            )
+                                                                        }
+                                                                        .menuStyle(.borderlessButton)
+                                                                        .controlSize(.small)
+                                                                        .help("切换播放线路")
+                                                                    }
+                                                                }
+                                                            }
+                                                            .padding(.bottom, 4)
+                                                        }
                                                     }
                                                     Divider()
                                                 }
