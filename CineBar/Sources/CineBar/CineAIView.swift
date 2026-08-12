@@ -40,6 +40,10 @@ struct CineAIView: View {
         store.cineAIMessages
     }
 
+    private var canSend: Bool {
+        !input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private static let quickPrompts: [(String, String)] = [
         ("🎬 今晚看什么", "今晚看什么，推荐几部"),
         ("🔍 帮我找一部电影", "帮我找一部电影"),
@@ -74,27 +78,50 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
 
-            // 输入框固定在顶部（贴合主页 AI 入口位置，不跑到最下方），进入即聚焦可打字。
-            HStack(spacing: 6) {
-                TextField("问问 CineAI…（例如：找一部时间循环的科幻片）", text: $input)
-                    .textFieldStyle(.roundedBorder)
+            // 输入（composer）：圆角聚焦容器 + 圆形发送按钮（参考的对话框样式）。
+            HStack(alignment: .center, spacing: 8) {
+                TextField("问问 CineAI…例如：找一部80年代喜剧港片", text: $input)
+                    .textFieldStyle(.plain)
                     .focused($inputFocused)
                     .onSubmit { send() }
                     .disabled(busy)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .frame(height: 34)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(Color.secondary.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .stroke(
+                                inputFocused
+                                    ? Color.accentColor.opacity(0.7)
+                                    : Color.secondary.opacity(0.25),
+                                lineWidth: 1
+                            )
+                    )
                 Button {
                     send()
                 } label: {
-                    if busy {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: "paperplane.fill")
-                    }
+                    Image(systemName: busy ? "hourglass" : "paperplane.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle().fill(
+                                canSend
+                                    ? Color.accentColor
+                                    : Color.secondary.opacity(0.3)
+                            )
+                        )
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.plain)
                 .disabled(busy || input.trimmingCharacters(in: .whitespaces).isEmpty)
+                .help("发送")
             }
             .padding(.horizontal)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
 
             Divider()
 
@@ -203,7 +230,15 @@ struct CineAIView: View {
                             in: RoundedRectangle(cornerRadius: 10)
                         )
                 } else {
-                    // assistant：片名（《…》）可点击，点击跳详情页。
+                    // assistant：来源标签 + 内容（片名《…》可点击进详情）。
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("CineBar AI")
+                            .font(.system(size: 10, weight: .medium))
+                        Spacer(minLength: 0)
+                    }
+                    .foregroundStyle(.secondary)
                     Text(linkedText(msg.content))
                         .font(.callout)
                         .textSelection(.enabled)
