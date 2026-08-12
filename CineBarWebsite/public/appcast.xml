@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 84&lt;/li&gt;&lt;li&gt;- 调整：CineAI 的推荐/找片改为在**整个片库**中搜索推荐（不再受你设置的影视类型偏好限制）；影视类型偏好现在只用于「每日电影推荐」这一功能。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 86&lt;/li&gt;&lt;li&gt;- 优化：CineAI 对话框视觉升级——输入框改为圆角聚焦样式 + 圆形发送按钮；AI 回复会带&amp;quot;✨ CineBar AI&amp;quot;来源标签，更清晰。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-84-universal.zip"
-        sparkle:version="84"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-86-universal.zip"
+        sparkle:version="86"
         sparkle:shortVersionString="0.9.0"
-        length="8333750"
+        length="8357511"
         type="application/octet-stream"
-        sparkle:edSignature="lXq/PysFeSodABrRdYMYmy8AhfD9WLZIEvN7FUItl3WK1qKYQ+aNZT6HwfkatHGf+EXJKFoE1fqThYE12ogoBQ=="/>
+        sparkle:edSignature="msN+krn4XokzgvMAFd4EJNtNz0EUpWY/65Y5OPe/dmg5jRuG+i6AHu9RmzO+9cpOTwDKWv+bA3y0R8zKhVWTAw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 84&lt;/li&gt;&lt;li&gt;- 调整：CineAI 的推荐/找片改为在**整个片库**中搜索推荐（不再受你设置的影视类型偏好限制）；影视类型偏好现在只用于「每日电影推荐」这一功能。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-84-universal.zip" sparkle:version="84" sparkle:shortVersionString="0.9.0" length="8333750" type="application/octet-stream" sparkle:edSignature="lXq/PysFeSodABrRdYMYmy8AhfD9WLZIEvN7FUItl3WK1qKYQ+aNZT6HwfkatHGf+EXJKFoE1fqThYE12ogoBQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
