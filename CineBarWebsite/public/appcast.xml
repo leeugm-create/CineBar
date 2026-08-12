@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 88&lt;/li&gt;&lt;li&gt;- 修复：CineAI 聊天输入框移到消息底部（此前在顶部）。&lt;/li&gt;&lt;li&gt;- 修复：菜单栏图标右键点击可弹出菜单（AI/设置/检查更新/退出）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 89&lt;/li&gt;&lt;li&gt;- 新增：菜单栏右键菜单内嵌 AI 搜索框（可输入文字、带提示、回车即搜）。&lt;/li&gt;&lt;li&gt;- 改进：CineAI 推荐改为按主题出片单（励志/爱情/悬疑等），不再只回退到数量极少的默认候选。&lt;/li&gt;&lt;li&gt;- 新增：CineAI 回答里的片名自动配海报小卡（最多 5 部，点击进详情）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-88-universal.zip"
-        sparkle:version="88"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-89-universal.zip"
+        sparkle:version="89"
         sparkle:shortVersionString="0.9.0"
-        length="8351566"
+        length="8391084"
         type="application/octet-stream"
-        sparkle:edSignature="nml4wJ8IpDJEs+6ArWUrNNGLvnCIIblrIdWmrXL90ESWe+4HcSZH0cfben/R8lhNlzqZpCPM+A6S4zHEaLj/DA=="/>
+        sparkle:edSignature="DzdDff82Kk4DV9TOjB2SQKyV+papsxbgBHfzkQQ+dQgxV7cmzRUsmni98vVtZgTXnEaWhFjxOGJ1NIT4y+NqAw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 88&lt;/li&gt;&lt;li&gt;- 修复：CineAI 聊天输入框移到消息底部（此前在顶部）。&lt;/li&gt;&lt;li&gt;- 修复：菜单栏图标右键点击可弹出菜单（AI/设置/检查更新/退出）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-88-universal.zip" sparkle:version="88" sparkle:shortVersionString="0.9.0" length="8351566" type="application/octet-stream" sparkle:edSignature="nml4wJ8IpDJEs+6ArWUrNNGLvnCIIblrIdWmrXL90ESWe+4HcSZH0cfben/R8lhNlzqZpCPM+A6S4zHEaLj/DA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
