@@ -13239,22 +13239,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
     /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
     /// 内置提示文字（placeholder），回车即发送并打开 AI 面板。
+    /// 输入框边缘用渐变彩色描边，营造科技感。
     private func makeAISearchMenuItemView() -> NSView {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 34))
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 40))
+        container.wantsLayer = true
+
+        // 渐变彩色描边：半透明白色输入框外围套一圈青→品红→橙渐变圆角边框。
+        let gradient = CAGradientLayer()
+        gradient.frame = container.bounds
+        gradient.colors = [
+            NSColor.systemCyan.cgColor,
+            NSColor.systemBlue.cgColor,
+            NSColor.systemPurple.cgColor,
+            NSColor.systemPink.cgColor,
+            NSColor.systemOrange.cgColor,
+        ]
+        gradient.startPoint = CGPoint(x: 0, y: 0.5)
+        gradient.endPoint = CGPoint(x: 1, y: 0.5)
+        let borderWidth: CGFloat = 1.6
+        let bounds = container.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
+        gradient.cornerRadius = 11
+        gradient.frame = bounds
+        // 用 mask 只保留一圈描边环（中间挖空），让内层白底露出来。
+        let shapeMask = CAShapeLayer()
+        let ringPath = CGMutablePath()
+        ringPath.addRoundedRect(
+            in: bounds,
+            cornerWidth: 11, cornerHeight: 11,
+            transform: .identity
+        )
+        ringPath.addRoundedRect(
+            in: bounds.insetBy(dx: borderWidth, dy: borderWidth),
+            cornerWidth: 10, cornerHeight: 10,
+            transform: .identity
+        )
+        shapeMask.path = ringPath
+        shapeMask.fillRule = .evenOdd
+        gradient.mask = shapeMask
+        container.layer?.addSublayer(gradient)
 
         let field = NSTextField()
-        field.frame = NSRect(x: 8, y: 6, width: container.bounds.width - 16, height: 22)
+        field.frame = NSRect(
+            x: 10, y: 9,
+            width: container.bounds.width - 20, height: 22
+        )
         field.autoresizingMask = [.width]
-        field.placeholderString = "问问 CineAI…找一部80年代喜剧港片"
-        field.font = NSFont.systemFont(ofSize: 13)
-        field.isBezeled = true
-        field.bezelStyle = .roundedBezel
+        field.placeholderString = "🔍 问问 CineAI…找一部励志电影"
+        field.placeholderAttributedString = NSAttributedString(
+            string: field.placeholderString ?? "",
+            attributes: [
+                .foregroundColor: NSColor.secondaryLabelColor,
+                .font: NSFont.systemFont(ofSize: 12),
+            ]
+        )
+        field.font = NSFont.systemFont(ofSize: 12)
+        field.isBezeled = false
+        field.drawsBackground = false
+        field.backgroundColor = .clear
         field.usesSingleLineMode = true
         field.cell?.wraps = false
         field.cell?.isScrollable = true
+        field.focusRingType = .none
         field.target = self
         field.action = #selector(aiSearchFieldSubmit(_:))
-        field.tag = 0
         container.addSubview(field)
         return container
     }

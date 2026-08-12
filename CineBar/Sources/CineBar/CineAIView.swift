@@ -203,12 +203,19 @@ struct CineAIView: View {
         .onAppear {
             // 进入聊天：光标自动落到输入框，随时可打字。
             inputFocused = true
-            // 从菜单栏右键搜索框带入的查询：直接发送。
-            if let pending = store.cineAIPendingQuery, !pending.isEmpty {
-                store.cineAIPendingQuery = nil
-                send(pending)
-            }
+            consumePendingQuery()
         }
+        .onChange(of: store.cineAIPendingQuery) { _ in
+            // 面板已开着时从菜单栏再次搜索，也要能消费并发送。
+            consumePendingQuery()
+        }
+    }
+
+    /// 消费菜单栏搜索框带入的待发送查询：有则清空并直接发送。
+    private func consumePendingQuery() {
+        guard let pending = store.cineAIPendingQuery, !pending.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        store.cineAIPendingQuery = nil
+        send(pending)
     }
 
     /// 空态引导：告诉用户 4 个能力能干嘛。
