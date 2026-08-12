@@ -9,6 +9,11 @@ struct CineMovieQuery: Equatable {
     var keyword: String?
     /// 年份上限：近似"这类片子"的现代定位，可空；eg. 今年 → 当前年份
     var year: Int?
+    /// 年代区间（如 80年代 → yearStart 1980, yearEnd 1989），精确过滤
+    var yearStart: Int?
+    var yearEnd: Int?
+    /// 制片地区（ISO 3166-1 alpha-2，如 HK=港片、JP、US），精确过滤
+    var countryCode: String?
     /// 评分下限（高分/豆瓣8分 → 7.0；经典 → 7.5）
     var minVote: Double?
     /// 是否要"冷门/小众"（排序影响，不设条件）
@@ -52,6 +57,48 @@ enum CineMovieQueryParser {
         return nil
     }
 
+    /// 年代区间："80年代/1980年代/八十年代/90年代" → (1980,1989) 等。
+    private static func extractDecade(_ text: String) -> (Int, Int)? {
+        let cn: [Character: Int] = ["一": 1, "二": 2, "三": 3, "四": 4, "五": 5, "六": 6, "七": 7, "八": 8, "九": 9]
+        // 完整四位：1980 年代
+        if let m = text.range(of: #"(19|20)[0-9]0年代"#, options: .regularExpression) {
+            let s = String(text[m])
+            let start = Int(s.prefix(4))
+            return start.map { ($0, $0 + 9) }
+        }
+        // 两位简写：80 年代 → 1980s（"80年代"= 十位8 + "0年代"）
+        if let m = text.range(
+            of: #"([6-9])(0)年代"#, options: .regularExpression
+        ) {
+            let s = String(text[m])
+            let tens = s.first?.wholeNumberValue ?? 0
+            let start = 1900 + tens * 10
+            return (start, start + 9)
+        }
+        // 中文：八九十年代
+        if text.contains("年代") {
+            for (ch, v) in cn {
+                if text.contains("\(ch)十年代") {
+                    let start = 1900 + v * 10
+                    return (start, start + 9)
+                }
+            }
+        }
+        return nil
+    }
+
+    /// 地区："港片/香港"→HK、"日剧/日本"→JP、"美剧/美国"→US、"韩/韩国"→KR"。
+    private static func extractCountry(_ text: String) -> String? {
+        if text.localizedCaseInsensitiveContains("港") { return "HK" }
+        if text.localizedCaseInsensitiveContains("泰") { return "TH" }
+        if text.localizedCaseInsensitiveContains("日") || text.localizedCaseInsensitiveContains("日本") { return "JP" }
+        if text.localizedCaseInsensitiveContains("韩") { return "KR" }
+        if text.localizedCaseInsensitiveContains("美") || text.localizedCaseInsensitiveContains("好莱坞") { return "US" }
+        if text.localizedCaseInsensitiveContains("英剧") || text.localizedCaseInsensitiveContains("英国") { return "GB" }
+        if text.localizedCaseInsensitiveContains("法") || text.localizedCaseInsensitiveContains("法国") { return "FR" }
+        return nil
+    }
+
     /// 评分限定："高分/口碑好/豆瓣8分" → ≥7；"经典/神作" → ≥7.5；"豆瓣9" → 9
     private static func extractMinVote(_ text: String) -> Double? {
         if text.range(of: #"豆瓣\s?(\d+)"#, options: .regularExpression) != nil,
@@ -86,8 +133,13 @@ enum CineMovieQueryParser {
             }
         }
 
-        // 2) 年份
+        // 2) 年份 / 年代区间 / 地区
         query.year = extractYear(text)
+        if let (s, e) = extractDecade(text) {
+            query.yearStart = s
+            query.yearEnd = e
+        }
+        query.countryCode = extractCountry(text)
 
         // 3) 评分限定
         query.minVote = extractMinVote(text)

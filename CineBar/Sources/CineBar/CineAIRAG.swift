@@ -30,7 +30,7 @@ struct CineAIRAG {
         /// 找剧：返回候选连续剧名/简介文本块。
         var searchSeries: (String) async -> String = { _ in "" }
         /// 推荐：按用户影视偏好返回候选（电影）。
-        var recommendMovies: () async -> String = { "" }
+        var recommendMovies: (String) async -> String = { _ in "" }
         /// 推荐连续剧：按偏好返回候选（剧集）。
         var recommendSeries: () async -> String = { "" }
         /// 防剧透：当前剧的上下文（进度 + 已看集资料）。返回文本块；空表示无。
@@ -105,7 +105,7 @@ struct CineAIRAG {
             let isTV = Self.mediaTarget(of: input) == .tv
             let facts = isTV
                 ? await data.recommendSeries()
-                : await data.recommendMovies()
+                : await data.recommendMovies(input)
             built = [
                 system("你是 CineAI。基于用户偏好与提供的候选（连续剧或电影）推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部\(isTV ? "剧" : "电影")。"),
                 user("按用户偏好推荐的候选（\(isTV ? "连续剧" : "电影")）：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),

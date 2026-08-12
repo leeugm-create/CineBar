@@ -20,8 +20,8 @@ extension MovieStore {
                 searchSeries: { query in
                     await selfRef.cineAISearchSeries(query)
                 },
-                recommendMovies: {
-                    await selfRef.cineAIRecommendMovies()
+                recommendMovies: { input in
+                    await selfRef.cineAIRecommendMovies(input)
                 },
                 recommendSeries: {
                     await selfRef.cineAIRecommendSeries()
@@ -77,17 +77,19 @@ extension MovieStore {
         }
     }
 
-    /// 推荐候选：全库高分片（不依赖用户偏好，偏好只用于"每日电影推荐"），磁力可下载的排前面。
-    private func cineAIRecommendMovies() async -> String {
+    /// 推荐候选：按用户问题条件（类型/年代区间/地区）在全库精确搜索；无明确条件时回退高分全集。
+    /// 磁力可下载的排前；全库范围、不依赖用户偏好（偏好只用于每日推荐）。
+    private func cineAIRecommendMovies(_ input: String) async -> String {
         guard hasToken else { return "" }
         let client = TMDBClient(token: token, language: appLanguage.apiCode)
+        let q = CineMovieQueryParser.parse(input)
         do {
             let page = try await client.discover(
-                startYear: nil,
-                endYear: nil,
-                genreIDs: [],
-                keywordQueries: [],
-                originCountry: nil,
+                startYear: q.yearStart ?? q.year.map { $0 - 2 },
+                endYear: q.yearEnd ?? q.year,
+                genreIDs: q.genreIDs,
+                keywordQueries: q.keyword.map { [$0] } ?? [],
+                originCountry: q.countryCode,
                 sortMode: .rating,
                 page: 1
             )
@@ -215,13 +217,14 @@ extension MovieStore {
         let parsed = CineMovieQueryParser.parse(query)
         do {
             var ms: [Movie]
-            if !parsed.genreIDs.isEmpty || parsed.keyword != nil {
+            if !parsed.genreIDs.isEmpty || parsed.keyword != nil ||
+                parsed.countryCode != nil || parsed.yearStart != nil {
                 let page = try await client.discover(
-                    startYear: parsed.year.map { $0 - 2 },
-                    endYear: parsed.year,
+                    startYear: parsed.yearStart ?? parsed.year.map { $0 - 2 },
+                    endYear: parsed.yearEnd ?? parsed.year,
                     genreIDs: parsed.genreIDs,
                     keywordQueries: parsed.keyword.map { [$0] } ?? [],
-                    originCountry: nil,
+                    originCountry: parsed.countryCode,
                     sortMode: parsed.wantObscure ? .rating : .popularity,
                     page: 1
                 )
