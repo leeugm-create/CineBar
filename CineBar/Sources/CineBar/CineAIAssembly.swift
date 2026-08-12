@@ -59,7 +59,7 @@ extension MovieStore {
             let result = try await client.discoverTV(
                 startYear: nil,
                 endYear: nil,
-                genreID: preferredMovieGenreIDs.first,
+                genreID: nil,
                 originCountry: nil,
                 sortMode: .rating,
                 page: 1
@@ -77,7 +77,7 @@ extension MovieStore {
         }
     }
 
-    /// 推荐候选：按用户电影偏好取高分片，且只保留磁力库里有资源的（否则不推荐空影片）。
+    /// 推荐候选：全库高分片（不依赖用户偏好，偏好只用于"每日电影推荐"），磁力可下载的排前面。
     private func cineAIRecommendMovies() async -> String {
         guard hasToken else { return "" }
         let client = TMDBClient(token: token, language: appLanguage.apiCode)
@@ -85,7 +85,7 @@ extension MovieStore {
             let page = try await client.discover(
                 startYear: nil,
                 endYear: nil,
-                genreIDs: Array(preferredMovieGenreIDs),
+                genreIDs: [],
                 keywordQueries: [],
                 originCountry: nil,
                 sortMode: .rating,
