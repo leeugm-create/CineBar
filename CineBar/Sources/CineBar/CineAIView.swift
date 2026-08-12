@@ -1,19 +1,18 @@
 import SwiftUI
 
-/// CineAI 的 Provider 工厂：从 UserDefaults 读配置（本地开发可直连 DeepSeek，
-/// 生产走服务端限额代理）。未配置时用 Stub（提示未配置，不联网、不乱答）。
+/// CineAI 的 Provider 工厂。
+///
+/// 产品正式路径固定走「服务端代理」：客户端只发 messages + 匿名 device，
+/// 不接触任何 DeepSeek Key（Key 由代理保管并做限额/缓存）。
+/// 代理地址可用 UserDefaults 覆盖（本地/测试），默认 `cineai.cinebar.cc`。
 struct CineAIProviderFactory {
     static func make() -> AIProvider {
         let d = UserDefaults.standard
-        if let base = d.string(forKey: "cineai.baseURL"),
-           !base.isEmpty {
-            return DeepSeekProvider(
-                baseURL: URL(string: base)!,
-                apiKey: d.string(forKey: "cineai.apiKey"),
-                model: d.string(forKey: "cineai.model") ?? "deepseek-chat"
-            )
-        }
-        return StubAIProvider(fallback: "尚未配置 CineAI 模型（请在设置里配置 baseURL / API Key）。")
+        let base = d.string(forKey: "cineai.proxyBaseURL")
+            ?? "https://cineai.cinebar.cc"
+        return CineAIProxyProvider(
+            baseURL: URL(string: base) ?? URL(string: "https://cineai.cinebar.cc")!
+        )
     }
 }
 

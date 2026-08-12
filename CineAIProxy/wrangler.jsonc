@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "cineai-proxy",
+  "main": "worker.js",
+  "compatibility_date": "2026-07-25",
+  "routes": [
+    { "pattern": "cineai.cinebar.cc", "custom_domain": true }
+  ],
+  "secrets": {
+    "required": ["DEEPSEEK_API_KEY"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cineai-proxy",
+      "database_id": "CINEAI_PROXY_D1_ID"
+    }
+  ]
+}

@@ -109,3 +109,67 @@ enum CineAIError: LocalizedError {
         }
     }
 }
+
+/// 走「服务端代理」的 Provider：客户端只发 messages + 匿名 device，
+/// 不接触任何模型 Key（Key 由代理保管并做限额/缓存）。这是产品正式路径。
+final class CineAIProxyProvider: AIProvider {
+
+    private let baseURL: URL
+    private let device: String
+    private let session: URLSession
+
+    init(
+        baseURL: URL,
+        device: String = CineBarDeviceIdentity.value(),
+        session: URLSession = .shared
+    ) {
+        self.baseURL = baseURL
+        self.device = device
+        self.session = session
+    }
+
+    func complete(
+        messages: [AIChatMessage],
+        maxTokens: Int?,
+        reasoning: Bool
+    ) async throws -> AIResult {
+        let endpoint = baseURL.appendingPathComponent("v1/chat/completions")
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let payload: [String: Any] = [
+            "device": device,
+            "messages": messages.map { ["role": $0.role, "content": $0.content] },
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw CineAIError.invalidResponse
+        }
+        // 代理失败时返回 error 文案（如超限提示），解析出来透传给用户。
+        guard http.statusCode == 200 else {
+            let body = (try? JSONSerialization.jsonObject(with: data))
+                as? [String: Any]
+            let message = body?["error"] as? String
+                ?? "AI 服务错误（\(http.statusCode)）"
+            throw CineAIError.server(status: http.statusCode, body: message)
+        }
+        let body = (try? JSONSerialization.jsonObject(with: data))
+            as? [String: Any]
+        // 代理返回 { cached, result: <DeepSeek chat/completions 响应> }。
+        guard let result = body?["result"] as? [String: Any] else {
+            throw CineAIError.invalidResponse
+        }
+        let choices = result["choices"] as? [[String: Any]]
+        let firstMessage = choices?.first?["message"] as? [String: Any]
+        let text = firstMessage?["content"] as? String ?? ""
+        let usage = result["usage"] as? [String: Any]
+        return AIResult(
+            text: text,
+            inputTokens: (usage?["prompt_tokens"] as? Int) ?? 0,
+            outputTokens: (usage?["completion_tokens"] as? Int) ?? 0
+        )
+    }
+}
