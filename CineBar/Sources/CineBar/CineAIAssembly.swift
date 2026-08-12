@@ -28,9 +28,25 @@ extension MovieStore {
                 },
                 spoilerContext: {
                     await selfRef.cineAISpoilerContext()
+                },
+                webSearch: { query in
+                    await Self.cineAIWebSearch(query)
                 }
             )
         )
+    }
+
+    /// 联网搜索兜底：把必应国内版抓到的网页摘要拼成文本块；抓不到返回空。
+    /// 独立 static（不依赖实例状态），供测试也能直接调用。
+    static func cineAIWebSearch(_ query: String) async -> String {
+        let items = await CineWebSearchClient().search(query, limit: 5)
+        guard !items.isEmpty else { return "" }
+        return items.enumerated().map { i, item in
+            let src = item.source.isEmpty ? "网页" : item.source
+            var line = "\(i + 1). \(item.title)（来源：\(src)）"
+            if !item.snippet.isEmpty { line += " - \(item.snippet)" }
+            return line
+        }.joined(separator: "\n")
     }
 
     /// 找连续剧：按检索词查 TMDB 剧集，返回候选文本。

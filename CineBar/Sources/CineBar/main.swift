@@ -12899,6 +12899,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var playbackKeyMonitor: Any?
     private var sparkleWindowObserver: NSObjectProtocol?
     private var dockResetObserver: NSObjectProtocol?
+    /// 菜单栏右键"AI 搜索"弹出的独立悬浮输入条窗口（放在常规窗口里，输入法/聚焦才正常）。
+    private var aiSearchWindow: NSPanel?
+    /// 当前悬浮输入条里的输入框（供回车触发与字符串读取）。
+    private weak var aiSearchField: NSTextField?
     private var isMediaPlaybackActive = false
     private var updateBadgeView: NSView?
     private var updateBadgeCancellable: AnyCancellable?
@@ -13255,8 +13259,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         let menu = NSMenu()
         menu.autoenablesItems = false
 
-        let aiItem = NSMenuItem()
-        aiItem.view = makeAISearchMenuItemView()
+        let aiItem = NSMenuItem(
+            title: "AI 搜索", action: #selector(showAISearchBar), keyEquivalent: "")
+        aiItem.target = self
         menu.addItem(aiItem)
 
         let settingsItem = NSMenuItem(
@@ -13289,95 +13294,95 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
     }
 
-    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
-    /// 内置提示文字（placeholder），回车即发送并打开 AI 面板。
-    /// 彩色渐变描边紧贴输入框一圈（不放大），营造科技感。
-    private func makeAISearchMenuItemView() -> NSView {
-        let fieldHeight: CGFloat = 24
-        let borderWidth: CGFloat = 1.5
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: fieldHeight + 10))
-        container.wantsLayer = true
+    /// 菜单栏右键"AI 搜索"：在菜单栏图标下方弹出一个独立小输入条窗口。
+    /// 放常规窗口（非菜单 view）里的 TextField 才能正常获得聚焦与中文输入法。
+    @objc func showAISearchBar() {
+        if let existing = aiSearchWindow {
+            existing.makeKeyAndOrderFront(nil)
+            aiSearchField?.becomeFirstResponder()
+            return
+        }
 
-        let field = CineAIMenuField(frame: NSRect(
-            x: 5, y: 5,
-            width: container.bounds.width - 10, height: fieldHeight
-        ))
+        let width: CGFloat = 260
+        let height: CGFloat = 46
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.isFloatingPanel = true
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = false
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        panel.level = .statusBar
+
+        // 定位：沿菜单栏图标所在屏幕顶部、图标正下方。
+        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) }
+            ?? NSScreen.main ?? NSScreen.screens.first
+        let topY = screen?.visibleFrame.maxY ?? NSScreen.main?.visibleFrame.maxY ?? 0
+        let iconX = statusItem?.button?.window?.frame.midX ?? NSScreen.main?.frame.midX ?? 0
+        panel.setFrame(
+            NSRect(x: iconX - width / 2, y: topY - height - 6, width: width, height: height),
+            display: true
+        )
+
+        // 圆角磨砂背景 + 输入框。
+        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        container.material = .hudWindow
+        container.state = .active
+        container.blendingMode = .withinWindow
+        container.wantsLayer = true
+        container.layer?.cornerRadius = 10
+        container.layer?.masksToBounds = true
+
+        let field = NSTextField(
+            frame: NSRect(x: 12, y: 11, width: width - 24, height: 24)
+        )
         field.autoresizingMask = [.width]
-        field.font = NSFont.systemFont(ofSize: 12)
-        field.isBezeled = false
-        field.drawsBackground = false
-        field.backgroundColor = .clear
+        field.font = NSFont.systemFont(ofSize: 13)
+        field.isBezeled = true
+        field.bezelStyle = .roundedBezel
         field.usesSingleLineMode = true
         field.cell?.wraps = false
         field.cell?.isScrollable = true
-        field.focusRingType = .none
-        field.textColor = .labelColor
-        // 回车直接走子类拦截，不依赖菜单 target/action 响应链（更可靠）。
-        field.onSubmit = { [weak self] text in
-            self?.runAISearch(text)
-        }
+        field.focusRingType = .default
+        field.target = self
+        field.action = #selector(aiSearchFieldSubmit(_:))
         container.addSubview(field)
 
-        // 描边层放在 field 上层，只画 field 边界一圈（圆角环），紧贴输入框不放大。
-        let gradient = CAGradientLayer()
-        gradient.frame = field.bounds
-        gradient.colors = [
-            NSColor.systemCyan.cgColor,
-            NSColor.systemBlue.cgColor,
-            NSColor.systemPurple.cgColor,
-            NSColor.systemPink.cgColor,
-            NSColor.systemOrange.cgColor,
-        ]
-        gradient.startPoint = CGPoint(x: 0, y: 0.5)
-        gradient.endPoint = CGPoint(x: 1, y: 0.5)
-        gradient.cornerRadius = 8
-        let ringRect = field.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
-        let shapeMask = CAShapeLayer()
-        let ringPath = CGMutablePath()
-        ringPath.addRoundedRect(
-            in: ringRect,
-            cornerWidth: 8, cornerHeight: 8,
-            transform: .identity
-        )
-        ringPath.addRoundedRect(
-            in: ringRect.insetBy(dx: borderWidth, dy: borderWidth),
-            cornerWidth: 7, cornerHeight: 7,
-            transform: .identity
-        )
-        shapeMask.path = ringPath
-        shapeMask.fillRule = .evenOdd
-        gradient.mask = shapeMask
-        let ringLayer = CALayer()
-        ringLayer.frame = field.frame
-        ringLayer.addSublayer(gradient)
-        container.layer?.addSublayer(ringLayer)
-
-        // 流光效果：让渐变起止点循环移动，色彩沿边框持续流动。
-        let flow = CABasicAnimation(keyPath: "startPoint")
-        flow.fromValue = CGPoint(x: 0, y: 0.5)
-        flow.toValue = CGPoint(x: 1, y: 0.5)
-        flow.duration = 2.2
-        flow.autoreverses = true
-        flow.repeatCount = .infinity
-        gradient.add(flow, forKey: "flow")
-
-        field.wantsLayer = true
-        field.layer?.masksToBounds = false
-        return container
+        panel.contentView = container
+        aiSearchWindow = panel
+        aiSearchField = field
+        panel.makeKeyAndOrderFront(nil)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        field.becomeFirstResponder()
     }
 
     /// 检查更新后输入的搜索：设置待发送查询并打开 AI 面板。
-    @objc private func aiSearchFieldSubmit(_ sender: NSTextField) {
-        runAISearch(sender.stringValue)
+    @objc func aiSearchFieldSubmit(_ sender: NSTextField) {
+        let query = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        aiSearchSubmit(query)
     }
 
     private func runAISearch(_ raw: String) {
+        aiSearchSubmit(raw)
+    }
+
+    private func aiSearchSubmit(_ raw: String) {
         let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
         // 先存待发送查询，再打开面板。注意不能经由 contextMenuAI()（它会把
         // cineAIPendingQuery 置 nil），否则查询会在被 CineAIView 消费前就被清掉。
         store.cineAIPendingQuery = query
         store.isShowingCineAI = true
+        aiSearchWindow?.orderOut(nil)
+        aiSearchWindow = nil
+        aiSearchField = nil
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
     }
 

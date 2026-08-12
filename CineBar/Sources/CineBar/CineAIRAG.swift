@@ -35,6 +35,8 @@ struct CineAIRAG {
         var recommendSeries: () async -> String = { "" }
         /// 防剧透：当前剧的上下文（进度 + 已看集资料）。返回文本块；空表示无。
         var spoilerContext: () async -> String = { "" }
+        /// 联网搜索：片库/TMDB 查不到时的兜底（如未上映、冷门、新网信息）。返回网页摘要文本块；空表示抓不到。
+        var webSearch: (String) async -> String = { _ in "" }
     }
 
     let provider: AIProvider
@@ -81,9 +83,22 @@ struct CineAIRAG {
             let facts = isTV
                 ? await data.searchSeries(input)
                 : await data.searchMovies(input)
+            var web = ""
+            if facts.isEmpty {
+                // 片库/TMDB 查不到（未上映、影库没有、冷门新片）→ 联网搜索兜底。
+                web = await data.webSearch(input)
+            }
+            let factsPrompt: String
+            if !facts.isEmpty {
+                factsPrompt = "候选资料：\(facts)"
+            } else if !web.isEmpty {
+                factsPrompt = "片库没有对应候选，以下是联网搜索到的真实资料（可据此回答，不要编造）：\n\(web)"
+            } else {
+                factsPrompt = "（片库与联网都未检索到，请据实说明，不要编造。）"
+            }
             built = [
-                system("你是 CineAI，一个影视助手。用户要的是连续剧还是电影，就以提供的候选为准给对应的推荐；不要凭空编造不存在的作品。回答用中文，简洁，给出名称并说明理由，如需多部用列表。"),
-                user("用户想找（\(isTV ? "连续剧" : "电影")）：\(input)\n\n候选资料：\(facts.isEmpty ? "（未检索到候选，请据实说明找不到匹配）" : facts)"),
+                system("你是 CineAI，一个影视助手。用户要的是连续剧还是电影，就按提供的信息回答；不要凭空编造不存在的作品。回答用中文，简洁，要点如下。"),
+                user("用户想找（\(isTV ? "连续剧" : "电影")）：\(input)\n\n\(factsPrompt)"),
             ]
         case .spoilerSafe:
             // 防剧透：进度与已看内容由调用方预处理好注入。
@@ -97,9 +112,21 @@ struct CineAIRAG {
             built = [system(systemContent), user(userContent)]
         case .mediaIntro:
             let facts = await data.fetchFacts(input)
+            var web = ""
+            if facts.isEmpty {
+                web = await data.webSearch(input)
+            }
+            let dataPrompt: String
+            if !facts.isEmpty {
+                dataPrompt = "影视资料：\n\(facts)"
+            } else if !web.isEmpty {
+                dataPrompt = "片库暂无资料，以下是联网搜索到的真实信息（据此回答，不要编造）：\n\(web)"
+            } else {
+                dataPrompt = "（暂无资料）"
+            }
             built = [
-                system("你是 CineAI。只能根据提供的影视资料回答，不要编造资料以外的剧情细节。回答用中文，简洁。"),
-                user("影视资料：\n\(facts.isEmpty ? "（暂无资料）" : facts)\n\n用户问：\(input)"),
+                system("你是 CineAI。根据提供的影视资料回答，资料未提及的细节不要编造。若资料来自联网搜索结果，请如实说明信息来自网络。回答用中文、简洁。"),
+                user("\(dataPrompt)\n\n用户问：\(input)"),
             ]
         case .recommend:
             let isTV = Self.mediaTarget(of: input) == .tv
