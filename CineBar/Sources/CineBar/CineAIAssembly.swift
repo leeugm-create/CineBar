@@ -91,16 +91,21 @@ extension MovieStore {
                 sortMode: .rating,
                 page: 1
             )
-            // 只保留磁力库里有资源的候选
+            // 推荐候选 = TMDB 高分全集（范围大），磁力库可下载的排前面（优先可下载），
+            // 磁力库没有的也保留（可在线播放 Moovie），避免"只搜片库资源太少"。
             let magnet = Hao6vMagnetStore.shared
             let playable = page.movies
-                .filter { magnet.contains(title: $0.title) }
-                .sorted { $0.voteAverage > $1.voteAverage }
-                .prefix(10)
-            let lines = playable.map { m -> String in
-                var line = "《\(m.title)》(\(m.year))"
-                if m.voteAverage > 0 { line += " 评分 \(String(format: "%.1f", m.voteAverage))" }
-                if !m.overview.isEmpty { line += " 简介：\(m.overview.prefix(90))" }
+                .map { (movie: $0, hasMagnet: magnet.contains(title: $0.title)) }
+                .sorted {
+                    if $0.hasMagnet != $1.hasMagnet { return $0.hasMagnet }
+                    return $0.movie.voteAverage > $1.movie.voteAverage
+                }
+                .prefix(12)
+            let lines = playable.map { e in
+                var line = "《\(e.movie.title)》(\(e.movie.year))"
+                if e.movie.voteAverage > 0 { line += " 评分 \(String(format: "%.1f", e.movie.voteAverage))" }
+                if !e.movie.overview.isEmpty { line += " 简介：\(e.movie.overview.prefix(90))" }
+                if !e.hasMagnet { line += "（可在线播放）" }
                 return line
             }
             return lines.joined(separator: "\n")
