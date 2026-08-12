@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 83&lt;/li&gt;&lt;li&gt;- 优化：扩大 CineAI「今晚看什么」的推荐范围——不只推磁力库里的片，磁力可下载的优先、其余可在线播放的也一并推荐（候选增多）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 84&lt;/li&gt;&lt;li&gt;- 调整：CineAI 的推荐/找片改为在**整个片库**中搜索推荐（不再受你设置的影视类型偏好限制）；影视类型偏好现在只用于「每日电影推荐」这一功能。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-83-universal.zip"
-        sparkle:version="83"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-84-universal.zip"
+        sparkle:version="84"
         sparkle:shortVersionString="0.9.0"
-        length="8333063"
+        length="8333750"
         type="application/octet-stream"
-        sparkle:edSignature="TvSh4IPzdM0BmTSvOfH9374dPRpFH39Hhhbwyu+gqnHzUKrPZHalIDy5zizMOjrgd0CHnpMzBQ2bZAxE5zdtCA=="/>
+        sparkle:edSignature="lXq/PysFeSodABrRdYMYmy8AhfD9WLZIEvN7FUItl3WK1qKYQ+aNZT6HwfkatHGf+EXJKFoE1fqThYE12ogoBQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 83&lt;/li&gt;&lt;li&gt;- 优化：扩大 CineAI「今晚看什么」的推荐范围——不只推磁力库里的片，磁力可下载的优先、其余可在线播放的也一并推荐（候选增多）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-83-universal.zip" sparkle:version="83" sparkle:shortVersionString="0.9.0" length="8333063" type="application/octet-stream" sparkle:edSignature="TvSh4IPzdM0BmTSvOfH9374dPRpFH39Hhhbwyu+gqnHzUKrPZHalIDy5zizMOjrgd0CHnpMzBQ2bZAxE5zdtCA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
