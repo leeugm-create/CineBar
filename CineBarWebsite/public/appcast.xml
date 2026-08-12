@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 82&lt;/li&gt;&lt;li&gt;- 优化：CineAI 聊天输入框移到顶部（与主页 AI 入口位置一致，不再跑到底部）；进入聊天界面时光标自动就位，可直接打字。&lt;/li&gt;&lt;li&gt;- 修复：评分提交后（或已评分过的影片）不再重复显示评分提交框——避免&amp;quot;提交后无反应、滑杆/按钮还在&amp;quot;。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 83&lt;/li&gt;&lt;li&gt;- 优化：扩大 CineAI「今晚看什么」的推荐范围——不只推磁力库里的片，磁力可下载的优先、其余可在线播放的也一并推荐（候选增多）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-82-universal.zip"
-        sparkle:version="82"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-83-universal.zip"
+        sparkle:version="83"
         sparkle:shortVersionString="0.9.0"
-        length="8330498"
+        length="8333063"
         type="application/octet-stream"
-        sparkle:edSignature="vtb9HKMyAksYri+iRbe9JYepc4okW6LVIDZGIBBn+YteOcb/s8mZO1+gVnh7w8FvRL44O74kJUvm7/EwNGarBQ=="/>
+        sparkle:edSignature="TvSh4IPzdM0BmTSvOfH9374dPRpFH39Hhhbwyu+gqnHzUKrPZHalIDy5zizMOjrgd0CHnpMzBQ2bZAxE5zdtCA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 82&lt;/li&gt;&lt;li&gt;- 优化：CineAI 聊天输入框移到顶部（与主页 AI 入口位置一致，不再跑到底部）；进入聊天界面时光标自动就位，可直接打字。&lt;/li&gt;&lt;li&gt;- 修复：评分提交后（或已评分过的影片）不再重复显示评分提交框——避免&amp;quot;提交后无反应、滑杆/按钮还在&amp;quot;。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-82-universal.zip" sparkle:version="82" sparkle:shortVersionString="0.9.0" length="8330498" type="application/octet-stream" sparkle:edSignature="vtb9HKMyAksYri+iRbe9JYepc4okW6LVIDZGIBBn+YteOcb/s8mZO1+gVnh7w8FvRL44O74kJUvm7/EwNGarBQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
