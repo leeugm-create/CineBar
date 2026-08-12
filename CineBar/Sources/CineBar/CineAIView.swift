@@ -153,9 +153,12 @@ struct CineAIView: View {
                     )
                 }
             } catch {
+                // 统一错误模型：只展示 displayText，不直接处理底层网络/HTTP 原始错误。
+                let text = (error as? CineAIError)?.displayText
+                    ?? "出错了，请重试。"
                 await MainActor.run {
                     messages.append(
-                        AIChatMessage(role: "assistant", content: "出错：\(error.localizedDescription)")
+                        AIChatMessage(role: "assistant", content: text)
                     )
                 }
             }

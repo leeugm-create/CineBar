@@ -56,12 +56,27 @@ final class DeepSeekProvider: AIProvider {
             options: []
         )
 
-        let (data, response) = try await session.data(for: request)
+        var data: Data
+        var response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let urlError as URLError {
+            if urlError.code == .timedOut {
+                throw CineAIError.networkTimeout
+            }
+            throw CineAIError.networkUnavailable
+        }
         guard let http = response as? HTTPURLResponse else {
-            throw CineAIError.invalidResponse
+            throw CineAIError.badResponse
         }
         guard http.statusCode == 200 else {
-            throw CineAIError.server(status: http.statusCode, body: String(data: data, encoding: .utf8))
+            if http.statusCode == 429 {
+                throw CineAIError.rateLimited
+            }
+            if http.statusCode >= 500 {
+                throw CineAIError.serverError
+            }
+            throw CineAIError.badResponse
         }
 
         let payload = try JSONDecoder().decode(ChatCompletion.self, from: data)
@@ -96,20 +111,6 @@ private struct ChatCompletion: Decodable {
     let usage: Usage?
 }
 
-enum CineAIError: LocalizedError {
-    case invalidResponse
-    case server(status: Int, body: String?)
-
-    var errorDescription: String? {
-        switch self {
-        case .invalidResponse:
-            return "AI 服务返回了无效响应"
-        case .server(let status, let body):
-            return "AI 服务错误（\(status)）\(body ?? "")"
-        }
-    }
-}
-
 /// 走「服务端代理」的 Provider：客户端只发 messages + 匿名 device，
 /// 不接触任何模型 Key（Key 由代理保管并做限额/缓存）。这是产品正式路径。
 final class CineAIProxyProvider: AIProvider {
@@ -117,7 +118,6 @@ final class CineAIProxyProvider: AIProvider {
     private let baseURL: URL
     private let device: String
     private let session: URLSession
-
     init(
         baseURL: URL,
         device: String = CineBarDeviceIdentity.value(),
@@ -144,23 +144,32 @@ final class CineAIProxyProvider: AIProvider {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw CineAIError.invalidResponse
+        var data: Data
+        var response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch let urlError as URLError {
+            if urlError.code == .timedOut {
+                throw CineAIError.networkTimeout
+            }
+            throw CineAIError.networkUnavailable
         }
-        // 代理失败时返回 error 文案（如超限提示），解析出来透传给用户。
+        guard let http = response as? HTTPURLResponse else {
+            throw CineAIError.badResponse
+        }
+        // 非 200：收敛到统一错误（429→限流，5xx→服务错，其它→badResponse）。
         guard http.statusCode == 200 else {
-            let body = (try? JSONSerialization.jsonObject(with: data))
-                as? [String: Any]
-            let message = body?["error"] as? String
-                ?? "AI 服务错误（\(http.statusCode)）"
-            throw CineAIError.server(status: http.statusCode, body: message)
+            switch http.statusCode {
+            case 429: throw CineAIError.rateLimited
+            case 500..<600: throw CineAIError.serverError
+            default: throw CineAIError.badResponse
+            }
         }
         let body = (try? JSONSerialization.jsonObject(with: data))
             as? [String: Any]
         // 代理返回 { cached, result: <DeepSeek chat/completions 响应> }。
         guard let result = body?["result"] as? [String: Any] else {
-            throw CineAIError.invalidResponse
+            throw CineAIError.badResponse
         }
         let choices = result["choices"] as? [[String: Any]]
         let firstMessage = choices?.first?["message"] as? [String: Any]
