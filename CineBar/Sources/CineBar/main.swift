@@ -3161,6 +3161,7 @@ struct CommunityRatingClient {
 final class MovieStore: ObservableObject {
     /// CineAI 观影进度（防剧透数据源）。单 macOS 端，UserDefaults 持久化。
     let cineAIProgress = CineAIProgressStore()
+    @Published var isShowingCineAI = false
     @Published var movies: [Movie] = Movie.demo
     @Published var televisionShows: [TVShow] = [TVShow.demo]
     @Published var mediaSection: MediaSection = .movies
@@ -12131,6 +12132,12 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .help("设置")
+                    Button {
+                        store.isShowingCineAI.toggle()
+                    } label: {
+                        Image(systemName: "sparkles")
+                    }
+                    .help("CineAI 影视助手")
                 }
 
                 Picker(
@@ -12239,6 +12246,9 @@ struct ContentView: View {
                 Divider()
             }
 
+            if store.isShowingCineAI {
+                CineAIView(store: store)
+            } else {
             HStack {
                 if store.isLoading {
                     ProgressView().controlSize(.small)
@@ -12731,6 +12741,7 @@ struct ContentView: View {
             .font(.caption)
             .padding(.horizontal)
             .frame(height: 36)
+            }
         }
     }
 }
