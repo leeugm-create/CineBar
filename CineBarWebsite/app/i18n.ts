@@ -49,6 +49,9 @@ export type Messages = {
   playerSource: string;
   today: string;
   trending: string;
+  aiSearch: string;
+  trendingMovies: string;
+  trendingShows: string;
   watchlist: string;
   dailyRec: string;
   dailyBy: string;
@@ -129,6 +132,9 @@ export const messages: Record<Locale, Messages> = {
     playerSource: "可在线播放",
     today: "每日推荐",
     trending: "本周热门",
+    aiSearch: "AI 搜索",
+    trendingMovies: "本周热门电影",
+    trendingShows: "本周热门电视",
     watchlist: "我的片单",
     dailyRec: "每日推荐",
     dailyBy: "根据你的类型与地区偏好",
@@ -242,6 +248,9 @@ export const messages: Record<Locale, Messages> = {
     playerSource: "可線上播放",
     today: "每日推薦",
     trending: "本週熱門",
+    aiSearch: "AI 搜尋",
+    trendingMovies: "本週熱門電影",
+    trendingShows: "本週熱門電視",
     watchlist: "我的片單",
     dailyRec: "每日推薦",
     dailyBy: "根據你的類型與地區偏好",
@@ -355,6 +364,9 @@ export const messages: Record<Locale, Messages> = {
     playerSource: "Watch online",
     today: "Daily Picks",
     trending: "Trending this week",
+    aiSearch: "AI Search",
+    trendingMovies: "Trending movies this week",
+    trendingShows: "Trending TV this week",
     watchlist: "My watchlist",
     dailyRec: "Daily Picks",
     dailyBy: "Based on your taste & region",
@@ -467,6 +479,9 @@ export const messages: Record<Locale, Messages> = {
     playerSource: "オンラインで再生",
     today: "今日のおすすめ",
     trending: "今週のトレンド",
+    aiSearch: "AI 検索",
+    trendingMovies: "今週の注目映画",
+    trendingShows: "今週の注目テレビ",
     watchlist: "マイリスト",
     dailyRec: "今日のおすすめ",
     dailyBy: "あなたの好みと地域に基づく",
