@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Messages } from "./i18n";
+import type { Locale, Messages } from "./i18n";
 
 type TrendingMovie = {
   title: string;
@@ -11,12 +11,13 @@ type TrendingMovie = {
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-89-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-90-universal.zip";
 
-export default function HomeHero({ m }: { m: Messages }) {
+const isChinese = (locale: Locale) => locale === "zh-Hans" || locale === "zh-Hant";
+
+export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
   const [shows, setShows] = useState<TrendingMovie[]>([]);
-  const [posterLoaded, setPosterLoaded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -32,21 +33,9 @@ export default function HomeHero({ m }: { m: Messages }) {
     return () => controller.abort();
   }, []);
 
-  const backdrop = movies.length > 0 ? movies[0].poster : "";
-
   return (
     <>
-      <section className="hero hero-backdrop" id="top">
-        {backdrop && (
-          <div className="hero-backdrop-img">
-            <img
-              src={backdrop}
-              alt=""
-              aria-hidden="true"
-              onLoad={() => setPosterLoaded(true)}
-            />
-          </div>
-        )}
+      <section className="hero" id="top">
         <div className="hero-copy">
           <p className="hero-version">{m.heroVersion}</p>
           <div className="hero-title">
@@ -74,11 +63,13 @@ export default function HomeHero({ m }: { m: Messages }) {
         title={m.trendingMovies}
         items={movies}
         kind="movie"
+        locale={locale}
       />
       <TrendingRow
         title={m.trendingShows}
         items={shows}
         kind="tv"
+        locale={locale}
       />
     </>
   );
@@ -88,10 +79,12 @@ function TrendingRow({
   title,
   items,
   kind,
+  locale,
 }: {
   title: string;
   items: TrendingMovie[];
   kind: "movie" | "tv";
+  locale: Locale;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +94,13 @@ function TrendingRow({
     const card = track.querySelector<HTMLElement>(".ht-card");
     const step = (card ? card.offsetWidth + 16 : 260) * offset;
     track.scrollBy({ left: step, behavior: "smooth" });
+  }
+
+  function itemHref(item: TrendingMovie): string {
+    if (isChinese(locale) && item.doubanID) {
+      return `https://www.douban.com/subject/${item.doubanID}/`;
+    }
+    return `https://www.themoviedb.org/search?query=${encodeURIComponent(item.title)}`;
   }
 
   return (
@@ -134,7 +134,7 @@ function TrendingRow({
             <a
               className="ht-card"
               key={`${kind}-${item.doubanID}`}
-              href={`https://www.douban.com/subject/${item.doubanID}/`}
+              href={itemHref(item)}
               target="_blank"
               rel="noreferrer"
             >
