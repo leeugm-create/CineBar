@@ -61,6 +61,9 @@ export type Messages = {
   navSupport: string;
   featuresTitle: string;
   features: readonly [string, string][];
+  caiTitle: string;
+  caiLead: string;
+  caiPoints: readonly [string, string][];
   steps: readonly string[];
   supportTitle: string;
   supportLead: string;
@@ -145,6 +148,14 @@ export const messages: Record<Locale, Messages> = {
     navInstall: "安装",
     navSupport: "支持",
     featuresTitle: "找片需要的信息，一处看清",
+    caiTitle: "CineAI —— CineBar 里的影视 AI 助手",
+    caiLead: "用中文跟它聊影视：一句话找片、问剧情、要推荐、无剧透问答。",
+    caiPoints: [
+      ["🔍 自然语言找片", "用一句话描述想看的片，AI 帮你搜出来"],
+      ["📺 影视问答", "问某部剧/片讲什么、导演、评分"],
+      ["🎬 个性化推荐", "按你的影视偏好推荐片单"],
+      ["🚫 无剧透问答", "记住你看剧的进度，不剧透后面"],
+    ],
     features: [
       ["发现", "本周热门、每日推荐、即将上映与今日播出。"],
       ["多重评分", "TMDB、IMDb、烂番茄、Metacritic、CineBar 社区与豆瓣评分。"],
@@ -250,6 +261,14 @@ export const messages: Record<Locale, Messages> = {
     navInstall: "安裝",
     navSupport: "支持",
     featuresTitle: "找片需要的資訊，一處看清",
+    caiTitle: "CineAI —— CineBar 裡的影視 AI 助手",
+    caiLead: "用中文跟它聊影視：一句話找片、問劇情、要推薦、無劇透問答。",
+    caiPoints: [
+      ["🔍 自然語言找片", "用一句話描述想看的片，AI 幫你搜出來"],
+      ["📺 影視問答", "問某部劇/片講什麼、導演、評分"],
+      ["🎬 個人化推薦", "依你的影視偏好推薦片單"],
+      ["🚫 無劇透問答", "記住你看劇的進度，不劇透後面"],
+    ],
     features: [
       ["發現", "本週熱門、每日參考、即將上映與今日播出。"],
       ["多重評分", "TMDB、IMDb、爛番茄、Metacritic、CineBar 社群與豆瓣評分。"],
@@ -354,6 +373,14 @@ export const messages: Record<Locale, Messages> = {
     navInstall: "Install",
     navSupport: "Support",
     featuresTitle: "Everything you need to pick a film, in one screen",
+    caiTitle: "CineAI — the film assistant inside CineBar",
+    caiLead: "Chat about anything film: find a movie in one sentence, ask about a show, get picks, or ask spoiler-free.",
+    caiPoints: [
+      ["🔍 Find a movie in words", "Describe what you want; AI finds it"],
+      ["📺 Ask about a show", "What it's about, director, rating"],
+      ["🎬 Personalized picks", "Recommendations based on your taste"],
+      ["🚫 Spoiler-free Q&A", "Remembers your progress; no spoilers ahead"],
+    ],
     features: [
       ["Discover", "Trending this week, daily picks, opening soon and airing today."],
       ["All ratings", "TMDB, IMDb, Rotten Tomatoes, Metacritic, CineBar community and Douban."],
@@ -458,6 +485,14 @@ export const messages: Record<Locale, Messages> = {
     navInstall: "インストール",
     navSupport: "サポート",
     featuresTitle: "映画を選ぶのに必要な情報を、ひとつの画面で",
+    caiTitle: "CineAI — CineBar 内の映画 AI アシスタント",
+    caiLead: "日本語で映画について話せます。一言で作品探し、あらすじ、おすすめ、ネタバレなし Q&A。",
+    caiPoints: [
+      ["🔍 一言で作品を探す", "見たい作品を一言で説明すると AI が探します"],
+      ["📺 作品について質問", "あらすじ・監督・評価を聞ける"],
+      ["🎬 パーソナルおすすめ", "あなたの好みに合わせて提案"],
+      ["🚫 ネタバレなし Q&A", "視聴進捗を覚えて、先の展開を隠します"],
+    ],
     features: [
       ["発見", "今週のトレンド、今日のおすすめ、まもなく公開、今日の放送分。"],
       ["多彩な評価", "TMDB、IMDb、Rotten Tomatoes、Metacritic、CineBar コミュニティと豆瓣。"],
@@ -562,6 +597,14 @@ export const messages: Record<Locale, Messages> = {
     navInstall: "설치",
     navSupport: "지원",
     featuresTitle: "영화를 고를 때 필요한 모든 것, 한 화면에서",
+    caiTitle: "CineAI — CineBar 속 영화 AI 어시스턴트",
+    caiLead: "대화로 영화를 찾고, 줄거리와 평점을 묻고, 취향대로 추천받고, 스포일러 없이 질문하세요.",
+    caiPoints: [
+      ["🔍 말로 영화 찾기", "보고 싶은 영화를 한 문장으로 설명하면 AI가 찾아요"],
+      ["📺 작품 질의응답", "줄거리·감독·평점을 물어보세요"],
+      ["🎬 맞춤 추천", "당신의 취향에 맞춰 추천"],
+      ["🚫 스포일러 없는 Q&A", "시청 진도를 기억해 뒷내용을 숨겨요"],
+    ],
     features: [
       ["발견", "이번 주 인기, 오늘의 추천, 개봉 예정, 오늘 방영."],
       ["모든 평점", "TMDB, IMDb, Rotten Tomatoes, Metacritic, CineBar 커뮤니티, Douban."],

@@ -151,6 +151,19 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         </ol>
       </section>
 
+      <section className="section" id="cineai">
+        <h2>{m.caiTitle}</h2>
+        <p className="section-lede">{m.caiLead}</p>
+        <div className="feature-grid">
+          {m.caiPoints.map(([title, body]) => (
+            <article className="feature-card" key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="section install-section" id="install">
         <div className="install-panel">
           <div>
