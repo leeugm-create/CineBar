@@ -70,6 +70,13 @@ final class CineAIProgressStore {
         persist(map)
     }
 
+    /// 所有进度按更新时间倒序（最近看过的在前），供防剧透回退使用。
+    func allProgressSortedByRecent() -> [(seriesID: Int, progress: ShownProgress)] {
+        all()
+            .map { (seriesID: $0.key, progress: $0.value) }
+            .sorted { $0.progress.updatedAt > $1.progress.updatedAt }
+    }
+
     private func all() -> [Int: ShownProgress] {
         guard let data = defaults.data(forKey: progressKey),
               let decoded = try? JSONDecoder().decode(

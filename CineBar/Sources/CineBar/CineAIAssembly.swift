@@ -24,15 +24,29 @@ extension MovieStore {
         )
     }
 
-    /// 防剧透上下文：当前剧的进度 + 已看集的标题资料。
+    /// 当前"进行中的剧"：优先用户正在查看的剧；否则取观影进度里最近看过的剧。
+    /// 用于防剧透的上下文与硬拦截，不依赖用户恰好停在某剧详情页。
+    private func cineAICurrentProgress() -> (showID: Int, name: String?, progress: ShownProgress)? {
+        if let show = selectedTVShow,
+           let p = cineAIProgress.progress(for: show.id) {
+            return (show.id, show.name, p)
+        }
+        // 回退：进度记录里最近更新的剧
+        let recent = cineAIProgress.allProgressSortedByRecent().first
+        if let recent {
+            return (recent.seriesID, nil, recent.progress)
+        }
+        return nil
+    }
+
+    /// 防剧透上下文：当前进行中剧的进度 + 已看集的标题资料。
     /// 只取"进度以内"的集资料，之后的集不进上下文（防剧透核心）。
     private func cineAISpoilerContext() async -> String {
-        guard let show = selectedTVShow,
-              let progress = cineAIProgress.progress(for: show.id) else {
-            return ""
-        }
+        guard let current = cineAICurrentProgress() else { return "" }
+        let showName = current.name ?? "这部剧"
+        let progress = current.progress
         var lines = [
-            "剧名：《\(show.name)》，你已看到 \(progress.code)（第\(progress.seasonNumber)季第\(progress.episodeNumber)集）。"
+            "剧名：《\(showName)》，你已看到 \(progress.code)（第\(progress.seasonNumber)季第\(progress.episodeNumber)集）。"
         ]
         // 已加载的季/集：收集进度以内的集标题。
         for (season, episodes) in seasonEpisodes.sorted(by: { $0.key < $1.key }) {
@@ -55,20 +69,18 @@ extension MovieStore {
     /// 返回非 nil 表示要拦截（文案给用户）；nil 放行交给 RAG。
     func spoilerShield(for question: String) -> String? {
         guard appLanguage.isChinese else { return nil }
-        guard selectedTVShow != nil else { return nil }
-        let lastSeason = tvDetails?.numberOfSeasons ?? 0
-        let lastSeasonEpisodes = tvDetails?.seasons
-            .first(where: { $0.seasonNumber == lastSeason })?.episodeCount ?? 0
-        let progress = cineAIProgress.progress(for: selectedTVShow!.id)
-        let hasSeenFinal: Bool
-        if let progress {
+        guard let current = cineAICurrentProgress() else { return nil }
+        let progress = current.progress
+        // 仅当"进行中的剧"恰好是当前查看的剧时用 tvDetails 判断；回退剧未知季数则保守未看完。
+        var hasSeenFinal = false
+        if current.showID == selectedTVShow?.id {
+            let lastSeason = tvDetails?.numberOfSeasons ?? 0
+            let lastSeasonEpisodes = tvDetails?.seasons
+                .first(where: { $0.seasonNumber == lastSeason })?.episodeCount ?? 0
             hasSeenFinal =
                 progress.seasonNumber > lastSeason ||
                 (progress.seasonNumber == lastSeason &&
                  progress.episodeNumber >= lastSeasonEpisodes)
-        } else {
-            // 没有进度记录：视为没看完，结局类问题保守拦截。
-            hasSeenFinal = false
         }
         return CineAISpoilerShield.blockReason(
             question: question,
