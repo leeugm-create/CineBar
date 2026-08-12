@@ -133,6 +133,18 @@ struct CineAIView: View {
             .padding(.horizontal)
             .padding(.bottom, 8)
         }
+        .environment(\.openURL, OpenURLAction { url in
+            // 点击回答里的《片名》→ 按片名进入详情页。
+            if url.scheme == "cineai", url.host == "title" {
+                let title = url.pathComponents.dropFirst().joined(separator: "/")
+                    .removingPercentEncoding ?? ""
+                if !title.isEmpty {
+                    store.selectMovieByTitle(title)
+                }
+                return .handled
+            }
+            return .systemAction
+        })
     }
 
     /// 空态引导：告诉用户 4 个能力能干嘛。
@@ -176,34 +188,60 @@ struct CineAIView: View {
                 Spacer(minLength: 40)
             }
             VStack(alignment: msg.role == "user" ? .trailing : .leading, spacing: 3) {
-                Text(msg.content)
-                    .font(.callout)
-                    .textSelection(.enabled)
-                    .padding(10)
-                    .background(
-                        (msg.role == "user"
-                            ? Color.accentColor.opacity(0.16)
-                            : Color.secondary.opacity(0.10)),
-                        in: RoundedRectangle(cornerRadius: 10)
-                    )
-                // 复制按钮：主面板拖选被 drag-host 拦截时，仍可一键复制到剪贴板。
-                // assistant 回答优先复制其中的片名（《…》内），方便粘贴搜索。
-                if !msg.content.isEmpty {
-                    Button {
-                        copyToPasteboard(extractTitles(from: msg.content) ?? msg.content)
-                    } label: {
-                        Label("复制", systemImage: "doc.on.doc")
-                            .font(.caption2)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("复制片名（复制整条用右键）")
+                if msg.role == "user" {
+                    Text(msg.content)
+                        .font(.callout)
+                        .textSelection(.enabled)
+                        .padding(10)
+                        .background(
+                            Color.accentColor.opacity(0.16),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
+                } else {
+                    // assistant：片名（《…》）可点击，点击跳详情页。
+                    Text(linkedText(msg.content))
+                        .font(.callout)
+                        .textSelection(.enabled)
+                        .tint(.orange)
+                        .padding(10)
+                        .background(
+                            Color.secondary.opacity(0.10),
+                            in: RoundedRectangle(cornerRadius: 10)
+                        )
                 }
             }
             if msg.role == "assistant" {
                 Spacer(minLength: 40)
             }
         }
+        .contentShape(Rectangle())
+    }
+
+    /// 把 AI 回答里的《片名》渲染成可点击链接（scheme: cineai://title/…）。
+    private func linkedText(_ raw: String) -> AttributedString {
+        var attr = AttributedString(raw)
+        guard let regex = try? NSRegularExpression(
+            pattern: #"《([^》]+)》"#
+        ) else { return attr }
+        let ns = raw as NSString
+        let matches = regex.matches(in: raw, range: NSRange(location: 0, length: ns.length))
+        for m in matches {
+            let title = ns.substring(with: m.range(at: 1))
+            guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { continue }
+            let rawStart = raw.utf16.index(raw.utf16.startIndex, offsetBy: m.range.location)
+            let rawEnd = raw.utf16.index(
+                raw.utf16.startIndex, offsetBy: m.range.location + m.range.length)
+            guard let start = AttributedString.Index(rawStart, within: attr),
+                  let end = AttributedString.Index(rawEnd, within: attr),
+                  start < end else { continue }
+            let r = start..<end
+            attr[r].link = URL(
+                string: "cineai://title/"
+                    + (title.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")
+            )
+            attr[r].inlinePresentationIntent = .stronglyEmphasized
+        }
+        return attr
     }
 
     /// 从回答文本提取片名（中文《…》内的内容，去空/去重）；无则返回 nil。

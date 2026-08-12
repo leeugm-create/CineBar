@@ -9,14 +9,30 @@ import Foundation
 /// 本文件只做「prompt 构建 + 调度」，数据获取通过注入闭包，离线可测。
 struct CineAIRAG {
 
+    /// 用户想要的媒体类型：由输入是否含"剧/连续剧/电视剧/番剧"推断。
+    enum MediaTarget { case movie, tv }
+
+    /// 从输入推断电影还是连续剧。
+    static func mediaTarget(of input: String) -> MediaTarget {
+        let seriesWords = ["连续剧", "电视剧", "剧集", "番剧", "电视剧", "看剧", "连续电视剧"]
+        if seriesWords.contains(where: { input.localizedCaseInsensitiveContains($0) }) {
+            return .tv
+        }
+        return .movie
+    }
+
     /// 数据提供方（由调用方接线到 TMDB / MovieStore / ProgressStore）。
     struct DataSource {
         /// 影视事实（简介/评分/年份等），以任意文本块返回。
         var fetchFacts: (String) async -> String = { _ in "" }
-        /// 找片：把自然语言转成检索词，返回候选片名/简介文本块。
+        /// 找片：把自然语言转成检索词，返回候选片名/简介文本块（电影）。
         var searchMovies: (String) async -> String = { _ in "" }
-        /// 推荐：按用户影视偏好返回候选（类型/地区等），供"今晚看什么"。
+        /// 找剧：返回候选连续剧名/简介文本块。
+        var searchSeries: (String) async -> String = { _ in "" }
+        /// 推荐：按用户影视偏好返回候选（电影）。
         var recommendMovies: () async -> String = { "" }
+        /// 推荐连续剧：按偏好返回候选（剧集）。
+        var recommendSeries: () async -> String = { "" }
         /// 防剧透：当前剧的上下文（进度 + 已看集资料）。返回文本块；空表示无。
         var spoilerContext: () async -> String = { "" }
     }
@@ -61,10 +77,13 @@ struct CineAIRAG {
         var built: [AIChatMessage]
         switch intent {
         case .findMovie:
-            let facts = await data.searchMovies(input)
+            let isTV = Self.mediaTarget(of: input) == .tv
+            let facts = isTV
+                ? await data.searchSeries(input)
+                : await data.searchMovies(input)
             built = [
-                system("你是 CineAI，一个影视助手。只能根据提供的候选影片回答推荐，不要凭空编造不存在的影片。回答用中文，简洁，给片名并说明理由，如需多部用列表。"),
-                user("用户想看的：\(input)\n\n候选影片资料：\n\(facts.isEmpty ? "（未检索到候选，请据实说明找不到匹配）" : facts)"),
+                system("你是 CineAI，一个影视助手。用户要的是连续剧还是电影，就以提供的候选为准给对应的推荐；不要凭空编造不存在的作品。回答用中文，简洁，给出名称并说明理由，如需多部用列表。"),
+                user("用户想找（\(isTV ? "连续剧" : "电影")）：\(input)\n\n候选资料：\(facts.isEmpty ? "（未检索到候选，请据实说明找不到匹配）" : facts)"),
             ]
         case .spoilerSafe:
             // 防剧透：进度与已看内容由调用方预处理好注入。
@@ -83,10 +102,13 @@ struct CineAIRAG {
                 user("影视资料：\n\(facts.isEmpty ? "（暂无资料）" : facts)\n\n用户问：\(input)"),
             ]
         case .recommend:
-            let facts = await data.recommendMovies()
+            let isTV = Self.mediaTarget(of: input) == .tv
+            let facts = isTV
+                ? await data.recommendSeries()
+                : await data.recommendMovies()
             built = [
-                system("你是 CineAI。基于用户偏好与提供的候选影片推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部。"),
-                user("按用户偏好推荐的候选影片：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),
+                system("你是 CineAI。基于用户偏好与提供的候选（连续剧或电影）推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部\(isTV ? "剧" : "电影")。"),
+                user("按用户偏好推荐的候选（\(isTV ? "连续剧" : "电影")）：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),
             ]
         case .general:
             // 只回答影视相关；影视以外的问题明确告知，避免被当通用 AI 使用。

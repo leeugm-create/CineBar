@@ -17,14 +17,64 @@ extension MovieStore {
                 searchMovies: { query in
                     await selfRef.cineAISearchMovies(query)
                 },
+                searchSeries: { query in
+                    await selfRef.cineAISearchSeries(query)
+                },
                 recommendMovies: {
                     await selfRef.cineAIRecommendMovies()
+                },
+                recommendSeries: {
+                    await selfRef.cineAIRecommendSeries()
                 },
                 spoilerContext: {
                     await selfRef.cineAISpoilerContext()
                 }
             )
         )
+    }
+
+    /// 找连续剧：按检索词查 TMDB 剧集，返回候选文本。
+    private func cineAISearchSeries(_ query: String) async -> String {
+        guard hasToken else { return "" }
+        let client = TMDBClient(token: token, language: appLanguage.apiCode)
+        do {
+            let shows = try await client.searchTV(query)
+            let lines = shows.prefix(8).map { s -> String in
+                var line = "《\(s.name)》(\(s.year))"
+                if s.voteAverage > 0 { line += " 评分 \(String(format: "%.1f", s.voteAverage))" }
+                if !s.overview.isEmpty { line += " 简介：\(s.overview.prefix(120))" }
+                return line
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return ""
+        }
+    }
+
+    /// 推荐连续剧：按用户电影类型偏好取 TDMB 剧集高分候选。
+    private func cineAIRecommendSeries() async -> String {
+        guard hasToken else { return "" }
+        let client = TMDBClient(token: token, language: appLanguage.apiCode)
+        do {
+            let result = try await client.discoverTV(
+                startYear: nil,
+                endYear: nil,
+                genreID: preferredMovieGenreIDs.first,
+                originCountry: nil,
+                sortMode: .rating,
+                page: 1
+            )
+            let ms = Array(result.shows.sorted { $0.voteAverage > $1.voteAverage }.prefix(10))
+            let lines = ms.map { s -> String in
+                var line = "《\(s.name)》(\(s.year))"
+                if s.voteAverage > 0 { line += " 评分 \(String(format: "%.1f", s.voteAverage))" }
+                if !s.overview.isEmpty { line += " 简介：\(s.overview.prefix(90))" }
+                return line
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return ""
+        }
     }
 
     /// 推荐候选：按用户设置的电影偏好（类型/地区）取高分影片；无偏好时回退热门。
@@ -96,6 +146,35 @@ extension MovieStore {
     }
 
     // MARK: - spoilerSafe 本地硬拦截
+
+    // MARK: - 点击片名进详情
+
+    /// 按片名查找 TMDB 并进入详情页（CineAI 回答里可点击的片名调用）。
+    func selectMovieByTitle(_ title: String) {
+        let query = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        guard hasToken else { return }
+        Task {
+            do {
+                let results = try await TMDBClient(
+                    token: token,
+                    language: appLanguage.apiCode
+                ).search(query)
+                let normalized = DoubanRatingClient.normalize(query)
+                let match = results.first {
+                    let t = DoubanRatingClient.normalize($0.title)
+                    return t == normalized || t.contains(normalized) || normalized.contains(t)
+                } ?? results.first
+                guard let movie = match else {
+                    await MainActor.run { message = "未找到《\(title)》" }
+                    return
+                }
+                await MainActor.run { select(movie) }
+            } catch {
+                await MainActor.run { message = "查找《\(title)》失败" }
+            }
+        }
+    }
 
     /// 防剧透问题的本地硬拦截：结局类问题 + 该剧未看完 → 本地直接挡回（不进模型、不耗 token）。
     /// 返回非 nil 表示要拦截（文案给用户）；nil 放行交给 RAG。
