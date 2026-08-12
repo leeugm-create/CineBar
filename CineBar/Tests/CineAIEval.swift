@@ -80,12 +80,29 @@ struct CineAIEval {
         let sysIntro = cap.captured.first { $0.role == "system" }?.content ?? ""
         check(sysIntro.contains("资料") || sysIntro.contains("编造"), "mediaIntro system 有资料约束")
 
-        // 4d. general（闲聊/其它）：system 应宽松正常对话，不含"只答影视/候选"强约束
+        // 4d. general（非影视）：应明确只管影视、拒绝无关问题，不得自由延展。
         _ = try? await rag.answer(.general, input: "给我讲个笑话")
         let sysGeneral = cap.captured.first { $0.role == "system" }?.content ?? ""
         check(
-            !sysGeneral.contains("只答") && !sysGeneral.contains("提供的数据为准"),
-            "general system 宽松对话无影视强约束"
+            sysGeneral.contains("只管影视") || sysGeneral.contains("无法回答"),
+            "general system 明确只管影视、拒绝无关"
+        )
+
+        // 4e. 上下文联想：传入 history 后应插在 system 之后、当前消息之前。
+        _ = try? await rag.answer(
+            .mediaIntro, input: "它后来怎样了",
+            history: [
+                AIChatMessage(role: "user", content: "《海上钢琴师》讲什么"),
+                AIChatMessage(role: "assistant", content: "讲 1900 在邮轮的一生。"),
+            ]
+        )
+        let roles = cap.captured.map { $0.role }
+        check(roles.first == "system", "history: 首条为 system")
+        let sysIdx = roles.firstIndex(of: "system") ?? 0
+        check(
+            sysIdx + 1 < roles.count && roles[sysIdx + 1] == "user"
+                && cap.captured[sysIdx + 1].content.contains("海上钢琴师"),
+            "history: system 后紧跟历史 user"
         )
 
         // ---- 5. 端到端链路 Smoke（防"每个零件都 PASS，串起来却坏"）----

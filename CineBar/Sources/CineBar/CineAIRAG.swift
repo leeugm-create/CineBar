@@ -26,8 +26,24 @@ struct CineAIRAG {
 
     // MARK: - 调度入口
 
-    func answer(_ intent: CineAIIntent, input: String) async throws -> AIResult {
-        let messages = await buildMessages(for: intent, input: input)
+    /// 发起一次回答。
+    /// - Parameters:
+    ///   - intent: 意图。
+    ///   - input: 当前用户输入。
+    ///   - history: 本轮之前的对话（不含 system，按先后顺序），用于让 AI 记住上文。
+    func answer(
+        _ intent: CineAIIntent,
+        input: String,
+        history: [AIChatMessage] = []
+    ) async throws -> AIResult {
+        var messages = await buildMessages(for: intent, input: input, history: history)
+        // 确保首条是 system（供模型扮演设定）
+        if messages.first?.role != "system" {
+            messages.insert(
+                AIChatMessage(role: "system", content: "你是 CineAI，CineBar 的影视助手。回答用中文、简洁；影视事实以提供的数据为准，不编造。"),
+                at: 0
+            )
+        }
         return try await provider.complete(
             messages: messages,
             maxTokens: 900,
@@ -39,12 +55,14 @@ struct CineAIRAG {
 
     private func buildMessages(
         for intent: CineAIIntent,
-        input: String
+        input: String,
+        history: [AIChatMessage]
     ) async -> [AIChatMessage] {
+        var built: [AIChatMessage]
         switch intent {
         case .findMovie:
             let facts = await data.searchMovies(input)
-            return [
+            built = [
                 system("你是 CineAI，一个影视助手。只能根据提供的候选影片回答推荐，不要凭空编造不存在的影片。回答用中文，简洁，给片名并说明理由，如需多部用列表。"),
                 user("用户想看的：\(input)\n\n候选影片资料：\n\(facts.isEmpty ? "（未检索到候选，请据实说明找不到匹配）" : facts)"),
             ]
@@ -57,26 +75,32 @@ struct CineAIRAG {
                 systemContent += " 只能依据下面提供的已观看到的内容来回答，不得推测或透露其后的剧情。"
                 userContent = "用户当前已看到的内容（以此为界，到此为止，之后的剧情严禁透露）：\n\(context)\n\n用户问：\(input)"
             }
-            return [system(systemContent), user(userContent)]
+            built = [system(systemContent), user(userContent)]
         case .mediaIntro:
             let facts = await data.fetchFacts(input)
-            return [
+            built = [
                 system("你是 CineAI。只能根据提供的影视资料回答，不要编造资料以外的剧情细节。回答用中文，简洁。"),
                 user("影视资料：\n\(facts.isEmpty ? "（暂无资料）" : facts)\n\n用户问：\(input)"),
             ]
         case .recommend:
             let facts = await data.recommendMovies()
-            return [
+            built = [
                 system("你是 CineAI。基于用户偏好与提供的候选影片推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部。"),
                 user("按用户偏好推荐的候选影片：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),
             ]
         case .general:
-            // 闲聊/其它：正常对话，不强制套用影视资料约束，避免文不对题/生硬。
-            return [
-                system("你是 CineAI，CineBar 的助手。回答用中文，自然、简洁；不确定的事不要编造。"),
+            // 只回答影视相关；影视以外的问题明确告知，避免被当通用 AI 使用。
+            built = [
+                system("你是 CineAI，CineBar 的影视助手，只负责影视相关问题（找片、问答、推荐、防剧透）。对与本产品影视功能无关的问题，礼貌说明你只管影视、无法回答，不要自由延展。回答用中文、简洁。"),
                 user(input),
             ]
         }
+        // 插入历史（排在首条 system 之后），让 AI 能引用上文。
+        if !history.isEmpty,
+           let firstSystem = built.firstIndex(where: { $0.role == "system" }) {
+            built.insert(contentsOf: history, at: firstSystem + 1)
+        }
+        return built
     }
 
     private func system(_ text: String) -> AIChatMessage {

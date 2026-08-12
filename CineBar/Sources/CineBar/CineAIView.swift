@@ -91,14 +91,22 @@ struct CineAIView: View {
                                 thinkingBubble
                             }
                         }
+                        Color.clear.frame(height: 1).id("bottom")
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 6)
                 }
-                .onChange(of: messages.count) { _ in
-                    if !messages.isEmpty {
+                .onChange(of: messages) { _ in
+                    // 有新消息/回答后滚到底部
+                    withAnimation {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+                .onChange(of: busy) { isBusy in
+                    // 显示/隐藏"思考中"时也滚到底部
+                    if isBusy {
                         withAnimation {
-                            proxy.scrollTo(messages.count - 1, anchor: .bottom)
+                            proxy.scrollTo("bottom", anchor: .bottom)
                         }
                     }
                 }
@@ -223,10 +231,12 @@ struct CineAIView: View {
             busy = false
             return
         }
+        // 历史：发送前已有的 user/assistant 对话（含上文），供 AI 联想读取。
+        let history = messages.filter { $0.role != "system" }
         let rag = store.makeCineAIRAG(provider: CineAIProviderFactory.make())
         Task {
             do {
-                let result = try await rag.answer(intent, input: text)
+                let result = try await rag.answer(intent, input: text, history: history)
                 await MainActor.run {
                     messages.append(
                         AIChatMessage(role: "assistant", content: result.text)
