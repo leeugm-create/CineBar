@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 79&lt;/li&gt;&lt;li&gt;- 优化：进入 CineAI 后整体覆盖主面板（含搜索栏与顶栏），AI 聊天界面从顶部开始，不再被搜索框占据下方。&lt;/li&gt;&lt;li&gt;- 优化：CineAI 回答的复制按钮改为优先复制片名（识别《片名》），粘贴到搜索可直接搜片；复制整段仍可用右键菜单。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 80&lt;/li&gt;&lt;li&gt;- 修复：CineAI 现在能区分电影与连续剧——你说&amp;quot;推荐连续剧/某部剧&amp;quot;，会从剧集源推荐，不再只给电影；动漫从&amp;quot;番剧&amp;quot;归入剧集源。&lt;/li&gt;&lt;li&gt;- 优化：CineAI 回答里的《片名》现在可直接点击，跳转到该作品详情页；移除了界面上的复制按钮（复制仍可用右键菜单）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-79-universal.zip"
-        sparkle:version="79"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-80-universal.zip"
+        sparkle:version="80"
         sparkle:shortVersionString="0.9.0"
-        length="8278603"
+        length="8300973"
         type="application/octet-stream"
-        sparkle:edSignature="juq0qEMoM5aX4A7BsD8onSPYxPnwqLKhw70hS0Spi8YGb8N40AGeRtumnCcPJm2xjyLA5E/n0Kw/yoK1nGTHBQ=="/>
+        sparkle:edSignature="igC2JytoNjmwLbKV0yqDBv2nMcIzhGkqtGELRjJJVDNom5Lg0sYVZ8xPeR+2VmspYIEOIpP+dJpaF/3c/VLrDA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 79&lt;/li&gt;&lt;li&gt;- 优化：进入 CineAI 后整体覆盖主面板（含搜索栏与顶栏），AI 聊天界面从顶部开始，不再被搜索框占据下方。&lt;/li&gt;&lt;li&gt;- 优化：CineAI 回答的复制按钮改为优先复制片名（识别《片名》），粘贴到搜索可直接搜片；复制整段仍可用右键菜单。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-79-universal.zip" sparkle:version="79" sparkle:shortVersionString="0.9.0" length="8278603" type="application/octet-stream" sparkle:edSignature="juq0qEMoM5aX4A7BsD8onSPYxPnwqLKhw70hS0Spi8YGb8N40AGeRtumnCcPJm2xjyLA5E/n0Kw/yoK1nGTHBQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
