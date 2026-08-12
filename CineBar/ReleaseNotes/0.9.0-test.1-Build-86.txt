@@ -1,0 +1,5 @@
+CineBar 0.9.0-test.1 · Build 86
+
+- 优化：CineAI 对话框视觉升级——输入框改为圆角聚焦样式 + 圆形发送按钮；AI 回复会带"✨ CineBar AI"来源标签，更清晰。
+
+本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。
