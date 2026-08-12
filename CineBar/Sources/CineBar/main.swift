@@ -12138,20 +12138,6 @@ struct ContentView: View {
         VStack(spacing: 0) {
             VStack(spacing: 10) {
                 HStack {
-                    Button {
-                        NotificationCenter.default.post(
-                            name: .cineBarPanelWillHide,
-                            object: nil
-                        )
-                        NSApplication.shared.keyWindow?.orderOut(nil)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
-                    .help("关闭窗口")
-
                     VStack(alignment: .leading, spacing: 1) {
                         Text("CineBar").font(.title2.bold())
                         Text("找到下一部好片")
@@ -12265,61 +12251,6 @@ struct ContentView: View {
                         .labelsHidden()
                         .controlSize(.small)
                     }
-                }
-
-                if store.isShowingSearchBar {
-                    // 普通"搜索电影/演员"（由顶栏放大镜切入）
-                    HStack(spacing: 8) {
-                        HStack(spacing: 4) {
-                            TextField(
-                                store.mediaSection == .television
-                                    ? "搜索电视剧或演员"
-                                    : "搜索电影或演员",
-                                text: $store.searchText
-                            )
-                            .textFieldStyle(.roundedBorder)
-                            .onSubmit { store.performSearch() }
-                            if !store.searchText.isEmpty {
-                                Button {
-                                    store.clearSearch()
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .foregroundStyle(.secondary)
-                                }
-                                .buttonStyle(.plain)
-                                .help("清除搜索")
-                            }
-                        }
-                        Button {
-                            store.performSearch()
-                        } label: {
-                            Image(systemName: "magnifyingglass")
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else {
-                    // 主页主打：CineAI 入口框，点击进入聊天界面（对话已记忆）。
-                    Button {
-                        store.isShowingCineAI = true
-                    } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "sparkles")
-                                .foregroundStyle(.orange)
-                            Text(
-                                "问 CineAI：找片 / 问答 / 推荐 / 无剧透…"
-                            )
-                            .foregroundStyle(.secondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 7)
-                        .background(
-                            Color.secondary.opacity(0.08),
-                            in: RoundedRectangle(cornerRadius: 8)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .help("打开 CineAI 影视助手")
                 }
             }
             .padding()
@@ -12807,13 +12738,6 @@ struct ContentView: View {
 
             Divider()
             HStack {
-                Button {
-                    NSApplication.shared.terminate(nil)
-                } label: {
-                    Label("退出", systemImage: "power")
-                }
-                .buttonStyle(.plain)
-                .help("退出 CineBar")
                 Spacer()
                 ZStack {
                     ResizeTriangle()
@@ -12828,10 +12752,57 @@ struct ContentView: View {
             .padding(.horizontal)
             .frame(height: 36)
             }
-        }
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                // 主页最下面的 AI 搜索入口框（默认，点放大镜才切普通搜索）。
+                HStack(spacing: 8) {
+                    if store.isShowingSearchBar {
+                        TextField(
+                            store.mediaSection == .television
+                                ? "搜索电视剧或演员"
+                                : "搜索电影或演员",
+                            text: $store.searchText
+                        )
+                        .textFieldStyle(.roundedBorder)
+                        .onSubmit { store.performSearch() }
+                        if !store.searchText.isEmpty {
+                            Button {
+                                store.clearSearch()
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    } else {
+                        Button {
+                            store.isShowingCineAI = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "sparkles")
+                                    .foregroundStyle(.orange)
+                                Text("问 CineAI：找片 / 问答 / 推荐 / 无剧透…")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 7)
+                            .background(
+                                Color.secondary.opacity(0.08),
+                                in: RoundedRectangle(cornerRadius: 8)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .help("打开 CineAI 影视助手")
+                    }
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 4)
+            }
         }
     }
 }
+
 
  final class CineBarPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -13200,6 +13171,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     }
 
     @objc private func menuBarClicked() {
+        // 右键点击菜单栏图标 → 弹出上下文菜单（AI/设置/检查更新/退出）。
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showContextMenu()
+            return
+        }
         if updaterService.hasUpdateAvailable {
             // 有可用更新（菜单栏蓝点）：收起面板，直接弹出 Sparkle 更新窗口。
             if panel?.isVisible == true {
@@ -13216,6 +13192,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             return
         }
         togglePanel()
+    }
+
+    /// 菜单栏右键菜单：AI 搜索框 / 设置 / 检查更新 / 退出。
+    private func showContextMenu() {
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+
+        let aiItem = NSMenuItem(
+            title: "AI 搜索框", action: #selector(contextMenuAI), keyEquivalent: "")
+        aiItem.target = self
+        menu.addItem(aiItem)
+
+        let settingsItem = NSMenuItem(
+            title: "设置", action: #selector(contextMenuSettings), keyEquivalent: "")
+        settingsItem.target = self
+        menu.addItem(settingsItem)
+
+        let updateItem = NSMenuItem(
+            title: "检查更新", action: #selector(contextMenuCheckUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+
+        menu.addItem(.separator())
+
+        let quitItem = NSMenuItem(
+            title: "退出", action: #selector(contextMenuQuit), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+
+        if let button = statusItem?.button {
+            DispatchQueue.main.async {
+                menu.popUp(positioning: nil, at: NSPoint(x: 0, y: button.bounds.minY - 6), in: button)
+            }
+        }
+    }
+
+    @objc private func contextMenuAI() {
+        store.isShowingCineAI = true
+        showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
+    }
+
+    @objc private func contextMenuSettings() {
+        NotificationCenter.default.post(name: .cineBarOpenSettings, object: nil)
+    }
+
+    @objc private func contextMenuCheckUpdates() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        updaterService.checkForUpdates()
+    }
+
+    @objc private func contextMenuQuit() {
+        NSApp.terminate(nil)
     }
 
     /// 本 App 是菜单栏工具（LSUIElement，无 Dock/无可见菜单栏），默认没有系统 Edit 菜单，

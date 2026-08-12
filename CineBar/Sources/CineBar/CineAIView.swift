@@ -72,6 +72,15 @@ struct CineAIView: View {
                     .disabled(busy)
                 }
                 Spacer()
+                Button {
+                    clearChat()
+                } label: {
+                    Label("清屏", systemImage: "trash")
+                        .font(.caption)
+                }
+                .controlSize(.small)
+                .buttonStyle(.borderless)
+                .help("清空当前聊天记录")
                 Button("返回") { store.isShowingCineAI = false }
                     .controlSize(.small)
                     .buttonStyle(.bordered)
@@ -313,6 +322,20 @@ struct CineAIView: View {
     }
 
     /// 发送：支持显式传入 prompt（快捷入口直接触发）；否则用输入框内容。
+    /// 清空当前聊天记录（恢复为初始 system 提示），用户自行决定是否清除。
+    private func clearChat() {
+        busy = false
+        input = ""
+        var system = messages.first { $0.role == "system" }
+        if system == nil {
+            system = AIChatMessage(
+                role: "system",
+                content: "你是 CineAI，CineBar 的影视助手。回答用中文、简洁；影视事实以提供的数据为准，不编造。"
+            )
+        }
+        store.cineAIMessages = [system!]
+    }
+
     private func send(_ promptOverride: String? = nil) {
         let text = (promptOverride ?? input)
             .trimmingCharacters(in: .whitespacesAndNewlines)
