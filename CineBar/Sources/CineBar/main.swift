@@ -11905,42 +11905,6 @@ struct VerticalResizeHandle: NSViewRepresentable {
     ) {}
 }
 
-/// 主面板拖动把手：按住该区域即可拖动窗口（mouseDown 记起点，
-/// mouseDragged 移动窗口 frame），对 borderless 窗口同样生效。
-/// 放在主面板顶栏空白区，不挡任何按钮。
-final class PanelDragNSView: NSView {
-    private var dragStartMouse: NSPoint?
-    private var dragStartOrigin: NSPoint?
-
-    override func mouseDown(with event: NSEvent) {
-        dragStartMouse = NSEvent.mouseLocation
-        dragStartOrigin = window?.frame.origin
-    }
-
-    override func mouseDragged(with event: NSEvent) {
-        guard let window,
-              let dragStartMouse,
-              let dragStartOrigin else { return }
-        let current = NSEvent.mouseLocation
-        window.setFrameOrigin(NSPoint(
-            x: dragStartOrigin.x + (current.x - dragStartMouse.x),
-            y: dragStartOrigin.y + (current.y - dragStartMouse.y)
-        ))
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        dragStartMouse = nil
-        dragStartOrigin = nil
-    }
-}
-
-struct PanelDragView: NSViewRepresentable {
-    func makeNSView(context: Context) -> PanelDragNSView {
-        PanelDragNSView()
-    }
-    func updateNSView(_ nsView: PanelDragNSView, context: Context) {}
-}
-
 struct ContentView: View {
     @ObservedObject var store: MovieStore
     @ObservedObject var localLibraryStore: LocalLibraryStore
@@ -12095,9 +12059,7 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    PanelDragView()
-                        .frame(maxWidth: .infinity)
-                        .help("按住这里拖动窗口")
+                    Spacer()
                     Button {
                         if store.mediaSection == .anime {
                             store.setMainBrowseSection(.movies)
@@ -12851,7 +12813,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
         let panel = CineBarPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
-            styleMask: [.borderless, .resizable],
+            styleMask: [.titled, .fullSizeContentView, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -12861,7 +12823,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
+        // .titled 窗口由系统标题栏支持拖动；隐藏标题按钮并透明化标题栏，
+        // 让顶部区域仍可按住拖动，同时不显示可见标题栏。
+        panel.titlebarAppearsTransparent = true
+        panel.titleVisibility = .hidden
         panel.isMovableByWindowBackground = store.isPanelMovable
+        panel.isMovable = true
         panel.acceptsMouseMovedEvents = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
