@@ -13303,14 +13303,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             width: container.bounds.width - 10, height: fieldHeight
         ))
         field.autoresizingMask = [.width]
-        field.placeholderString = "🔍 问问 CineAI…找一部励志电影"
-        field.placeholderAttributedString = NSAttributedString(
-            string: field.placeholderString ?? "",
-            attributes: [
-                .foregroundColor: NSColor.secondaryLabelColor,
-                .font: NSFont.systemFont(ofSize: 12),
-            ]
-        )
         field.font = NSFont.systemFont(ofSize: 12)
         field.isBezeled = false
         field.drawsBackground = false
@@ -13359,6 +13351,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         ringLayer.frame = field.frame
         ringLayer.addSublayer(gradient)
         container.layer?.addSublayer(ringLayer)
+
+        // 流光效果：让渐变起止点循环移动，色彩沿边框持续流动。
+        let flow = CABasicAnimation(keyPath: "startPoint")
+        flow.fromValue = CGPoint(x: 0, y: 0.5)
+        flow.toValue = CGPoint(x: 1, y: 0.5)
+        flow.duration = 2.2
+        flow.autoreverses = true
+        flow.repeatCount = .infinity
+        gradient.add(flow, forKey: "flow")
 
         field.wantsLayer = true
         field.layer?.masksToBounds = false

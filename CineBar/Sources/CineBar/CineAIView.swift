@@ -241,8 +241,7 @@ struct CineAIView: View {
     }
 
     /// 发送中气泡：提示模型正在回答，避免"点了没反应"。
-    private var thinkingBubble: some View {
-        HStack {
+    private var thinkingBubble: some View {        HStack {
             ProgressView().controlSize(.small)
             Text("正在思考…")
                 .font(.caption)
@@ -289,12 +288,30 @@ struct CineAIView: View {
                         )
                     AIPosterStrip(message: msg.content, store: store)
                 }
+                timestampView(msg)
             }
             if msg.role == "assistant" {
                 Spacer(minLength: 40)
             }
         }
         .contentShape(Rectangle())
+    }
+
+    /// 气泡下方的时间戳：显示该条消息的产生时间（已存时间则显示，否则不显示）。
+    @ViewBuilder
+    private func timestampView(_ msg: AIChatMessage) -> some View {
+        if let date = msg.publishedAt {
+            Text(formattedTime(date))
+                .font(.system(size: 9))
+                .foregroundStyle(.tertiary)
+                .textSelection(.disabled)
+        }
+    }
+
+    private func formattedTime(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm"
+        return f.string(from: date)
     }
 
     /// 把 AI 回答里的《片名》渲染成可点击链接（scheme: cineai://title/…）。
