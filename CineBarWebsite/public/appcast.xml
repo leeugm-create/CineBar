@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 94&lt;/li&gt;&lt;li&gt;- 新增：CineAI 聊天消息显示时间戳（提问与回答各自显示时间）。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏右键搜索框去掉占位文字和放大镜图标，只保留纯输入框；彩色描边改为流光流动效果。&lt;/li&gt;&lt;li&gt;- 优化：主页普通搜索框切入时自动聚焦，光标直达可输入。&lt;/li&gt;&lt;li&gt;- 含 Build 93 修复：主题式推荐改按 AI 影视知识出片单；缓解全屏播放退出后 Dock 被自动隐藏；搜索框首次聚焦可弹中文输入法。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 95&lt;/li&gt;&lt;li&gt;- 重构：菜单栏右键「AI 搜索」改为独立悬浮输入条窗口，解决此前菜单内嵌搜索框无法弹出中文输入法、且无法触发搜索发送的问题。&lt;/li&gt;&lt;li&gt;- 新增：CineAI 查询未上映或影库没有的资料时，自动联网（必应国内版）抓取真实信息回填回答，避免答不上来或编造。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-94-universal.zip"
-        sparkle:version="94"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-95-universal.zip"
+        sparkle:version="95"
         sparkle:shortVersionString="0.9.0"
-        length="8435130"
+        length="8447835"
         type="application/octet-stream"
-        sparkle:edSignature="zKR3fOb+EEaxiCZIEw42xMir8FqtzxPQBUBtzX2vwBQy+aY5bymp7JiDY1n2XhXKbmn1jh9OYuoeyOXnxMQWCA=="/>
+        sparkle:edSignature="NKvhSNlTqfSYSy4CPy1YgDzl4SBbTUE/nJhWYqesxvFQjoqv3LhYprKy0l/sjOWtrVg37Mk/ABpzLxufFmOGDA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 94&lt;/li&gt;&lt;li&gt;- 新增：CineAI 聊天消息显示时间戳（提问与回答各自显示时间）。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏右键搜索框去掉占位文字和放大镜图标，只保留纯输入框；彩色描边改为流光流动效果。&lt;/li&gt;&lt;li&gt;- 优化：主页普通搜索框切入时自动聚焦，光标直达可输入。&lt;/li&gt;&lt;li&gt;- 含 Build 93 修复：主题式推荐改按 AI 影视知识出片单；缓解全屏播放退出后 Dock 被自动隐藏；搜索框首次聚焦可弹中文输入法。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-94-universal.zip" sparkle:version="94" sparkle:shortVersionString="0.9.0" length="8435130" type="application/octet-stream" sparkle:edSignature="zKR3fOb+EEaxiCZIEw42xMir8FqtzxPQBUBtzX2vwBQy+aY5bymp7JiDY1n2XhXKbmn1jh9OYuoeyOXnxMQWCA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
