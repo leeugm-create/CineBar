@@ -12037,6 +12037,8 @@ struct ContentView: View {
     @State private var localLibraryStatusFilter = LocalLibraryStatusFilter.all
     @State private var scrollActivity = ScrollActivity()
     @State private var scrollWheelMonitor: Any?
+    /// 主页普通搜索框的焦点：点放大镜切到搜索框时自动聚焦，光标直达可输入。
+    @FocusState private var searchFieldFocused: Bool
     private let reminderCheckTimer = Timer.publish(
         every: 6 * 60 * 60,
         on: .main,
@@ -12104,6 +12106,12 @@ struct ContentView: View {
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
+            }
+        }
+        .onChange(of: store.isShowingSearchBar) { showing in
+            // 从 AI 框切换到普通搜索框时，自动聚焦，光标直达即可输入。
+            if showing {
+                searchFieldFocused = true
             }
         }
         .onAppear {
@@ -12794,6 +12802,7 @@ struct ContentView: View {
                             text: $store.searchText
                         )
                         .textFieldStyle(.roundedBorder)
+                        .focused($searchFieldFocused)
                         .onSubmit { store.performSearch() }
                         if !store.searchText.isEmpty {
                             Button {
