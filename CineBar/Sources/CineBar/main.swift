@@ -10,6 +10,23 @@ import WebKit
 
 private let posterImageCache = NSCache<NSURL, NSImage>()
 
+/// 菜单栏右键里的 AI 搜索输入框。直接用 keyDown 拦截回车（Return）触发搜索，
+/// 不依赖 NSMenuItem.view 里 TextField 的 target/action 响应链（后者在菜单弹出时不稳定）。
+final class CineAIMenuField: NSTextField {
+    var onSubmit: ((String) -> Void)?
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        // Return / Enter（主键盘 \r 与数字键盘 \n）
+        if event.keyCode == 36 || event.characters == "\r" || event.characters == "\n" {
+            onSubmit?(self.stringValue)
+            return
+        }
+        super.keyDown(with: event)
+    }
+}
+
 /// 滚动活动指示：滚动期间禁用卡片 3D hover 视差，避免滚动卡顿。
 final class ScrollActivity: ObservableObject {
     @Published private(set) var isActive = false
@@ -13235,54 +13252,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         store.cineAIPendingQuery = nil
         store.isShowingCineAI = true
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
-    }
-
-    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
+    }    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
     /// 内置提示文字（placeholder），回车即发送并打开 AI 面板。
-    /// 输入框边缘用渐变彩色描边，营造科技感。
+    /// 彩色渐变描边紧贴输入框一圈（不放大），营造科技感。
     private func makeAISearchMenuItemView() -> NSView {
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: 40))
+        let fieldHeight: CGFloat = 24
+        let borderWidth: CGFloat = 1.5
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 240, height: fieldHeight + 10))
         container.wantsLayer = true
 
-        // 渐变彩色描边：半透明白色输入框外围套一圈青→品红→橙渐变圆角边框。
-        let gradient = CAGradientLayer()
-        gradient.frame = container.bounds
-        gradient.colors = [
-            NSColor.systemCyan.cgColor,
-            NSColor.systemBlue.cgColor,
-            NSColor.systemPurple.cgColor,
-            NSColor.systemPink.cgColor,
-            NSColor.systemOrange.cgColor,
-        ]
-        gradient.startPoint = CGPoint(x: 0, y: 0.5)
-        gradient.endPoint = CGPoint(x: 1, y: 0.5)
-        let borderWidth: CGFloat = 1.6
-        let bounds = container.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
-        gradient.cornerRadius = 11
-        gradient.frame = bounds
-        // 用 mask 只保留一圈描边环（中间挖空），让内层白底露出来。
-        let shapeMask = CAShapeLayer()
-        let ringPath = CGMutablePath()
-        ringPath.addRoundedRect(
-            in: bounds,
-            cornerWidth: 11, cornerHeight: 11,
-            transform: .identity
-        )
-        ringPath.addRoundedRect(
-            in: bounds.insetBy(dx: borderWidth, dy: borderWidth),
-            cornerWidth: 10, cornerHeight: 10,
-            transform: .identity
-        )
-        shapeMask.path = ringPath
-        shapeMask.fillRule = .evenOdd
-        gradient.mask = shapeMask
-        container.layer?.addSublayer(gradient)
-
-        let field = NSTextField()
-        field.frame = NSRect(
-            x: 10, y: 9,
-            width: container.bounds.width - 20, height: 22
-        )
+        let field = CineAIMenuField(frame: NSRect(
+            x: 5, y: 5,
+            width: container.bounds.width - 10, height: fieldHeight
+        ))
         field.autoresizingMask = [.width]
         field.placeholderString = "🔍 问问 CineAI…找一部励志电影"
         field.placeholderAttributedString = NSAttributedString(
@@ -13300,17 +13282,65 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         field.cell?.wraps = false
         field.cell?.isScrollable = true
         field.focusRingType = .none
-        field.target = self
-        field.action = #selector(aiSearchFieldSubmit(_:))
+        field.textColor = .labelColor
+        // 回车直接走子类拦截，不依赖菜单 target/action 响应链（更可靠）。
+        field.onSubmit = { [weak self] text in
+            self?.runAISearch(text)
+        }
         container.addSubview(field)
+
+        // 描边层放在 field 上层，只画 field 边界一圈（圆角环），紧贴输入框不放大。
+        let gradient = CAGradientLayer()
+        gradient.frame = field.bounds
+        gradient.colors = [
+            NSColor.systemCyan.cgColor,
+            NSColor.systemBlue.cgColor,
+            NSColor.systemPurple.cgColor,
+            NSColor.systemPink.cgColor,
+            NSColor.systemOrange.cgColor,
+        ]
+        gradient.startPoint = CGPoint(x: 0, y: 0.5)
+        gradient.endPoint = CGPoint(x: 1, y: 0.5)
+        gradient.cornerRadius = 8
+        let ringRect = field.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
+        let shapeMask = CAShapeLayer()
+        let ringPath = CGMutablePath()
+        ringPath.addRoundedRect(
+            in: ringRect,
+            cornerWidth: 8, cornerHeight: 8,
+            transform: .identity
+        )
+        ringPath.addRoundedRect(
+            in: ringRect.insetBy(dx: borderWidth, dy: borderWidth),
+            cornerWidth: 7, cornerHeight: 7,
+            transform: .identity
+        )
+        shapeMask.path = ringPath
+        shapeMask.fillRule = .evenOdd
+        gradient.mask = shapeMask
+        let ringLayer = CALayer()
+        ringLayer.frame = field.frame
+        ringLayer.addSublayer(gradient)
+        container.layer?.addSublayer(ringLayer)
+
+        field.wantsLayer = true
+        field.layer?.masksToBounds = false
         return container
     }
 
+    /// 检查更新后输入的搜索：设置待发送查询并打开 AI 面板。
     @objc private func aiSearchFieldSubmit(_ sender: NSTextField) {
-        let query = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        runAISearch(sender.stringValue)
+    }
+
+    private func runAISearch(_ raw: String) {
+        let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return }
+        // 先存待发送查询，再打开面板。注意不能经由 contextMenuAI()（它会把
+        // cineAIPendingQuery 置 nil），否则查询会在被 CineAIView 消费前就被清掉。
         store.cineAIPendingQuery = query
-        contextMenuAI()
+        store.isShowingCineAI = true
+        showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
     }
 
     @objc private func contextMenuSettings() {
