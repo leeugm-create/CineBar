@@ -3161,6 +3161,10 @@ struct CommunityRatingClient {
 final class MovieStore: ObservableObject {
     /// CineAI 观影进度（防剧透数据源）。单 macOS 端，UserDefaults 持久化。
     let cineAIProgress = CineAIProgressStore()
+    /// CineAI 对话历史（保存用户与 AI 的往来），持久化，重进聊天界面前提现原对话。
+    @Published var cineAIMessages: [AIChatMessage] {
+        didSet { cineAISaveMessages() }
+    }
     @Published var isShowingCineAI = false
     @Published var movies: [Movie] = Movie.demo
     @Published var televisionShows: [TVShow] = [TVShow.demo]
@@ -3295,6 +3299,16 @@ final class MovieStore: ObservableObject {
     private var messageBeforeFilter = ""
 
     init() {
+        if let data = defaults.data(forKey: "cineai.messages"),
+           let saved = try? JSONDecoder().decode(
+               [AIChatMessage].self, from: data) {
+            cineAIMessages = saved
+        } else {
+            cineAIMessages = [AIChatMessage(
+                role: "system",
+                content: "你是 CineAI，CineBar 的影视助手。回答用中文、简洁；影视事实以提供的数据为准，不编造。"
+            )]
+        }
         token = defaults.string(forKey: "tmdbToken") ?? ""
         omdbKey = defaults.string(forKey: "omdbKey") ?? ""
         region = defaults.string(forKey: "watchRegion") ?? "CN"
@@ -4446,6 +4460,13 @@ final class MovieStore: ObservableObject {
                 message = error.localizedDescription
             }
             isLoadingMoreBrowse = false
+        }
+    }
+
+    /// CineAI 对话持久化：写入 UserDefaults（重进聊天界面/重启 App 仍保留）。
+    private func cineAISaveMessages() {
+        if let data = try? JSONEncoder().encode(cineAIMessages) {
+            defaults.set(data, forKey: "cineai.messages")
         }
     }
 

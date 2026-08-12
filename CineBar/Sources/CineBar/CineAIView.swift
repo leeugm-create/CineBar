@@ -31,14 +31,13 @@ struct CineAIProviderFactory {
 /// CineAI 聊天界面：消息列表 + 4 个快捷入口 + 输入框。
 struct CineAIView: View {
     @ObservedObject var store: MovieStore
-    @State private var messages: [AIChatMessage] = [
-        AIChatMessage(
-            role: "system",
-            content: "你是 CineAI，CineBar 的影视助手。回答用中文、简洁；影视事实以提供的数据为准，不编造。"
-        )
-    ]
     @State private var input = ""
     @State private var busy = false
+
+    /// 对话历史来自 store（持久化到多轮重进）。
+    private var messages: [AIChatMessage] {
+        store.cineAIMessages
+    }
 
     private static let quickPrompts: [(String, String)] = [
         ("🎬 今晚看什么", "今晚看什么，推荐几部"),
@@ -279,14 +278,14 @@ struct CineAIView: View {
         guard !text.isEmpty, !busy else { return }
         input = ""
         let userMsg = AIChatMessage(role: "user", content: text)
-        messages.append(userMsg)
+        store.cineAIMessages.append(userMsg)
         busy = true
 
         let intent = CineAIIntentRouter.route(text)
         // spoilerSafe 先做本地硬拦截：结局类问题 + 未看完 → 直接挡回，不进模型、不耗 token。
         if intent == .spoilerSafe,
            let shield = store.spoilerShield(for: text) {
-            messages.append(
+            store.cineAIMessages.append(
                 AIChatMessage(role: "assistant", content: shield)
             )
             busy = false
@@ -299,7 +298,7 @@ struct CineAIView: View {
             do {
                 let result = try await rag.answer(intent, input: text, history: history)
                 await MainActor.run {
-                    messages.append(
+                    store.cineAIMessages.append(
                         AIChatMessage(role: "assistant", content: result.text)
                     )
                 }
@@ -308,7 +307,7 @@ struct CineAIView: View {
                 let text = (error as? CineAIError)?.displayText
                     ?? "出错了，请重试。"
                 await MainActor.run {
-                    messages.append(
+                    store.cineAIMessages.append(
                         AIChatMessage(role: "assistant", content: text)
                     )
                 }
