@@ -134,6 +134,15 @@ struct CineAIView: View {
         busy = true
 
         let intent = CineAIIntentRouter.route(text)
+        // spoilerSafe 先做本地硬拦截：结局类问题 + 未看完 → 直接挡回，不进模型、不耗 token。
+        if intent == .spoilerSafe,
+           let shield = store.spoilerShield(for: text) {
+            messages.append(
+                AIChatMessage(role: "assistant", content: shield)
+            )
+            busy = false
+            return
+        }
         let rag = store.makeCineAIRAG(provider: CineAIProviderFactory.make())
         Task {
             do {
