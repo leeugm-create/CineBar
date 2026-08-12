@@ -4,7 +4,7 @@ import SiteSearch from "./site-search";
 import ThemeToggle from "./theme-toggle";
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-87-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-88-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 function ratingIcon(id: string) {
