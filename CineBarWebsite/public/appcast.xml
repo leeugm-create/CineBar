@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 90&lt;/li&gt;&lt;li&gt;- 修复：菜单栏右键搜索框回车后能真正执行 AI 搜索（此前只跳转不发送）。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏搜索框改为渐变彩色描边，更具科技感。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 91&lt;/li&gt;&lt;li&gt;- 修复：菜单栏右键搜索框回车后真正把问题发送到 CineAI（此前只打开聊天框、查询被误清空）。&lt;/li&gt;&lt;li&gt;- 修复：搜索框回车改用更可靠的事件捕获，且彩色描边收紧贴合输入框。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-90-universal.zip"
-        sparkle:version="90"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-91-universal.zip"
+        sparkle:version="91"
         sparkle:shortVersionString="0.9.0"
-        length="8401691"
+        length="8405996"
         type="application/octet-stream"
-        sparkle:edSignature="BZvvBoo+570jcBblaNZZk2BqgGT0yDiyiRJkCdnbbdXpTERd9YWgWUIa6SZIM/3V9GsJHwI/atDktkmw051RBw=="/>
+        sparkle:edSignature="ittu+JDNaZEBq7ya3bjZPFnLhEDnFbjSKBsNAUiywmWutuTLj8etx6ULOn2tZSqlWD/4LPlEMRDKj62sjoRrBw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 90&lt;/li&gt;&lt;li&gt;- 修复：菜单栏右键搜索框回车后能真正执行 AI 搜索（此前只跳转不发送）。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏搜索框改为渐变彩色描边，更具科技感。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-90-universal.zip" sparkle:version="90" sparkle:shortVersionString="0.9.0" length="8401691" type="application/octet-stream" sparkle:edSignature="BZvvBoo+570jcBblaNZZk2BqgGT0yDiyiRJkCdnbbdXpTERd9YWgWUIa6SZIM/3V9GsJHwI/atDktkmw051RBw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
