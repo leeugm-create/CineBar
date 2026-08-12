@@ -17,6 +17,17 @@ final class CineAIMenuField: NSTextField {
 
     override var acceptsFirstResponder: Bool { true }
 
+    /// 菜单弹出后立即申请成为 first responder，便于系统调出中文/第三方输入法，
+    /// 否则第一次点击时容易直接进英文输入而无法弹出中文。
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        guard window != nil else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.window != nil else { return }
+            self.window?.makeFirstResponder(self)
+        }
+    }
+
     override func keyDown(with event: NSEvent) {
         // Return / Enter（主键盘 \r 与数字键盘 \n）
         if event.keyCode == 36 || event.characters == "\r" || event.characters == "\n" {
@@ -12878,6 +12889,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     /// 用 local monitor 而非 override panel keyDown，避免影响面板背景拖动。
     private var playbackKeyMonitor: Any?
     private var sparkleWindowObserver: NSObjectProtocol?
+    private var dockResetObserver: NSObjectProtocol?
     private var isMediaPlaybackActive = false
     private var updateBadgeView: NSView?
     private var updateBadgeCancellable: AnyCancellable?
@@ -13047,6 +13059,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             guard let self else { return }
             Task { @MainActor in
                 self.raiseWindowAboveSettingsIfNeeded(window)
+            }
+        }
+        // 任何窗口（含全屏播放窗口）失去 key 状态时，复位被临时隐藏的 Dock/菜单栏。
+        // 覆盖「全屏播放中点开/切到别的应用后 Dock 一直被自动隐藏」的路径。
+        // 仅在应用本身已不 active 时复位，避免全屏播放中点击自身控件导致 Dock 闪动。
+        dockResetObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResignKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                guard !NSApp.isActive else { return }
+                self.resetSystemUIOverrides()
             }
         }
         applyAppearance(
@@ -13252,7 +13278,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         store.cineAIPendingQuery = nil
         store.isShowingCineAI = true
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
-    }    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
+    }
+
+    /// 右键菜单里的 AI 搜索框（真实可输入的 NSMenuItem view）。
     /// 内置提示文字（placeholder），回车即发送并打开 AI 面板。
     /// 彩色渐变描边紧贴输入框一圈（不放大），营造科技感。
     private func makeAISearchMenuItemView() -> NSView {
@@ -13484,17 +13512,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         resetSystemUIOverrides()
     }
 
-    /// 从全屏/浮层回复到普通状态时，把被临时改动的 autoHideDock/autoHideMenuBar
-    /// 复位为系统默认（不隐藏），防止异常路径下 Dock/菜单栏被长期自动隐藏。
+    /// 从全屏/浮层回到普通状态，或应用失活时，无条件复位被临时改动的
+    /// autoHideDock/autoHideMenuBar，防止 Dock/菜单栏被长期自动隐藏。
     func applicationDidResignActive(_ notification: Notification) {
         resetSystemUIOverrides()
     }
 
+    /// 应用重新激活时同样复位，双保险。
+    func applicationDidBecomeActive(_ notification: Notification) {
+        resetSystemUIOverrides()
+    }
+
+    /// 无条件把被临时隐藏的 Dock/菜单栏复位为系统默认显示。
+    /// 注意：仅在"非全屏播放中"才会触发（全屏播放时应用保持 active，
+    /// 不会走到 resignActive），因此不会破坏正在进行的全屏体验。
     private func resetSystemUIOverrides() {
-        let options = NSApplication.shared.presentationOptions
-        if options.contains(.autoHideDock) || options.contains(.autoHideMenuBar) {
-            NSApplication.shared.presentationOptions = []
-        }
+        let current = NSApplication.shared.presentationOptions
+        guard current.contains(.autoHideDock) || current.contains(.autoHideMenuBar) else { return }
+        NSApplication.shared.presentationOptions = []
     }
 
     nonisolated func userNotificationCenter(

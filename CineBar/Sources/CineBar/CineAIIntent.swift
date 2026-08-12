@@ -46,6 +46,20 @@ enum CineAIIntentRouter {
 
         // 找片：需要明确的"找/有没有...片/影视"语义，且提及影视内容。
         if contains(text, anyOf: ["电影", "影片", "片子", "影视", "动画片", "科幻片", "喜剧片", "剧集", "电视剧"]) {
+            // 主题式求片（"想看励志类的电影"）优先走推荐：模型用知识出片单，
+            // 避免被 findMovie 的 TMDB 候选（蜘蛛侠/奥德赛这类高分但跑题）带偏。
+            // 只有当该短语能拆出 TMDB 可精确查的结构条件时，才走 findMovie。
+            if contains(text, anyOf: ["想看", "想找", "求", "有没有"]) {
+                let structured = CineMovieQueryParser.parse(text)
+                let hasGenres = !structured.genreIDs.isEmpty
+                let hasKeyword = structured.keyword != nil
+                let hasCountry = structured.countryCode != nil
+                let hasYear = structured.year != nil
+                let hasDecade = structured.yearStart != nil
+                if !(hasGenres || hasKeyword || hasCountry || hasYear || hasDecade) {
+                    return .recommend
+                }
+            }
             if contains(text, anyOf: ["找", "有没有", "推荐一部", "类似", "想看", "求", "介绍几部", "给几部", "类型"]) {
                 return .findMovie
             }
