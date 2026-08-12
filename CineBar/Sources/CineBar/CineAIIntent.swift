@@ -1,6 +1,6 @@
 import Foundation
 
-/// CineAI V1 的四大能力。
+/// CineAI V1 的意图。
 enum CineAIIntent: Equatable {
     /// 自然语言找电影
     case findMovie
@@ -10,15 +10,17 @@ enum CineAIIntent: Equatable {
     case mediaIntro
     /// 今晚看什么（推荐）
     case recommend
+    /// 闲聊/其它：非影视问题，允许正常对话（避免被强行拉回影视而生硬/文不对题）。
+    case general
 }
 
-/// 把用户输入路由到四大能力之一（V1 用轻量关键词规则，离线、可测、零成本）。
-/// 后续若规则不能满足，可替换为"在线模型意图识别"，但 V1 先保持简单可靠。
+/// 把用户输入路由到各意图（V1 用轻量关键词规则，离线、可测、零成本）。
+/// 找片有明确触发词；识别不出则归 general（宽松对话），而不是硬塞找片。
 enum CineAIIntentRouter {
 
     static func route(_ input: String) -> CineAIIntent {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else { return .findMovie }
+        guard !text.isEmpty else { return .general }
 
         // 防剧透：含"剧透/剧透吗/结局/谁死了/最后.../别剧透"等。
         if contains(text, anyOf: [
@@ -42,8 +44,19 @@ enum CineAIIntentRouter {
             return .mediaIntro
         }
 
-        // 其余默认为找片
-        return .findMovie
+        // 找片：需要明确的"找/有没有...片/影视"语义，且提及影视内容。
+        if contains(text, anyOf: ["电影", "影片", "片子", "影视", "动画片", "科幻片", "喜剧片", "剧集", "电视剧"]) {
+            if contains(text, anyOf: ["找", "有没有", "推荐一部", "类似", "想看", "求", "介绍几部", "给几部", "类型"]) {
+                return .findMovie
+            }
+        }
+        // "找一部时间循环的喜剧"这类（无"电影"二字但明确找片）→ 有"找" + 类型
+        if contains(text, anyOf: ["找一部", "有没有类似", "推荐一部"]) {
+            return .findMovie
+        }
+
+        // 其余归 general（宽松对话，避免文不对题）
+        return .general
     }
 
     private static func contains(_ text: String, anyOf keywords: [String]) -> Bool {

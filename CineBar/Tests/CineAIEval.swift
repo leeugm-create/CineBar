@@ -36,6 +36,10 @@ struct CineAIEval {
         check(CineAIIntentRouter.route("这部剧结局是谁死了") == .spoilerSafe, "route spoilerSafe2")
         check(CineAIIntentRouter.route("今晚看什么") == .recommend, "route recommend")
         check(CineAIIntentRouter.route("这部剧讲什么") == .mediaIntro, "route intro")
+        // general：非影视/闲聊不应硬塞找片
+        check(CineAIIntentRouter.route("给我讲个笑话") == .general, "route general")
+        check(CineAIIntentRouter.route("现在几点了") == .general, "route general2")
+        check(CineAIIntentRouter.route("你好") == .general, "route general3")
 
         // ---- 2. 找片语义拆解 ----
         var q = CineMovieQueryParser.parse("找一部时间循环的喜剧")
@@ -75,6 +79,14 @@ struct CineAIEval {
         _ = try? await rag.answer(.mediaIntro, input: "庆余年讲什么")
         let sysIntro = cap.captured.first { $0.role == "system" }?.content ?? ""
         check(sysIntro.contains("资料") || sysIntro.contains("编造"), "mediaIntro system 有资料约束")
+
+        // 4d. general（闲聊/其它）：system 应宽松正常对话，不含"只答影视/候选"强约束
+        _ = try? await rag.answer(.general, input: "给我讲个笑话")
+        let sysGeneral = cap.captured.first { $0.role == "system" }?.content ?? ""
+        check(
+            !sysGeneral.contains("只答") && !sysGeneral.contains("提供的数据为准"),
+            "general system 宽松对话无影视强约束"
+        )
 
         // ---- 5. 端到端链路 Smoke（防"每个零件都 PASS，串起来却坏"）----
         await endToEndSmoke()

@@ -70,6 +70,12 @@ struct CineAIRAG {
                 system("你是 CineAI。基于用户偏好与提供的候选影片推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部。"),
                 user("按用户偏好推荐的候选影片：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),
             ]
+        case .general:
+            // 闲聊/其它：正常对话，不强制套用影视资料约束，避免文不对题/生硬。
+            return [
+                system("你是 CineAI，CineBar 的助手。回答用中文，自然、简洁；不确定的事不要编造。"),
+                user(input),
+            ]
         }
     }
 
