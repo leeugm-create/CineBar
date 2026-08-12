@@ -12090,7 +12090,12 @@ struct ContentView: View {
         )
     }
 
+    @ViewBuilder
     private var mainList: some View {
+        // 进入 CineAI：整体覆盖主面板（含顶栏/搜索框/浏览内容），CineAI 从顶部开始。
+        if store.isShowingCineAI {
+            CineAIView(store: store)
+        } else {
         VStack(spacing: 0) {
             VStack(spacing: 10) {
                 HStack {
@@ -12767,6 +12772,7 @@ struct ContentView: View {
             .padding(.horizontal)
             .frame(height: 36)
             }
+        }
         }
     }
 }

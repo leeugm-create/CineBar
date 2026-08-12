@@ -187,22 +187,45 @@ struct CineAIView: View {
                         in: RoundedRectangle(cornerRadius: 10)
                     )
                 // 复制按钮：主面板拖选被 drag-host 拦截时，仍可一键复制到剪贴板。
+                // assistant 回答优先复制其中的片名（《…》内），方便粘贴搜索。
                 if !msg.content.isEmpty {
                     Button {
-                        copyToPasteboard(msg.content)
+                        copyToPasteboard(extractTitles(from: msg.content) ?? msg.content)
                     } label: {
                         Label("复制", systemImage: "doc.on.doc")
                             .font(.caption2)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
-                    .help("复制这条文本")
+                    .help("复制片名（复制整条用右键）")
                 }
             }
             if msg.role == "assistant" {
                 Spacer(minLength: 40)
             }
         }
+    }
+
+    /// 从回答文本提取片名（中文《…》内的内容，去空/去重）；无则返回 nil。
+    private func extractTitles(from text: String) -> String? {
+        guard let regex = try? NSRegularExpression(
+            pattern: #"《([^》]+)》"#
+        ) else { return nil }
+        let ns = text as NSString
+        let matches = regex.matches(
+            in: text,
+            range: NSRange(location: 0, length: ns.length)
+        )
+        var titles: [String] = []
+        var seen = Set<String>()
+        for m in matches {
+            let t = ns.substring(with: m.range(at: 1))
+                .trimmingCharacters(in: .whitespaces)
+            if !t.isEmpty, seen.insert(t).inserted {
+                titles.append(t)
+            }
+        }
+        return titles.isEmpty ? nil : titles.joined(separator: " ")
     }
 
     private func copyToPasteboard(_ text: String) {
