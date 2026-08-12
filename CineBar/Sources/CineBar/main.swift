@@ -11829,6 +11829,42 @@ struct VerticalResizeHandle: NSViewRepresentable {
     ) {}
 }
 
+/// 主面板拖动把手：按住该区域即可拖动窗口（mouseDown 记起点，
+/// mouseDragged 移动窗口 frame），对 borderless 窗口同样生效。
+/// 放在主面板顶栏空白区，不挡任何按钮。
+final class PanelDragNSView: NSView {
+    private var dragStartMouse: NSPoint?
+    private var dragStartOrigin: NSPoint?
+
+    override func mouseDown(with event: NSEvent) {
+        dragStartMouse = NSEvent.mouseLocation
+        dragStartOrigin = window?.frame.origin
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let window,
+              let dragStartMouse,
+              let dragStartOrigin else { return }
+        let current = NSEvent.mouseLocation
+        window.setFrameOrigin(NSPoint(
+            x: dragStartOrigin.x + (current.x - dragStartMouse.x),
+            y: dragStartOrigin.y + (current.y - dragStartMouse.y)
+        ))
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        dragStartMouse = nil
+        dragStartOrigin = nil
+    }
+}
+
+struct PanelDragView: NSViewRepresentable {
+    func makeNSView(context: Context) -> PanelDragNSView {
+        PanelDragNSView()
+    }
+    func updateNSView(_ nsView: PanelDragNSView, context: Context) {}
+}
+
 struct ContentView: View {
     @ObservedObject var store: MovieStore
     @ObservedObject var localLibraryStore: LocalLibraryStore
@@ -11983,7 +12019,9 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Spacer()
+                    PanelDragView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .help("按住这里拖动窗口")
                     Button {
                         if store.mediaSection == .anime {
                             store.setMainBrowseSection(.movies)
