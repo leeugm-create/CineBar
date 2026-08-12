@@ -51,13 +51,36 @@ extension MovieStore {
 
     // MARK: - 数据源实现
 
-    /// 找片：用整句作检索词查 TMDB，取前若干返回标题+年份+评分+简介文本块。
+    /// 找片：先把自然语言拆成结构化查询（类型/年份/评分/关键词），
+    /// 能拆出结构化条件就走 TMDB discover；拆不出就回退整句标题搜索。
     private func cineAISearchMovies(_ query: String) async -> String {
         guard hasToken else { return "" }
         let client = TMDBClient(token: token, language: appLanguage.apiCode)
+        let parsed = CineMovieQueryParser.parse(query)
         do {
-            let results = try await client.search(query)
-            let titles = results.prefix(8).map { m -> String in
+            var ms: [Movie]
+            if !parsed.genreIDs.isEmpty || parsed.keyword != nil {
+                let page = try await client.discover(
+                    startYear: parsed.year.map { $0 - 2 },
+                    endYear: parsed.year,
+                    genreIDs: parsed.genreIDs,
+                    keywordQueries: parsed.keyword.map { [$0] } ?? [],
+                    originCountry: nil,
+                    sortMode: parsed.wantObscure ? .rating : .popularity,
+                    page: 1
+                )
+                ms = page.movies
+                if let mv = parsed.minVote {
+                    ms = ms.filter { $0.voteAverage >= mv }
+                }
+                if parsed.wantObscure {
+                    ms = ms.sorted { $0.voteAverage > $1.voteAverage }
+                }
+                ms = Array(ms.prefix(8))
+            } else {
+                ms = try await client.search(query)
+            }
+            let lines = ms.prefix(8).map { m -> String in
                 var line = "《\(m.title)》(\(m.year))"
                 if m.voteAverage > 0 {
                     line += " 评分 \(String(format: "%.1f", m.voteAverage))"
@@ -67,7 +90,7 @@ extension MovieStore {
                 }
                 return line
             }
-            return titles.joined(separator: "\n")
+            return lines.joined(separator: "\n")
         } catch {
             return ""
         }
