@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 74（CineAI 验证版）&lt;/li&gt;&lt;li&gt;- 新增：顶栏 ✨ 进入 CineAI 影视助手，聊天界面含 4 个快捷入口（🎬今晚看什么 / 🔍帮我找电影 / 📺这剧讲什么 / 🚫无剧透问答）。&lt;/li&gt;&lt;li&gt;- 能力：自然语言找片（类型/年份/评分/冷门语义拆解）、影视问答、推荐、基于个人观影进度的防剧透（本地硬拦截 + 进度上下文）。&lt;/li&gt;&lt;li&gt;- 架构：AI 请求统一走服务端代理（Key 不进客户端），含设备匿名限额（每日次数+token 双限）与精确缓存。&lt;/li&gt;&lt;li&gt;- 本次为功能验证版：重点验证入口可用、真实问答质量、防剧透拦截、异常提示、连续使用稳定性。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-74-universal.zip"
+        sparkle:version="74"
+        sparkle:shortVersionString="0.8.3"
+        length="8221189"
+        type="application/octet-stream"
+        sparkle:edSignature="ChQrISTyP6BIVTSs1MDh1hPY+9dKoGYudRkx8X8ajagRjg9RwYlCZKPEuZrzUIm4AxanZJDcUPBrVRVHZyu7BA=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 73&lt;/li&gt;&lt;li&gt;- 优化：电视剧「季与集」在线播放会自动探测各线路分片是否能播，把可播放的线路排到最前，点「在线播放」默认第一条即可直接播放（换线路菜单里仍保留全部线路备选）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 11 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-73-universal.zip"
-        sparkle:version="73"
-        sparkle:shortVersionString="0.8.3"
-        length="8016259"
-        type="application/octet-stream"
-        sparkle:edSignature="zPY8n8Lbu8z4jo8kzo1OoSD+deImzf9tV++oDEFYJ51ZSRTtG2zmwcqbwgGGqsiZhHxLNfaPpMrYQOCTzvjYCQ=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-73-universal.zip" sparkle:version="73" sparkle:shortVersionString="0.8.3" length="8016259" type="application/octet-stream" sparkle:edSignature="zPY8n8Lbu8z4jo8kzo1OoSD+deImzf9tV++oDEFYJ51ZSRTtG2zmwcqbwgGGqsiZhHxLNfaPpMrYQOCTzvjYCQ=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
