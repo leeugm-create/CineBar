@@ -153,6 +153,41 @@ enum MoovieStreamResolver {
         return extractStreamURL(from: html)
     }
 
+    /// 探测一个 m3u8 直链的分片能否被拉到（客户端同环境，较准确）。
+    /// 聚合站分片常带 .png 伪装/防盗链，分片可拉则该源浏览器/播放器大概率可播。
+    /// 用于给"能播放的线路"优先排序。
+    static func probePlayable(streamURL: URL) async -> Bool {
+        var request = URLRequest(url: streamURL)
+        request.timeoutInterval = 12
+        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200,
+              let text = String(data: data, encoding: .utf8) else {
+            return false
+        }
+        let lines = text.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        var segmentURL: URL?
+        for i in 0..<(lines.count - 1) where lines[i].hasPrefix("#EXTINF") {
+            let seg = lines[i + 1]
+            if !seg.isEmpty, !seg.hasPrefix("#") {
+                segmentURL = URL(string: seg, relativeTo: streamURL)?.absoluteURL
+                break
+            }
+        }
+        guard let segmentURL else { return false }
+        var segRequest = URLRequest(url: segmentURL)
+        segRequest.timeoutInterval = 12
+        segRequest.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        segRequest.setValue("https://moovie.c2v2.com/", forHTTPHeaderField: "Referer")
+        guard let (segData, segResponse) = try? await URLSession.shared.data(for: segRequest),
+              (segResponse as? HTTPURLResponse)?.statusCode == 200 else {
+            return false
+        }
+        // 分片返回纯文本 "404 ..." 视为防盗链失败。
+        if segData.count < 16 { return false }
+        return true
+    }
+
     /// 从播放页 HTML 提取 m3u8 直链（离线纯函数，供测试）。
     static func extractStreamURL(from html: String) -> URL? {
         // initPlayer('artplayer-app', 'URL', { → URL 里斜杠被转义成 \/

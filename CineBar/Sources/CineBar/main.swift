@@ -630,6 +630,8 @@ struct EpisodeSource: Identifiable, Hashable {
     var id: String { "\(label)|\(url.absoluteString)" }
     let url: URL
     let label: String
+    /// 是否已探测分片可拉（可播放优先）。
+    var playable: Bool = false
 }
 
 struct TVSeasonDetails: Codable {
@@ -5401,6 +5403,25 @@ final class MovieStore: ObservableObject {
                 playPath: episode.playPath
             ) else { continue }
             sources.append(EpisodeSource(url: url, label: candidate.sourceName))
+        }
+        // 并发探测分片可拉，能播放的线路排前面（用户默认第一条即可播）。
+        if sources.count > 1 {
+            var checked = sources
+            await withTaskGroup(of: (Int, Bool).self) { group in
+                for i in checked.indices {
+                    let url = checked[i].url
+                    group.addTask {
+                        (i, await MoovieStreamResolver.probePlayable(streamURL: url))
+                    }
+                }
+                for await (i, ok) in group {
+                    if i < checked.count {
+                        checked[i].playable = ok
+                    }
+                }
+            }
+            checked.sort { ($0.playable ? 1 : 0) > ($1.playable ? 1 : 0) }
+            sources = checked
         }
         if sources.isEmpty {
             await MainActor.run {
