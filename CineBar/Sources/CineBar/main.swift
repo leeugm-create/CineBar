@@ -3166,6 +3166,8 @@ final class MovieStore: ObservableObject {
         didSet { cineAISaveMessages() }
     }
     @Published var isShowingCineAI = false
+    /// 顶栏放大镜：是否显示普通"搜索电影/演员"框（默认 false = 主页显示 AI 框）。
+    @Published var isShowingSearchBar = false
     @Published var movies: [Movie] = Movie.demo
     @Published var televisionShows: [TVShow] = [TVShow.demo]
     @Published var mediaSection: MediaSection = .movies
@@ -12142,18 +12144,15 @@ struct ContentView: View {
                     }
                     Spacer()
                     Button {
-                        if store.mediaSection == .anime {
-                            store.setMainBrowseSection(.movies)
-                            store.setMovieBrowseSection(.trending)
-                        } else if store.mediaSection == .movies {
-                            store.setMovieBrowseSection(.trending)
-                        } else {
-                            store.setTVBrowseSection(.trending)
+                        // 切换普通"搜索电影/演员"框（默认主页显示 AI 框，点放大镜换成普通搜索）。
+                        store.isShowingSearchBar.toggle()
+                        if store.isShowingSearchBar {
+                            store.isShowingCineAI = false
                         }
                     } label: {
-                        Image(systemName: "flame")
+                        Image(systemName: "magnifyingglass")
                     }
-                    .help("本周热门")
+                    .help(store.isShowingSearchBar ? "回到 AI" : "搜索电影 / 演员")
                     Button {
                         if store.mediaSection == .anime {
                             store.setMainBrowseSection(.movies)
@@ -12183,12 +12182,6 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .help("设置")
-                    Button {
-                        store.isShowingCineAI.toggle()
-                    } label: {
-                        Image(systemName: "sparkles")
-                    }
-                    .help("CineAI 影视助手")
                 }
 
                 Picker(
@@ -12258,33 +12251,59 @@ struct ContentView: View {
                     }
                 }
 
-                HStack(spacing: 8) {
-                    HStack(spacing: 4) {
-                        TextField(
-                            store.mediaSection == .television
-                                ? "搜索电视剧或演员"
-                                : "搜索电影或演员",
-                            text: $store.searchText
-                        )
-                        .textFieldStyle(.roundedBorder)
-                        .onSubmit { store.performSearch() }
-                        if !store.searchText.isEmpty {
-                            Button {
-                                store.clearSearch()
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundStyle(.secondary)
+                if store.isShowingSearchBar {
+                    // 普通"搜索电影/演员"（由顶栏放大镜切入）
+                    HStack(spacing: 8) {
+                        HStack(spacing: 4) {
+                            TextField(
+                                store.mediaSection == .television
+                                    ? "搜索电视剧或演员"
+                                    : "搜索电影或演员",
+                                text: $store.searchText
+                            )
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit { store.performSearch() }
+                            if !store.searchText.isEmpty {
+                                Button {
+                                    store.clearSearch()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundStyle(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .help("清除搜索")
                             }
-                            .buttonStyle(.plain)
-                            .help("清除搜索")
                         }
+                        Button {
+                            store.performSearch()
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
+                } else {
+                    // 主页主打：CineAI 入口框，点击进入聊天界面（对话已记忆）。
                     Button {
-                        store.performSearch()
+                        store.isShowingCineAI = true
                     } label: {
-                        Image(systemName: "magnifyingglass")
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(.orange)
+                            Text(
+                                "问 CineAI：找片 / 问答 / 推荐 / 无剧透…"
+                            )
+                            .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 7)
+                        .background(
+                            Color.secondary.opacity(0.08),
+                            in: RoundedRectangle(cornerRadius: 8)
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.plain)
+                    .help("打开 CineAI 影视助手")
                 }
             }
             .padding()

@@ -75,6 +75,17 @@ final class Hao6vMagnetStore {
         return entries
     }
 
+    /// 磁力库是否含某部影片（按标题模糊匹配，本地查询）。
+    func contains(title: String) -> Bool {
+        let needle = Self.normalized(title)
+        guard !needle.isEmpty else { return false }
+        return allEntries().contains { Self.normalized($0.rawTitle).contains(needle) }
+    }
+
+    private static func normalized(_ s: String) -> String {
+        DoubanRatingClient.normalize(s)
+    }
+
     func count() -> Int {
         lock.lock()
         defer { lock.unlock() }
