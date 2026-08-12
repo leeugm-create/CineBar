@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.8.3</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 68&lt;/li&gt;&lt;li&gt;- 修复：主面板无法拖动——禁用 macOS 26+ 的液态玻璃背景容器（它会拦截面板背景拖动），恢复窗口移动功能。（玻璃背景外观暂缓，功能优先）&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 69&lt;/li&gt;&lt;li&gt;- 修复：主面板拖动——新增顶栏拖动把手（按住标题右侧空白处即可拖动窗口，borderless 窗口也生效）。此前系统背景拖动在无边框窗口上不触发。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 11 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-68-universal.zip"
-        sparkle:version="68"
+        url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-69-universal.zip"
+        sparkle:version="69"
         sparkle:shortVersionString="0.8.3"
-        length="7948945"
+        length="7955739"
         type="application/octet-stream"
-        sparkle:edSignature="mVN0kUJqnRMVPb4oK2Q80tvwWbVMHZ7WGY2qLLvBX8/Uw1PSu6kvvjFiofh6mN8XsXcBUvKFFGs56LYThN3ABQ=="/>
+        sparkle:edSignature="pWGQ5AeUWzs3mF2OjB41lHyeMKCQUVXIomZmWSvDQeyqsSf0hKpAW4QDmsYD0zBHP6UWODu5ZsyV69F64tkVAQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.8.3</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.8.3-test.16 · Build 68&lt;/li&gt;&lt;li&gt;- 修复：主面板无法拖动——禁用 macOS 26+ 的液态玻璃背景容器（它会拦截面板背景拖动），恢复窗口移动功能。（玻璃背景外观暂缓，功能优先）&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 11 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.8.3-test-build-68-universal.zip" sparkle:version="68" sparkle:shortVersionString="0.8.3" length="7948945" type="application/octet-stream" sparkle:edSignature="mVN0kUJqnRMVPb4oK2Q80tvwWbVMHZ7WGY2qLLvBX8/Uw1PSu6kvvjFiofh6mN8XsXcBUvKFFGs56LYThN3ABQ=="/>
     </item>
 <item>
       <title>CineBar 0.8.3</title>
