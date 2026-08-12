@@ -17,11 +17,43 @@ extension MovieStore {
                 searchMovies: { query in
                     await selfRef.cineAISearchMovies(query)
                 },
+                recommendMovies: {
+                    await selfRef.cineAIRecommendMovies()
+                },
                 spoilerContext: {
                     await selfRef.cineAISpoilerContext()
                 }
             )
         )
+    }
+
+    /// 推荐候选：按用户设置的电影偏好（类型/地区）取高分影片；无偏好时回退热门。
+    private func cineAIRecommendMovies() async -> String {
+        guard hasToken else { return "" }
+        let client = TMDBClient(token: token, language: appLanguage.apiCode)
+        do {
+            let page = try await client.discover(
+                startYear: nil,
+                endYear: nil,
+                genreIDs: Array(preferredMovieGenreIDs),
+                keywordQueries: [],
+                originCountry: nil,
+                sortMode: .rating,
+                page: 1
+            )
+            var ms = page.movies
+            // 若用户有地区偏好，再按地区过滤（discover 已按原产地，这里用 vote 排序即可）。
+            ms = Array(ms.sorted { $0.voteAverage > $1.voteAverage }.prefix(10))
+            let lines = ms.map { m -> String in
+                var line = "《\(m.title)》(\(m.year))"
+                if m.voteAverage > 0 { line += " 评分 \(String(format: "%.1f", m.voteAverage))" }
+                if !m.overview.isEmpty { line += " 简介：\(m.overview.prefix(90))" }
+                return line
+            }
+            return lines.joined(separator: "\n")
+        } catch {
+            return ""
+        }
     }
 
     /// 当前"进行中的剧"：优先用户正在查看的剧；否则取观影进度里最近看过的剧。

@@ -15,6 +15,8 @@ struct CineAIRAG {
         var fetchFacts: (String) async -> String = { _ in "" }
         /// 找片：把自然语言转成检索词，返回候选片名/简介文本块。
         var searchMovies: (String) async -> String = { _ in "" }
+        /// 推荐：按用户影视偏好返回候选（类型/地区等），供"今晚看什么"。
+        var recommendMovies: () async -> String = { "" }
         /// 防剧透：当前剧的上下文（进度 + 已看集资料）。返回文本块；空表示无。
         var spoilerContext: () async -> String = { "" }
     }
@@ -63,10 +65,10 @@ struct CineAIRAG {
                 user("影视资料：\n\(facts.isEmpty ? "（暂无资料）" : facts)\n\n用户问：\(input)"),
             ]
         case .recommend:
-            let facts = await data.fetchFacts(input)
+            let facts = await data.recommendMovies()
             return [
-                system("你是 CineAI。基于提供的影片库/片单推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部。"),
-                user("可推荐的范围：\n\(facts.isEmpty ? "（暂无片单）" : facts)\n\n用户想：\(input)"),
+                system("你是 CineAI。基于用户偏好与提供的候选影片推荐，说明理由；未提供的不要编造。回答用中文，列表给出 3-5 部。"),
+                user("按用户偏好推荐的候选影片：\n\(facts.isEmpty ? "（暂无候选）" : facts)\n\n用户想：\(input)"),
             ]
         }
     }
