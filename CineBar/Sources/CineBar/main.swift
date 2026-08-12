@@ -12901,6 +12901,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             button.toolTip = "CineBar · 找到下一部好片"
             button.target = self
             button.action = #selector(menuBarClicked)
+            // 让左/右键都触发 action，右键在 menuBarClicked 中弹出上下文菜单。
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
         self.statusItem = statusItem
 

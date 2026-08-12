@@ -87,7 +87,45 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
 
-            // 输入（composer）：圆角聚焦容器 + 圆形发送按钮（参考的对话框样式）。
+            Divider()
+
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        // 只显示 user/assistant；system 不当作气泡。
+                        let visible = messages.filter { $0.role != "system" }
+                        if visible.isEmpty {
+                            welcomeView
+                        } else {
+                            ForEach(Array(visible.enumerated()), id: \.offset) { _, msg in
+                                chatBubble(msg)
+                            }
+                            if busy {
+                                thinkingBubble
+                            }
+                        }
+                        Color.clear.frame(height: 1).id("bottom")
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+                }
+                .onChange(of: messages) { _ in
+                    // 有新消息/回答后滚到底部
+                    withAnimation {
+                        proxy.scrollTo("bottom", anchor: .bottom)
+                    }
+                }
+                .onChange(of: busy) { isBusy in
+                    // 显示/隐藏"思考中"时也滚到底部
+                    if isBusy {
+                        withAnimation {
+                            proxy.scrollTo("bottom", anchor: .bottom)
+                        }
+                    }
+                }
+            }
+
+            // 输入（composer）：圆角聚焦容器 + 圆形发送按钮，固定在底部。
             HStack(alignment: .center, spacing: 8) {
                 TextField("问问 CineAI…例如：找一部80年代喜剧港片", text: $input)
                     .textFieldStyle(.plain)
@@ -131,44 +169,6 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
-
-            Divider()
-
-            ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        // 只显示 user/assistant；system 不当作气泡。
-                        let visible = messages.filter { $0.role != "system" }
-                        if visible.isEmpty {
-                            welcomeView
-                        } else {
-                            ForEach(Array(visible.enumerated()), id: \.offset) { _, msg in
-                                chatBubble(msg)
-                            }
-                            if busy {
-                                thinkingBubble
-                            }
-                        }
-                        Color.clear.frame(height: 1).id("bottom")
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 6)
-                }
-                .onChange(of: messages) { _ in
-                    // 有新消息/回答后滚到底部
-                    withAnimation {
-                        proxy.scrollTo("bottom", anchor: .bottom)
-                    }
-                }
-                .onChange(of: busy) { isBusy in
-                    // 显示/隐藏"思考中"时也滚到底部
-                    if isBusy {
-                        withAnimation {
-                            proxy.scrollTo("bottom", anchor: .bottom)
-                        }
-                    }
-                }
-            }
         }
         .environment(\.openURL, OpenURLAction { url in
             // 点击回答里的《片名》→ 按片名进入详情页。
