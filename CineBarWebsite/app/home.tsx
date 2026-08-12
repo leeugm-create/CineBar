@@ -4,7 +4,7 @@ import SiteSearch from "./site-search";
 import ThemeToggle from "./theme-toggle";
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-86-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-87-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 function ratingIcon(id: string) {
@@ -69,31 +69,27 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
               </h1>
             </div>
             <p className="hero-lede">{m.heroLede}</p>
-            <p className="hero-note">{m.heroNote}</p>
             <div className="hero-actions">
               <a className="button primary" href={releaseURL}>
                 {m.download}
               </a>
-              <a className="button link" href="#showcase">
-                {m.heroSecondary}
-              </a>
             </div>
-            <div className="hero-proof" aria-label={m.featuresTitle}>
-              {m.features.slice(0, 3).map(([title]) => (
-                <span key={title}>{title}</span>
-              ))}
-            </div>
-          </div>
-          <div className="hero-visual" aria-label={m.demoHint}>
-            <figure className="hero-gif">
-              <div className="hero-gif-frame">
-                <img src="/cinebar-product-tour.gif" alt={m.demoHint} loading="lazy" />
-              </div>
-              <figcaption>{m.demoHint}</figcaption>
-            </figure>
+            <p className="hero-compat">{m.compat}</p>
           </div>
         </div>
-        <p className="hero-compat">{m.compat}</p>
+      </section>
+
+      <section className="section" id="cineai">
+        <h2>{m.caiTitle}</h2>
+        <p className="section-lede">{m.caiLead}</p>
+        <div className="feature-grid">
+          {m.caiPoints.map(([title, body]) => (
+            <article className="feature-card" key={title}>
+              <h3>{title}</h3>
+              <p>{body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="section showcase-section" id="showcase">
@@ -103,7 +99,8 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         <div className="showcase-grid">
           <figure className="showcase-gif">
             <div className="showcase-gif-frame">
-              <img src="/cinebar-product-tour.gif" alt={m.demoHint} loading="lazy" />
+              <img className="demo-static" src="/cinebar-product-tour-poster.png" alt="" loading="lazy" />
+              <img className="demo-animated" src="/cinebar-product-tour.gif" alt={m.demoHint} loading="lazy" />
             </div>
             <figcaption>{m.demoHint}</figcaption>
           </figure>
@@ -149,19 +146,6 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
             </li>
           ))}
         </ol>
-      </section>
-
-      <section className="section" id="cineai">
-        <h2>{m.caiTitle}</h2>
-        <p className="section-lede">{m.caiLead}</p>
-        <div className="feature-grid">
-          {m.caiPoints.map(([title, body]) => (
-            <article className="feature-card" key={title}>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
-          ))}
-        </div>
       </section>
 
       <section className="section install-section" id="install">
