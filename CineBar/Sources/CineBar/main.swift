@@ -12715,6 +12715,12 @@ struct ContentView: View {
     override func cancelOperation(_ sender: Any?) {}
 }
 
+/// 主面板可拖宿主：空白/非交互区按下即拖动窗口（鼠标点到按钮、滚动等
+/// 交互视图时仍正常响应）。对无边框面板也能用。
+final class DraggableHostingView<Content: View>: NSHostingView<Content> {
+    override var mouseDownCanMoveWindow: Bool { true }
+}
+
 enum PanelPlacement {
     static func frame(
         anchorX: CGFloat,
@@ -12813,7 +12819,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
         let panel = CineBarPanel(
             contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
-            styleMask: [.titled, .fullSizeContentView, .resizable],
+            styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -12823,10 +12829,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
-        // .titled 窗口由系统标题栏支持拖动；隐藏标题按钮并透明化标题栏，
-        // 让顶部区域仍可按住拖动，同时不显示可见标题栏。
-        panel.titlebarAppearsTransparent = true
-        panel.titleVisibility = .hidden
         panel.isMovableByWindowBackground = store.isPanelMovable
         panel.isMovable = true
         panel.acceptsMouseMovedEvents = true
@@ -12838,12 +12840,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         var restoredFrame = panel.frame
         restoredFrame.size.width = 520
         panel.setFrame(restoredFrame, display: false)
-        let hostingView = NSHostingView(
-            rootView: ContentView(
-                store: store,
-                localLibraryStore: localLibraryStore
-            )
+        let contentView = ContentView(
+            store: store,
+            localLibraryStore: localLibraryStore
         )
+        let hostingView = DraggableHostingView(rootView: contentView)
         let container = liquidGlassContainer(for: hostingView)
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
