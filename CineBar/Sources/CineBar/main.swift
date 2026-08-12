@@ -3161,6 +3161,10 @@ struct CommunityRatingClient {
 final class MovieStore: ObservableObject {
     /// CineAI 观影进度（防剧透数据源）。单 macOS 端，UserDefaults 持久化。
     let cineAIProgress = CineAIProgressStore()
+    /// 已评分媒体的本地标记（"\(mediaType):\(mediaID)"），防止 summary 偶发查不到 my_score 时仍显示可提交。
+    @Published private(set) var communityRatedMedia: Set<String> {
+        didSet { defaults.set(Array(communityRatedMedia), forKey: "communityRatedMedia") }
+    }
     /// CineAI 对话历史（保存用户与 AI 的往来），持久化，重进聊天界面前提现原对话。
     @Published var cineAIMessages: [AIChatMessage] {
         didSet { cineAISaveMessages() }
@@ -3301,6 +3305,9 @@ final class MovieStore: ObservableObject {
     private var messageBeforeFilter = ""
 
     init() {
+        communityRatedMedia = Set(
+            defaults.stringArray(forKey: "communityRatedMedia") ?? []
+        )
         if let data = defaults.data(forKey: "cineai.messages"),
            let saved = try? JSONDecoder().decode(
                [AIChatMessage].self, from: data) {
@@ -3957,11 +3964,19 @@ final class MovieStore: ObservableObject {
         }
     }
 
+    /// 该片是否已评分（服务端 my_score 或本地已评标记命中）。
+    func hasRatedCommunity(
+        mediaType: CommunityMediaType,
+        mediaID: Int
+    ) -> Bool {
+        communityRating?.myScore != nil ||
+            communityRatedMedia.contains("\(mediaType.rawValue):\(mediaID)")
+    }
+
     func saveCommunityRating(
         mediaType: CommunityMediaType,
         mediaID: Int
-    ) {
-        guard mediaID > 0, hasCommunityService else { return }
+    ) {        guard mediaID > 0, hasCommunityService else { return }
         isLoadingCommunityRating = true
         communityRatingMessage = "正在保存评分…"
         Task {
@@ -3972,8 +3987,10 @@ final class MovieStore: ObservableObject {
                     score: communityRatingDraft
                 )
                 communityRatingMessage = "评分已保存，其他 CineBar 用户现在可以看到"
+                communityRatedMedia.insert("\(mediaType.rawValue):\(mediaID)")
             } catch CommunityRatingError.alreadyRated {
                 communityRatingMessage = "这部影片已经评分，不能重复评分"
+                communityRatedMedia.insert("\(mediaType.rawValue):\(mediaID)")
                 do {
                     communityRating = try await communityClient.summary(
                         mediaType: mediaType,
@@ -7418,10 +7435,9 @@ struct CommunityRatingPanel: View {
 
     @ViewBuilder
     var body: some View {
-        if RatingPresentation.shouldShowEditor(
-            myScore: store.communityRating?.myScore,
-            isLoading: store.isLoadingCommunityRating
-        ) {
+        // 已评分（服务端或本地标记）则不再显示提交框，防"提交无反应/重复提"。
+        if !store.hasRatedCommunity(mediaType: mediaType, mediaID: mediaID),
+           !store.isLoadingCommunityRating {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Label("我的评分", systemImage: "person.crop.circle.badge.checkmark")

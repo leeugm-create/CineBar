@@ -33,6 +33,7 @@ struct CineAIView: View {
     @ObservedObject var store: MovieStore
     @State private var input = ""
     @State private var busy = false
+    @FocusState private var inputFocused: Bool
 
     /// 对话历史来自 store（持久化到多轮重进）。
     private var messages: [AIChatMessage] {
@@ -73,6 +74,28 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
 
+            // 输入框固定在顶部（贴合主页 AI 入口位置，不跑到最下方），进入即聚焦可打字。
+            HStack(spacing: 6) {
+                TextField("问问 CineAI…（例如：找一部时间循环的科幻片）", text: $input)
+                    .textFieldStyle(.roundedBorder)
+                    .focused($inputFocused)
+                    .onSubmit { send() }
+                    .disabled(busy)
+                Button {
+                    send()
+                } label: {
+                    if busy {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "paperplane.fill")
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(busy || input.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 6)
+
             Divider()
 
             ScrollViewReader { proxy in
@@ -110,27 +133,6 @@ struct CineAIView: View {
                     }
                 }
             }
-
-            // 输入
-            HStack(spacing: 6) {
-                TextField("问问 CineAI…（例如：找一部时间循环的科幻片）", text: $input)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit { send() }
-                    .disabled(busy)
-                Button {
-                    send()
-                } label: {
-                    if busy {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: "paperplane.fill")
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(busy || input.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 8)
         }
         .environment(\.openURL, OpenURLAction { url in
             // 点击回答里的《片名》→ 按片名进入详情页。
@@ -144,6 +146,10 @@ struct CineAIView: View {
             }
             return .systemAction
         })
+        .onAppear {
+            // 进入聊天：光标自动落到输入框，随时可打字。
+            inputFocused = true
+        }
     }
 
     /// 空态引导：告诉用户 4 个能力能干嘛。
