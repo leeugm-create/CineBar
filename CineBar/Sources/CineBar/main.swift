@@ -4450,7 +4450,7 @@ final class MovieStore: ObservableObject {
     }
 
     func performSearch() {
-        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let query = Self.normalizedSearchQuery(searchText)
         guard !query.isEmpty else {
             clearSearch()
             return
@@ -5638,6 +5638,31 @@ final class MovieStore: ObservableObject {
         guard let dateText, dateText.count >= 4,
               let year = Int(dateText.prefix(4)) else { return nil }
         return year
+    }
+
+    /// 规范化搜索词：去掉中文书名号《》、英文引号、以及括号内的纯年份，
+    /// 合并多余空格 —— 让从 CineAI 复制的片名（如《夜车》(2023)）粘贴后能搜到。
+    static func normalizedSearchQuery(_ raw: String) -> String {
+        var s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 去掉中文/英文书名号与引号
+        s = s.replacingOccurrences(of: "《", with: " ")
+        s = s.replacingOccurrences(of: "》", with: " ")
+        s = s.replacingOccurrences(of: "\"", with: " ")
+        s = s.replacingOccurrences(of: "“", with: " ")
+        s = s.replacingOccurrences(of: "”", with: " ")
+        // 去掉“（年份）”这类纯年份括号：用正则匹配 ( 或 （ 后跟数字年份再 )
+        if let regex = try? NSRegularExpression(
+            pattern: #"[\(（]\s*(19|20)\d{2}\s*[\)）]"#
+        ) {
+            let range = NSRange(location: 0, length: (s as NSString).length)
+            s = regex.stringByReplacingMatches(
+                in: s, range: range, withTemplate: " "
+            )
+        }
+        // 合并多余空白
+        return s
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
     }
 
     /// 豆瓣抓取命中：评分 + 页面跳转信息。
@@ -12806,6 +12831,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
     private var updateBadgeCancellable: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installEditingMenu()
         _ = updaterService
         NSApplication.shared.setActivationPolicy(.accessory)
         UNUserNotificationCenter.current().delegate = self
@@ -13128,6 +13154,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             return
         }
         togglePanel()
+    }
+
+    /// 本 App 是菜单栏工具（LSUIElement，无 Dock/无可见菜单栏），默认没有系统 Edit 菜单，
+    /// 导致 SwiftUI 的 `.textSelection` 复制的 Cmd+C 等编辑快捷键没有 menu item 可路由（右键菜单仍可用）。
+    /// 这里给 App 挂一个含 Edit 子菜单的 mainMenu，让复制/粘贴/全选等快捷键走 responder chain 生效。
+    private func installEditingMenu() {
+        let editItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        let copyItem = NSMenuItem(
+            title: "Copy", action: #selector(NSText.copy(_:)),
+            keyEquivalent: "c")
+        let selectAllItem = NSMenuItem(
+            title: "Select All", action: #selector(NSText.selectAll(_:)),
+            keyEquivalent: "a")
+        let pasteItem = NSMenuItem(
+            title: "Paste", action: #selector(NSText.paste(_:)),
+            keyEquivalent: "v")
+        let cutItem = NSMenuItem(
+            title: "Cut", action: #selector(NSText.cut(_:)),
+            keyEquivalent: "x")
+        editMenu.items = [cutItem, copyItem, pasteItem, .separator(), selectAllItem]
+        editItem.submenu = editMenu
+
+        let appMenu = NSMenu(title: "CineBar")
+        appMenu.items = [editItem]
+        NSApplication.shared.mainMenu = appMenu
     }
 
     @objc private func togglePanel() {

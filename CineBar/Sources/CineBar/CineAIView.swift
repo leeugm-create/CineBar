@@ -163,24 +163,44 @@ struct CineAIView: View {
     }
 
     private func chatBubble(_ msg: AIChatMessage) -> some View {
-        HStack {
+        HStack(alignment: .bottom) {
             if msg.role == "user" {
                 Spacer(minLength: 40)
             }
-            Text(msg.content)
-                .font(.callout)
-                .textSelection(.enabled)
-                .padding(10)
-                .background(
-                    (msg.role == "user"
-                        ? Color.accentColor.opacity(0.16)
-                        : Color.secondary.opacity(0.10)),
-                    in: RoundedRectangle(cornerRadius: 10)
-                )
+            VStack(alignment: msg.role == "user" ? .trailing : .leading, spacing: 3) {
+                Text(msg.content)
+                    .font(.callout)
+                    .textSelection(.enabled)
+                    .padding(10)
+                    .background(
+                        (msg.role == "user"
+                            ? Color.accentColor.opacity(0.16)
+                            : Color.secondary.opacity(0.10)),
+                        in: RoundedRectangle(cornerRadius: 10)
+                    )
+                // 复制按钮：主面板拖选被 drag-host 拦截时，仍可一键复制到剪贴板。
+                if !msg.content.isEmpty {
+                    Button {
+                        copyToPasteboard(msg.content)
+                    } label: {
+                        Label("复制", systemImage: "doc.on.doc")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .help("复制这条文本")
+                }
+            }
             if msg.role == "assistant" {
                 Spacer(minLength: 40)
             }
         }
+    }
+
+    private func copyToPasteboard(_ text: String) {
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(text, forType: .string)
     }
 
     /// 发送：支持显式传入 prompt（快捷入口直接触发）；否则用输入框内容。
