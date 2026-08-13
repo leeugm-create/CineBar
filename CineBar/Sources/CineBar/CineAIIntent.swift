@@ -49,7 +49,10 @@ enum CineAIIntentRouter {
             // 主题式求片（"想看励志类的电影"）优先走推荐：模型用知识出片单，
             // 避免被 findMovie 的 TMDB 候选（蜘蛛侠/奥德赛这类高分但跑题）带偏。
             // 只有当该短语能拆出 TMDB 可精确查的结构条件时，才走 findMovie。
-            if contains(text, anyOf: ["想看", "想找", "求", "有没有"]) {
+            // 主题词（运动/励志/热血/治愈等细分）即使没有"想看"字眼，也归推荐，
+            // 由模型按影视知识推荐，而不是硬塞 TMDB 搜索。
+            if contains(text, anyOf: ["想看", "想找", "求", "有没有"]) ||
+                Self.hasThemeWord(text) {
                 let structured = CineMovieQueryParser.parse(text)
                 let hasGenres = !structured.genreIDs.isEmpty
                 let hasKeyword = structured.keyword != nil
@@ -71,6 +74,19 @@ enum CineAIIntentRouter {
 
         // 其余归 general（宽松对话，避免文不对题）
         return .general
+    }
+
+    /// 命中即视为"主题式求片"的中文细分主题/题材词。这些词 TMDB 不一定有
+    /// 独立 genre（如运动/励志/热血），但模型懂，应走推荐而非数据库硬搜。
+    private static let themeWords: [String] = [
+        "运动", "励志", "热血", "治愈", "温情", "悬疑", "烧脑", "科幻",
+        "爱情", "浪漫", "犯罪", "警匪", "古装", "历史", "战争", "灾难",
+        "喜剧", "搞笑", "恐怖", "惊悚", "奇幻", "魔幻", "青春", "校园",
+        "体育", "足球", "篮球", "拳击", "赛车", "登山", "励志类",
+    ]
+
+    private static func hasThemeWord(_ text: String) -> Bool {
+        themeWords.contains { text.localizedCaseInsensitiveContains($0) }
     }
 
     private static func contains(_ text: String, anyOf keywords: [String]) -> Bool {

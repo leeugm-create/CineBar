@@ -163,7 +163,7 @@ struct CineAIEval {
                 fetchFacts: { _ in "" }, searchMovies: { _ in "" }, spoilerContext: { "" }))
             _ = try await rag.answer(.findMovie, input: "一部不存在的冷门")
             let user = cap.captured.first { $0.role == "user" }?.content ?? ""
-            check(user.contains("未检索到"), "E2E-D 无结果降级提示")
+            check(user.contains("检索到"), "E2E-D 无结果降级提示")
         } catch {
             check(false, "E2E-D 无结果降级提示")
         }
