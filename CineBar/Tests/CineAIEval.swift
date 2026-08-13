@@ -40,6 +40,10 @@ struct CineAIEval {
         check(CineAIIntentRouter.route("给我讲个笑话") == .general, "route general")
         check(CineAIIntentRouter.route("现在几点了") == .general, "route general2")
         check(CineAIIntentRouter.route("你好") == .general, "route general3")
+        // offScope：非影视通用操作应本地硬拦截
+        check(CineAIIntentRouter.route("帮我写一篇推文") == .offScope, "route offScope 推文")
+        check(CineAIIntentRouter.route("帮我修改这篇文章") == .offScope, "route offScope 改文章")
+        check(CineAIIntentRouter.route("写一段python代码") == .offScope, "route offScope 代码")
 
         // ---- 2. 找片语义拆解 ----
         var q = CineMovieQueryParser.parse("找一部时间循环的喜剧")
@@ -176,6 +180,15 @@ struct CineAIEval {
         } catch {
             let text = (error as? CineAIError)?.displayText ?? ""
             check(text.contains("超时"), "E2E-E 错误映射为 displayText")
+        }
+
+        // F) 非影视操作硬拦截：不调模型、返回固定影视助手回复
+        do {
+            let rag = CineAIRAG(provider: ErrorStub(.networkTimeout), data: data())
+            let r = try await rag.answer(.offScope, input: "帮我写一篇推文")
+            check(r.text.contains("影视助手") && r.text.contains("找片"), "E2E-F offScope 固定回复且不调模型")
+        } catch {
+            check(false, "E2E-F offScope 应不抛错")
         }
     }
 }

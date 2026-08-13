@@ -54,6 +54,15 @@ struct CineAIRAG {
         input: String,
         history: [AIChatMessage] = []
     ) async throws -> AIResult {
+        // 非影视通用操作：本地硬拦截，不调用模型，直接返回固定回复。
+        // 防止 CineAI 被当成通用 AI 去写推文/改文章/写代码等越界操作。
+        if intent == .offScope {
+            return AIResult(
+                text: Self.offScopeReply,
+                inputTokens: 0,
+                outputTokens: 0
+            )
+        }
         var messages = await buildMessages(for: intent, input: input, history: history)
         // 确保首条是 system（供模型扮演设定）
         if messages.first?.role != "system" {
@@ -69,6 +78,10 @@ struct CineAIRAG {
         )
     }
 
+    /// 非影视通用操作被硬拦截时的固定回复（不耗 token、不调模型）。
+    private static let offScopeReply =
+        "我是 CineAI，CineBar 的影视助手，专注于找片、影视问答、推荐和无剧透陪伴。写推文、改文章、写代码这类通用任务我帮不了你，不过如果你有想找的电影、想了解某部片、或需要按心情推荐，尽管告诉我～"
+
     // MARK: - prompt 构建（离线纯函数，可测）
 
     private func buildMessages(
@@ -78,6 +91,10 @@ struct CineAIRAG {
     ) async -> [AIChatMessage] {
         var built: [AIChatMessage]
         switch intent {
+        case .offScope:
+            // 非影视操作在 answer() 中已本地硬拦截返回固定回复，正常不会走到这里；
+            // 占位兜底避免 switch 非穷尽。
+            built = [system("你是 CineAI，CineBar 的影视助手，只负责影视相关。" + Self.offScopeReply)]
         case .findMovie:
             let isTV = Self.mediaTarget(of: input) == .tv
             let facts = isTV

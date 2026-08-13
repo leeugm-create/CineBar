@@ -10,6 +10,8 @@ enum CineAIIntent: Equatable {
     case mediaIntro
     /// 今晚看什么（推荐）
     case recommend
+    /// 明显非影视的通用操作（写推文/写文章/写代码/翻译/算数等）：本地硬拦截，不调用模型。
+    case offScope
     /// 闲聊/其它：非影视问题，允许正常对话（避免被强行拉回影视而生硬/文不对题）。
     case general
 }
@@ -21,6 +23,12 @@ enum CineAIIntentRouter {
     static func route(_ input: String) -> CineAIIntent {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return .general }
+
+        // 非影视通用操作硬拦截：写推文/写文章/写代码/翻译/改稿等，直接归 offScope，
+        // 由 RAG 本地返回固定回复（不调模型），防止被套话越界当成通用 AI 用。
+        if contains(text, anyOf: Self.offScopeKeywords) {
+            return .offScope
+        }
 
         // 防剧透：含"剧透/剧透吗/结局/谁死了/最后.../别剧透"等。
         if contains(text, anyOf: [
@@ -88,6 +96,18 @@ enum CineAIIntentRouter {
     private static func hasThemeWord(_ text: String) -> Bool {
         themeWords.contains { text.localizedCaseInsensitiveContains($0) }
     }
+
+    /// 明显非影视的通用操作词。命中即本地硬拦截，不调用模型。
+    private static let offScopeKeywords: [String] = [
+        "写推文", "写一篇推文", "发条推文", "写微博", "写小红书",
+        "写文章", "写篇文案", "写文案", "写标题", "写简介文案",
+        "改文章", "修改文章", "润色", "改写这段", "改写这篇文章",
+        "修改这篇文章", "改这篇", "修改这篇", "帮我改", "帮我润色",
+        "写代码", "编程", "写程序", "debug", "调 bug", "修复代码",
+        "代码", "python", "javascript", "swift代码",
+        "写邮件", "写简历", "写合同", "写报告", "写论文", "写作业",
+        "翻译", "算一下", "计算", "写诗", "写歌词", "写小说",
+    ]
 
     private static func contains(_ text: String, anyOf keywords: [String]) -> Bool {
         keywords.contains { text.localizedCaseInsensitiveContains($0) }
