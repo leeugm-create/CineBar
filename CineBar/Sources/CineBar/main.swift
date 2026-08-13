@@ -13312,8 +13312,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             return
         }
 
-        let width: CGFloat = 260
-        let height: CGFloat = 52
+        let width: CGFloat = 280
+        let height: CGFloat = 76
+        let cornerRadius: CGFloat = 16
         let panel = CineAISearchPanel(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
             styleMask: [.borderless],
@@ -13338,23 +13339,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             display: true
         )
 
-        // 干净浅色容器 + 顶部小标题（说明这是 AI 搜索），可整块拖动。
+        // 外层圆角容器 + 流光彩色描边。
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         container.wantsLayer = true
-        container.layer?.cornerRadius = 10
+        container.layer?.cornerRadius = cornerRadius
         container.layer?.masksToBounds = true
         container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-        container.layer?.borderWidth = 1
-        container.layer?.borderColor = NSColor.separatorColor.cgColor
 
+        // 流光彩色描边：CAShapeLayer 圆角环 + 渐变填充，颜色随时间缓慢流动变化。
+        let gradient = CAGradientLayer()
+        gradient.frame = container.bounds
+        gradient.type = .conic
+        gradient.startPoint = CGPoint(x: 0.5, y: 0.5)
+        gradient.endPoint = CGPoint(x: 1, y: 1)
+        gradient.colors = [
+            NSColor.systemCyan.cgColor,
+            NSColor.systemBlue.cgColor,
+            NSColor.systemPurple.cgColor,
+            NSColor.systemPink.cgColor,
+            NSColor.systemOrange.cgColor,
+            NSColor.systemCyan.cgColor,
+        ]
+        // 用圆角环 mask 只保留一圈描边。
+        let borderWidth: CGFloat = 2
+        let ring = CAShapeLayer()
+        let ringRect = container.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
+        let path = CGMutablePath()
+        path.addRoundedRect(
+            in: ringRect,
+            cornerWidth: cornerRadius, cornerHeight: cornerRadius,
+            transform: .identity
+        )
+        path.addRoundedRect(
+            in: ringRect.insetBy(dx: borderWidth, dy: borderWidth),
+            cornerWidth: cornerRadius - 1, cornerHeight: cornerRadius - 1,
+            transform: .identity
+        )
+        ring.path = path
+        ring.fillRule = .evenOdd
+        gradient.mask = ring
+        container.layer?.addSublayer(gradient)
+
+        // 标题在上、输入框在下，中间留足空隙，避免文字被遮挡。
         let label = NSTextField(labelWithString: "🔍 问 CineAI")
-        label.frame = NSRect(x: 12, y: height - 20, width: width - 24, height: 15)
-        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.frame = NSRect(x: 16, y: height - 34, width: width - 64, height: 18)
+        label.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabelColor
         label.autoresizingMask = [.width]
 
+        // 右上角关闭按钮：点击关闭悬浮框。
+        let closeButton = NSButton(
+            title: "",
+            target: self,
+            action: #selector(closeAISearchBar)
+        )
+        closeButton.bezelStyle = .texturedRounded
+        closeButton.image = NSImage(
+            systemSymbolName: "xmark",
+            accessibilityDescription: "关闭"
+        )
+        closeButton.symbolConfiguration = NSImage.SymbolConfiguration(
+            pointSize: 9, weight: .semibold
+        )
+        closeButton.contentTintColor = .secondaryLabelColor
+        closeButton.frame = NSRect(
+            x: width - 32, y: height - 36, width: 20, height: 20
+        )
+        closeButton.toolTip = "关闭"
+
         let field = NSTextField(
-            frame: NSRect(x: 12, y: 8, width: width - 24, height: 26)
+            frame: NSRect(x: 16, y: 10, width: width - 32, height: 30)
         )
         field.autoresizingMask = [.width]
         field.font = NSFont.systemFont(ofSize: 13)
@@ -13369,11 +13423,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         field.action = #selector(aiSearchFieldSubmit(_:))
 
         container.addSubview(label)
+        container.addSubview(closeButton)
         container.addSubview(field)
         panel.contentView = container
 
         aiSearchWindow = panel
         aiSearchField = field
+
+        // 流光动画：让渐变旋转角随时间变化，颜色沿边框缓慢流动。
+        let rotate = CABasicAnimation(keyPath: "transform.rotation")
+        rotate.fromValue = 0
+        rotate.toValue = CGFloat.pi * 2
+        rotate.duration = 6.0
+        rotate.repeatCount = .infinity
+        rotate.isCumulative = true
+        gradient.add(rotate, forKey: "gradientSpin")
 
         NSApplication.shared.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
@@ -13405,6 +13469,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         aiSearchWindow = nil
         aiSearchField = nil
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
+    }
+
+    /// 关闭 AI 搜索悬浮框（用户点右上角 ✕ 或想主动收起时）。
+    @objc private func closeAISearchBar() {
+        aiSearchWindow?.orderOut(nil)
+        aiSearchWindow = nil
+        aiSearchField = nil
     }
 
     @objc private func contextMenuSettings() {
