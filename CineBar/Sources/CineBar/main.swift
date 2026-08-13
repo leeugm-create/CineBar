@@ -11314,12 +11314,15 @@ struct SettingsRootView: View {
                             Label("查看日志", systemImage: "doc.text")
                         }
                         Button {
-                            logUploadState = "正在上传…"
-                            CineBarLogCenter.upload { ok in
-                                logUploadState = ok ? "上传成功，感谢反馈" : "上传失败，可改用邮箱联系"
-                            }
+                            _ = CineBarLogCenter.copyLogToPasteboard()
+                            logUploadState = "已复制到剪贴板，可粘贴发送给开发者"
                         } label: {
-                            Label("上传错误日志", systemImage: "arrow.up.doc")
+                            Label("复制错误日志", systemImage: "doc.on.doc")
+                        }
+                        Button {
+                            CineBarLogCenter.mailLog(to: "leeugm@vip.qq.com")
+                        } label: {
+                            Label("用邮件发送日志", systemImage: "envelope.open")
                         }
                         Link(
                             destination: URL(string: "mailto:leeugm@vip.qq.com")!
