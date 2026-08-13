@@ -13368,23 +13368,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         staticBorder.opacity = 0.4
         container.layer?.addSublayer(staticBorder)
 
-        // 流光：一条柔和的青白色光点沿固定边框缓慢流动（Siri 式），不是多色霓虹。
-        let flowDash = CAShapeLayer()
-        flowDash.path = roundedPath
-        flowDash.fillColor = nil
-        flowDash.strokeColor = NSColor.systemCyan.withAlphaComponent(0.9).cgColor
-        flowDash.lineWidth = borderWidth
-        flowDash.lineDashPattern = [6, 16]
-        flowDash.lineCap = .round
-        container.layer?.addSublayer(flowDash)
-
-        let dashAnim = CABasicAnimation(keyPath: "lineDashPhase")
-        dashAnim.fromValue = 0
-        dashAnim.toValue = -22
-        dashAnim.duration = 2.4
-        dashAnim.repeatCount = .infinity
-        flowDash.add(dashAnim, forKey: "dashFlow")
-
         // 标题在上、输入框在下，中间留足空隙，避免文字被遮挡。
         let label = NSTextField(labelWithString: "问 CineAI")
         label.frame = NSRect(x: 16, y: height - 34, width: width - 64, height: 18)
