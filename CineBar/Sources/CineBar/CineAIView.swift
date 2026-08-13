@@ -187,6 +187,23 @@ struct CineAIView: View {
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
+
+            // 底部拉伸手柄：拖动可上下调整窗口高度（与主页一致）。
+            Divider()
+            HStack {
+                Spacer()
+                ZStack {
+                    ResizeTriangle()
+                        .fill(.secondary.opacity(0.55))
+                        .padding(3)
+                    VerticalResizeHandle()
+                }
+                .frame(width: 24, height: 24)
+                .help("拖动这里可上下拉伸")
+            }
+            .font(.caption)
+            .padding(.horizontal)
+            .frame(height: 32)
         }
         .environment(\.openURL, OpenURLAction { url in
             // 点击回答里的《片名》→ 按片名进入详情页。
