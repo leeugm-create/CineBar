@@ -12238,15 +12238,6 @@ struct ContentView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .contextMenu {
-                        Button(store.isPanelMovable ? "锁定窗口" : "取消锁定") {
-                            store.setPanelMovable(!store.isPanelMovable)
-                        }
-                        Divider()
-                        Button("检查更新") {
-                            NotificationCenter.default.post(name: .cineBarOpenSettings, object: nil)
-                        }
-                    }
                     Spacer()
                     Button {
                         // 切换普通"搜索电影/演员"框（默认主页显示 AI 框，点放大镜换成普通搜索）。
@@ -12287,6 +12278,17 @@ struct ContentView: View {
                         Image(systemName: "gearshape")
                     }
                     .help("设置")
+                }
+                // 整行（含空白处）右键弹出锁定/解锁菜单。
+                .contentShape(Rectangle())
+                .contextMenu {
+                    Button(store.isPanelMovable ? "锁定窗口" : "取消锁定") {
+                        store.setPanelMovable(!store.isPanelMovable)
+                    }
+                    Divider()
+                    Button("检查更新") {
+                        NotificationCenter.default.post(name: .cineBarOpenSettings, object: nil)
+                    }
                 }
 
                 Picker(
