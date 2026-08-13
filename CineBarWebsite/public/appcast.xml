@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 95&lt;/li&gt;&lt;li&gt;- 重构：菜单栏右键「AI 搜索」改为独立悬浮输入条窗口，解决此前菜单内嵌搜索框无法弹出中文输入法、且无法触发搜索发送的问题。&lt;/li&gt;&lt;li&gt;- 新增：CineAI 查询未上映或影库没有的资料时，自动联网（必应国内版）抓取真实信息回填回答，避免答不上来或编造。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 96&lt;/li&gt;&lt;li&gt;- 修复：菜单栏右键「AI 搜索」悬浮框无法移动、无法输入文字的问题。改用可成为 key 的面板，输入法聚焦正常；增加明确标题与提示文字，说明这是 AI 搜索框；支持整块拖动移动。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-95-universal.zip"
-        sparkle:version="95"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-96-universal.zip"
+        sparkle:version="96"
         sparkle:shortVersionString="0.9.0"
-        length="8447835"
+        length="8451398"
         type="application/octet-stream"
-        sparkle:edSignature="NKvhSNlTqfSYSy4CPy1YgDzl4SBbTUE/nJhWYqesxvFQjoqv3LhYprKy0l/sjOWtrVg37Mk/ABpzLxufFmOGDA=="/>
+        sparkle:edSignature="SEUMKqG20djFz3BPPOiTt42lgDiCNr+iIPoMwsw+TdxHEVUlA23MbqhIMd/U+1x47Nzg3K++OqYBwq0t75dVCw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 95&lt;/li&gt;&lt;li&gt;- 重构：菜单栏右键「AI 搜索」改为独立悬浮输入条窗口，解决此前菜单内嵌搜索框无法弹出中文输入法、且无法触发搜索发送的问题。&lt;/li&gt;&lt;li&gt;- 新增：CineAI 查询未上映或影库没有的资料时，自动联网（必应国内版）抓取真实信息回填回答，避免答不上来或编造。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-95-universal.zip" sparkle:version="95" sparkle:shortVersionString="0.9.0" length="8447835" type="application/octet-stream" sparkle:edSignature="NKvhSNlTqfSYSy4CPy1YgDzl4SBbTUE/nJhWYqesxvFQjoqv3LhYprKy0l/sjOWtrVg37Mk/ABpzLxufFmOGDA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
