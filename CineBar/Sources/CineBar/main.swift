@@ -12093,9 +12093,6 @@ struct ContentView: View {
     @State private var localLibraryStatusFilter = LocalLibraryStatusFilter.all
     @State private var scrollActivity = ScrollActivity()
     @State private var scrollWheelMonitor: Any?
-    /// 背景拖动：记录拖动起点（屏幕坐标）与窗口起始 frame。
-    @State private var dragStartMouse: CGPoint?
-    @State private var dragStartWindowFrame: NSRect?
     /// 主页普通搜索框的焦点：点放大镜切到搜索框时自动聚焦，光标直达可输入。
     @FocusState private var searchFieldFocused: Bool
     private let reminderCheckTimer = Timer.publish(
@@ -12110,13 +12107,6 @@ struct ContentView: View {
             store.selectedMovie != nil ||
             store.selectedTVShow != nil ||
             store.isShowingLocalLibrary
-    }
-
-    /// 当前 SwiftUI 视图所在的窗口（用于自由拖动移动面板）。
-    private var windowForDrag: NSWindow? {
-        NSApp.windows.first { $0 is CineBarPanel }
-            ?? NSApp.keyWindow
-            ?? NSApp.mainWindow
     }
 
     var body: some View {
@@ -12180,30 +12170,6 @@ struct ContentView: View {
                 searchFieldFocused = true
             }
         }
-        // 自由拖动：勾选后按住面板任意空白处拖动即可移动整个窗口。
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 2)
-                .onChanged { value in
-                    guard store.isPanelMovable,
-                          let window = windowForDrag else { return }
-                    if dragStartMouse == nil {
-                        dragStartMouse = NSEvent.mouseLocation
-                        dragStartWindowFrame = window.frame
-                    }
-                    guard let start = dragStartMouse,
-                          let startFrame = dragStartWindowFrame else { return }
-                    let now = NSEvent.mouseLocation
-                    let dx = now.x - start.x
-                    let dy = now.y - start.y
-                    window.setFrameOrigin(
-                        NSPoint(x: startFrame.origin.x + dx, y: startFrame.origin.y + dy)
-                    )
-                }
-                .onEnded { _ in
-                    dragStartMouse = nil
-                    dragStartWindowFrame = nil
-                }
-        )
         .onAppear {
             if store.hasToken, store.movies == Movie.demo {
                 store.loadTrending()
@@ -12271,6 +12237,15 @@ struct ContentView: View {
                         Text("找到下一部好片")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    .contextMenu {
+                        Button(store.isPanelMovable ? "锁定窗口" : "取消锁定") {
+                            store.setPanelMovable(!store.isPanelMovable)
+                        }
+                        Divider()
+                        Button("检查更新") {
+                            NotificationCenter.default.post(name: .cineBarOpenSettings, object: nil)
+                        }
                     }
                     Spacer()
                     Button {
@@ -13353,7 +13328,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         menu.autoenablesItems = false
 
         let aiItem = NSMenuItem(
-            title: "AI 搜索", action: #selector(showAISearchBar), keyEquivalent: "")
+            title: "AI 问电影", action: #selector(showAISearchBar), keyEquivalent: "")
         aiItem.target = self
         menu.addItem(aiItem)
 
