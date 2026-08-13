@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 113&lt;/li&gt;&lt;li&gt;- 修复：卡片列数滑块可自由拖动。根因是全局「自由拖动」手势抢占了滑块拖动手势（所以之前只有锁定窗口时滑块才正常）；已移除该手势，改用原生背景拖动，滑块不再被抢占。&lt;/li&gt;&lt;li&gt;- 新增：主窗口顶部右键可弹出「锁定窗口 / 取消锁定」菜单，控制面板是否可拖动。&lt;/li&gt;&lt;li&gt;- 调整：菜单栏右键「AI 搜索」改为「AI 问电影」。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 114&lt;/li&gt;&lt;li&gt;- 修复：主窗口顶部右键「锁定/取消锁定」菜单此前只在标题文字上触发，改为整行（含空白处）右键均可弹出。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Thu, 13 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-113-universal.zip"
-        sparkle:version="113"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-114-universal.zip"
+        sparkle:version="114"
         sparkle:shortVersionString="0.9.0"
-        length="8530011"
+        length="8533657"
         type="application/octet-stream"
-        sparkle:edSignature="4WdoztjKY4AbSN221HzGNdHPtCyBkHy6EGmZOo88ZPa7VSsTEzkPwssW5Qv8sAWvXyfJWRIkDTzevMIe5aCkDw=="/>
+        sparkle:edSignature="99YCSVuo9Ye9v1gN5jptk6Mz45nGd2x3XEmwIi9chtwMPIgwaq68IpohhPM4nGienRpoS4qPJzwR+J8zDYWaAQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 113&lt;/li&gt;&lt;li&gt;- 修复：卡片列数滑块可自由拖动。根因是全局「自由拖动」手势抢占了滑块拖动手势（所以之前只有锁定窗口时滑块才正常）；已移除该手势，改用原生背景拖动，滑块不再被抢占。&lt;/li&gt;&lt;li&gt;- 新增：主窗口顶部右键可弹出「锁定窗口 / 取消锁定」菜单，控制面板是否可拖动。&lt;/li&gt;&lt;li&gt;- 调整：菜单栏右键「AI 搜索」改为「AI 问电影」。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Thu, 13 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-113-universal.zip" sparkle:version="113" sparkle:shortVersionString="0.9.0" length="8530011" type="application/octet-stream" sparkle:edSignature="4WdoztjKY4AbSN221HzGNdHPtCyBkHy6EGmZOo88ZPa7VSsTEzkPwssW5Qv8sAWvXyfJWRIkDTzevMIe5aCkDw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
