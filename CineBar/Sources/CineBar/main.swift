@@ -12101,6 +12101,16 @@ struct ContentView: View {
         in: .common
     ).autoconnect()
 
+    /// 背景拖动：记录拖动起点与窗口起始 frame（仅空白背景拖动，不拦截控件）。
+    @State private var backgroundDragStartMouse: CGPoint?
+    @State private var backgroundDragStartFrame: NSRect?
+
+    private var backgroundWindowForDrag: NSWindow? {
+        NSApp.windows.first { $0 is CineBarPanel }
+            ?? NSApp.keyWindow
+            ?? NSApp.mainWindow
+    }
+
     private var isShowingDetail: Bool {
         store.showMovieStills ||
             store.selectedPerson != nil ||
@@ -12163,6 +12173,32 @@ struct ContentView: View {
                     endPoint: .bottomTrailing
                 )
             }
+            // 背景拖动：只响应空白背景，不拦截滑块/按钮/滚动等控件。
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 2)
+                    .onChanged { value in
+                        guard store.isPanelMovable,
+                              let window = backgroundWindowForDrag else { return }
+                        if backgroundDragStartMouse == nil {
+                            backgroundDragStartMouse = NSEvent.mouseLocation
+                            backgroundDragStartFrame = window.frame
+                        }
+                        guard let start = backgroundDragStartMouse,
+                              let startFrame = backgroundDragStartFrame else { return }
+                        let now = NSEvent.mouseLocation
+                        window.setFrameOrigin(
+                            NSPoint(
+                                x: startFrame.origin.x + (now.x - start.x),
+                                y: startFrame.origin.y + (now.y - start.y)
+                            )
+                        )
+                    }
+                    .onEnded { _ in
+                        backgroundDragStartMouse = nil
+                        backgroundDragStartFrame = nil
+                    }
+            )
         }
         .onChange(of: store.isShowingSearchBar) { showing in
             // 从 AI 框切换到普通搜索框时，自动聚焦，光标直达即可输入。
@@ -12284,10 +12320,6 @@ struct ContentView: View {
                 .contextMenu {
                     Button(store.isPanelMovable ? "锁定窗口" : "取消锁定") {
                         store.setPanelMovable(!store.isPanelMovable)
-                    }
-                    Divider()
-                    Button("检查更新") {
-                        NotificationCenter.default.post(name: .cineBarOpenSettings, object: nil)
                     }
                 }
 
