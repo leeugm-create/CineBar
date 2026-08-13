@@ -13342,14 +13342,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             display: true
         )
 
-        // 外层圆角容器 + 流光彩色描边（边框不动，光点沿边框流动）。
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        // 外层圆角容器：磨砂玻璃特效（参考 Siri AI 的玻璃质感），简洁高级。
+        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        container.material = .hudWindow
+        container.state = .active
+        container.blendingMode = .withinWindow
         container.wantsLayer = true
         container.layer?.cornerRadius = cornerRadius
         container.layer?.masksToBounds = true
-        container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
-        let borderWidth: CGFloat = 2.5
+        let borderWidth: CGFloat = 2.0
         let ringRect = container.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
         let roundedPath = CGPath(
             roundedRect: ringRect,
@@ -13357,72 +13359,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             transform: nil
         )
 
-        // 1) 静态彩色细边：让边框本身有色彩轮廓（形状固定不动）。
+        // 静态细边：浅色高光描边，勾勒玻璃轮廓（几乎无色，克制）。
         let staticBorder = CAShapeLayer()
         staticBorder.path = roundedPath
         staticBorder.fillColor = nil
-        staticBorder.strokeColor = NSColor.systemIndigo.cgColor
+        staticBorder.strokeColor = NSColor.white.withAlphaComponent(0.55).cgColor
         staticBorder.lineWidth = borderWidth
-        staticBorder.opacity = 0.35
+        staticBorder.opacity = 0.4
         container.layer?.addSublayer(staticBorder)
 
-        // 2) 流光：用虚线描边，动画 lineDashPhase，让「亮色虚线段」沿固定边框循环跑动。
-        //    边框位置不变，只是虚线上的光点流动，形成霓虹流光效果。
+        // 流光：一条柔和的青白色光点沿固定边框缓慢流动（Siri 式），不是多色霓虹。
         let flowDash = CAShapeLayer()
         flowDash.path = roundedPath
         flowDash.fillColor = nil
-        flowDash.strokeColor = NSColor.systemTeal.cgColor
+        flowDash.strokeColor = NSColor.systemCyan.withAlphaComponent(0.9).cgColor
         flowDash.lineWidth = borderWidth
-        flowDash.lineDashPattern = [10, 8]   // 一段光 + 一段空
+        flowDash.lineDashPattern = [6, 16]
         flowDash.lineCap = .round
         container.layer?.addSublayer(flowDash)
 
         let dashAnim = CABasicAnimation(keyPath: "lineDashPhase")
         dashAnim.fromValue = 0
-        dashAnim.toValue = -18              // 等于 pattern 周期，负号让光向前跑
-        dashAnim.duration = 1.0
+        dashAnim.toValue = -22
+        dashAnim.duration = 2.4
         dashAnim.repeatCount = .infinity
         flowDash.add(dashAnim, forKey: "dashFlow")
 
-        // 3) 几段不同颜色、不同相位的虚线，叠加出多色光沿边框流动。
-        let colors: [(NSColor, CGFloat, CGFloat)] = [
-            (NSColor.systemCyan, 4, 0),
-            (NSColor.systemPink, 6, 1.6),
-            (NSColor.systemOrange, 8, 3.2),
-        ]
-        for (color, dash, phaseOffset) in colors {
-            let layer = CAShapeLayer()
-            layer.path = roundedPath
-            layer.fillColor = nil
-            layer.strokeColor = color.cgColor
-            layer.lineWidth = borderWidth
-            layer.lineDashPattern = [dash as NSNumber, 14]
-            layer.lineCap = .round
-            layer.opacity = 0.9
-            container.layer?.addSublayer(layer)
-
-            let anim = CABasicAnimation(keyPath: "lineDashPhase")
-            anim.fromValue = phaseOffset
-            anim.toValue = phaseOffset - 18
-            anim.duration = 1.2
-            anim.repeatCount = .infinity
-            layer.add(anim, forKey: "dashFlow")
-        }
-
         // 标题在上、输入框在下，中间留足空隙，避免文字被遮挡。
-        let label = NSTextField(labelWithString: "🔍 问 CineAI")
+        let label = NSTextField(labelWithString: "问 CineAI")
         label.frame = NSRect(x: 16, y: height - 34, width: width - 64, height: 18)
         label.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         label.textColor = .secondaryLabelColor
         label.autoresizingMask = [.width]
 
-        // 右上角关闭按钮：点击关闭悬浮框。
+        // 右上角关闭按钮：点击关闭悬浮框。用无边框样式 + 灰色图标（与提示文字一致，不用蓝色）。
         let closeButton = NSButton(
             title: "",
             target: self,
             action: #selector(closeAISearchBar)
         )
-        closeButton.bezelStyle = .texturedRounded
+        closeButton.isBordered = false
         closeButton.image = NSImage(
             systemSymbolName: "xmark",
             accessibilityDescription: "关闭"
@@ -13447,7 +13423,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         field.cell?.wraps = false
         field.cell?.isScrollable = true
         field.focusRingType = .default
-        field.placeholderString = "搜索未上映 / 冷门 / 片库没有的影片…"
+        field.placeholderString = "想找什么片？告诉我"
         field.target = self
         field.action = #selector(aiSearchFieldSubmit(_:))
 
