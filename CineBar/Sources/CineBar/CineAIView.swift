@@ -314,6 +314,56 @@ struct CineAIView: View {
         return f.string(from: date)
     }
 
+    /// 回答完即结束：截掉末尾的问题延展（反问/引导继续对话），避免把用户带偏一直聊下去。
+    /// 硬兜底——即使模型还是加了，也会被这里去掉。
+    private func trimFollowUp(_ raw: String) -> String {
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 用换行分段（推荐列表/多段回答），从末尾起逐句看是否为延展句，是则去掉。
+        var parts = text.components(separatedBy: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        while let last = parts.last, !last.isEmpty {
+            if Self.isFollowUpLine(last) {
+                parts.removeLast()
+            } else {
+                break
+            }
+        }
+        // 若整段是一句话，用正则去掉末尾的问句延展。
+        let joined = parts.joined(separator: "\n")
+        let trimmed = Self.stripTrailingFollowUp(joined)
+        return trimmed.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func isFollowUpLine(_ line: String) -> Bool {
+        let triggers = [
+            "要不要", "想不想", "需要我", "需要的话", "如果你感兴趣",
+            "还想看", "还想了解", "还想找", "可以告诉我", "告诉我吧",
+            "感兴趣吗", "想看吗", "了解吗", "试试吗", "要看看吗",
+            "随时告诉我", "随时问我", "有需要可以",
+        ]
+        return triggers.contains { line.localizedCaseInsensitiveContains($0) }
+    }
+
+    private static func stripTrailingFollowUp(_ text: String) -> String {
+        // 去掉末尾"？"前的延展句（如"要不要我帮你找别的？"）
+        var result = text
+        var changed = true
+        while changed {
+            changed = false
+            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let range = trimmed.range(of: "(?:[。！？!?]|^)\\s*[^。！？!?]*?(要不要|想不想|需要我|想了解更多|感兴趣吗|想看吗)[^。！？!?]*[？?]$", options: .regularExpression) else { break }
+            let cut = trimmed.distance(from: trimmed.startIndex, to: range.lowerBound)
+            if cut <= 0 { break }
+            let newText = String(trimmed.prefix(cut))
+            if newText.count < result.count {
+                result = newText
+                changed = true
+            } else {
+                break
+            }
+        }
+        return result
+    }
+
     /// 把 AI 回答里的《片名》渲染成可点击链接（scheme: cineai://title/…）。
     private func linkedText(_ raw: String) -> AttributedString {
         var attr = AttributedString(raw)
@@ -411,7 +461,7 @@ struct CineAIView: View {
                 let result = try await rag.answer(intent, input: text, history: history)
                 await MainActor.run {
                     store.cineAIMessages.append(
-                        AIChatMessage(role: "assistant", content: result.text)
+                        AIChatMessage(role: "assistant", content: trimFollowUp(result.text))
                     )
                 }
             } catch {

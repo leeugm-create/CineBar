@@ -10819,7 +10819,7 @@ extension View {
 }
 
 enum SettingsSection: String, CaseIterable, Identifiable {
-    case general, recommendation, data, localLibrary, info, support
+    case general, recommendation, data, localLibrary, info, logs, support
     var id: String { rawValue }
 
     var title: String {
@@ -10829,6 +10829,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .data: return "数据来源"
         case .localLibrary: return "本地片库"
         case .info: return "检查更新"
+        case .logs: return "错误日志"
         case .support: return "支持"
         }
     }
@@ -10840,6 +10841,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .data: return "server.rack"
         case .localLibrary: return "externaldrive.fill"
         case .info: return "info.circle"
+        case .logs: return "doc.text.magnifyingglass"
         case .support: return "cup.and.saucer.fill"
         }
     }
@@ -10917,6 +10919,7 @@ struct SettingsRootView: View {
                     case .data: dataSettings
                     case .localLibrary: localLibrarySettings
                     case .info: infoSettings
+                    case .logs: logsSettings
                     case .support: support
                     }
                 }
@@ -11280,31 +11283,6 @@ struct SettingsRootView: View {
                 VersionHistoryCard()
             }
             settingsCard {
-                Text("错误日志").font(.subheadline.bold())
-                Text("遇到问题时可把本地错误日志上传，帮助开发者定位故障；也可以直接用邮箱联系反馈。仅上传技术诊断，不包含你的对话与隐私。")
-                    .font(.caption).foregroundStyle(.secondary)
-                HStack(spacing: 10) {
-                    Button("查看日志") {
-                        CineBarLogCenter.openLogFile()
-                    }
-                    Button("上传错误日志") {
-                        logUploadState = "正在上传…"
-                        CineBarLogCenter.upload { ok in
-                            logUploadState = ok ? "上传成功，感谢反馈" : "上传失败，可改用邮箱联系"
-                        }
-                    }
-                    Link("邮箱联系", destination: URL(string: "mailto:leeugm@vip.qq.com")!)
-                }
-                .controlSize(.small)
-                if let logUploadState {
-                    Text(logUploadState)
-                        .font(.caption)
-                        .foregroundStyle(
-                            logUploadState.contains("成功") ? Color.green : Color.secondary
-                        )
-                }
-            }
-            settingsCard {
                 MagnetIndexCard()
             }
             settingsCard {
@@ -11317,6 +11295,47 @@ struct SettingsRootView: View {
                      destination: URL(string: "https://www.tvmaze.com")!)
                 Text("商业化前须分别确认各数据源授权。")
                     .font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// 错误日志设置分项：查看/上传本地日志，或邮箱联系反馈。
+    private var logsSettings: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                settingsCard {
+                    Text("错误日志").font(.subheadline.bold())
+                    Text("遇到问题时可把本地错误日志上传，帮助开发者定位故障；也可以直接用邮箱联系反馈。仅上传技术诊断，不包含你的对话与隐私。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button {
+                            CineBarLogCenter.openLogFile()
+                        } label: {
+                            Label("查看日志", systemImage: "doc.text")
+                        }
+                        Button {
+                            logUploadState = "正在上传…"
+                            CineBarLogCenter.upload { ok in
+                                logUploadState = ok ? "上传成功，感谢反馈" : "上传失败，可改用邮箱联系"
+                            }
+                        } label: {
+                            Label("上传错误日志", systemImage: "arrow.up.doc")
+                        }
+                        Link(
+                            destination: URL(string: "mailto:leeugm@vip.qq.com")!
+                        ) {
+                            Label("邮箱联系反馈", systemImage: "envelope")
+                        }
+                    }
+                    .controlSize(.small)
+                    if let logUploadState {
+                        Text(logUploadState)
+                            .font(.caption)
+                            .foregroundStyle(
+                                logUploadState.contains("成功") ? Color.green : Color.secondary
+                            )
+                    }
+                }
             }
         }
     }
