@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 115&lt;/li&gt;&lt;li&gt;- 修复：主窗口自由拖动改为背景层响应（不再拦截滑块/按钮/滚动），锁定/解锁真正生效。&lt;/li&gt;&lt;li&gt;- 调整：主窗口右键菜单去掉「检查更新」，只保留「锁定窗口 / 取消锁定」。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 116&lt;/li&gt;&lt;li&gt;- 修复：主窗口自由拖动回归早前已验证的方案——移除所有手动拖动手势，改用 AppKit 原生「空白按下拖动」（mouseDownCanMoveWindow），窗口可正常拖动且不干扰滑块；锁定/解锁由右键菜单控制。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Thu, 13 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-115-universal.zip"
-        sparkle:version="115"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-116-universal.zip"
+        sparkle:version="116"
         sparkle:shortVersionString="0.9.0"
-        length="8539572"
+        length="8534075"
         type="application/octet-stream"
-        sparkle:edSignature="T6YTnSPvX/f/Osxx/krGr8lYDnsmAkZdQBTzpEj+ItEiLiBYuzbgd5Mr3Rf8PeJqldRYIIm8BT1Q62M3irguBw=="/>
+        sparkle:edSignature="bq5aTY8K7HkdjOzsmNAIJ4wvaQOBsr0rnKoPvwmROZkPrn+KrWM5Qwfzd6md0Flh01xL8g7p9ouOXPBFQqCSAA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 115&lt;/li&gt;&lt;li&gt;- 修复：主窗口自由拖动改为背景层响应（不再拦截滑块/按钮/滚动），锁定/解锁真正生效。&lt;/li&gt;&lt;li&gt;- 调整：主窗口右键菜单去掉「检查更新」，只保留「锁定窗口 / 取消锁定」。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Thu, 13 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-115-universal.zip" sparkle:version="115" sparkle:shortVersionString="0.9.0" length="8539572" type="application/octet-stream" sparkle:edSignature="T6YTnSPvX/f/Osxx/krGr8lYDnsmAkZdQBTzpEj+ItEiLiBYuzbgd5Mr3Rf8PeJqldRYIIm8BT1Q62M3irguBw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
