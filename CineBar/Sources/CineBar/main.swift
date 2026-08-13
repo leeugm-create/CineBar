@@ -12852,6 +12852,14 @@ struct ContentView: View {
     override func cancelOperation(_ sender: Any?) {}
 }
 
+/// 菜单栏右键"AI 搜索"的悬浮输入窗口。
+/// 必须能让窗口成为 key，TextField 才能聚焦并调出中文输入法；
+/// 允许整块拖动，用户可随意移动。
+final class CineAISearchPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
 /// 主面板可拖宿主：空白/非交互区按下即拖动窗口（鼠标点到按钮、滚动等
 /// 交互视图时仍正常响应）。对无边框面板也能用。
 final class DraggableHostingView<Content: View>: NSHostingView<Content> {
@@ -13294,27 +13302,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         showMainPanelRequested(Notification(name: .cineBarShowMainPanel))
     }
 
-    /// 菜单栏右键"AI 搜索"：在菜单栏图标下方弹出一个独立小输入条窗口。
-    /// 放常规窗口（非菜单 view）里的 TextField 才能正常获得聚焦与中文输入法。
+    /// 菜单栏右键"AI 搜索"：在菜单栏图标下方弹出一个独立小输入窗口。
+    /// 用可成为 key 的面板（非 nonactivating），TextField 才能聚焦、调出中文输入法；
+    /// 带可拖动 + 明确提示，用户一看便知是 AI 搜索框。
     @objc func showAISearchBar() {
         if let existing = aiSearchWindow {
             existing.makeKeyAndOrderFront(nil)
-            aiSearchField?.becomeFirstResponder()
+            existing.makeFirstResponder(aiSearchField)
             return
         }
 
         let width: CGFloat = 260
-        let height: CGFloat = 46
-        let panel = NSPanel(
+        let height: CGFloat = 52
+        let panel = CineAISearchPanel(
             contentRect: NSRect(x: 0, y: 0, width: width, height: height),
-            styleMask: [.borderless, .nonactivatingPanel],
+            styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         panel.isFloatingPanel = true
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = false
+        panel.isMovable = true
+        panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -13330,17 +13338,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             display: true
         )
 
-        // 圆角磨砂背景 + 输入框。
-        let container = NSVisualEffectView(frame: NSRect(x: 0, y: 0, width: width, height: height))
-        container.material = .hudWindow
-        container.state = .active
-        container.blendingMode = .withinWindow
+        // 干净浅色容器 + 顶部小标题（说明这是 AI 搜索），可整块拖动。
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         container.wantsLayer = true
         container.layer?.cornerRadius = 10
         container.layer?.masksToBounds = true
+        container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        container.layer?.borderWidth = 1
+        container.layer?.borderColor = NSColor.separatorColor.cgColor
+
+        let label = NSTextField(labelWithString: "🔍 问 CineAI")
+        label.frame = NSRect(x: 12, y: height - 20, width: width - 24, height: 15)
+        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .secondaryLabelColor
+        label.autoresizingMask = [.width]
 
         let field = NSTextField(
-            frame: NSRect(x: 12, y: 11, width: width - 24, height: 24)
+            frame: NSRect(x: 12, y: 8, width: width - 24, height: 26)
         )
         field.autoresizingMask = [.width]
         field.font = NSFont.systemFont(ofSize: 13)
@@ -13350,16 +13364,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         field.cell?.wraps = false
         field.cell?.isScrollable = true
         field.focusRingType = .default
+        field.placeholderString = "搜索未上映 / 冷门 / 片库没有的影片…"
         field.target = self
         field.action = #selector(aiSearchFieldSubmit(_:))
-        container.addSubview(field)
 
+        container.addSubview(label)
+        container.addSubview(field)
         panel.contentView = container
+
         aiSearchWindow = panel
         aiSearchField = field
-        panel.makeKeyAndOrderFront(nil)
+
         NSApplication.shared.activate(ignoringOtherApps: true)
-        field.becomeFirstResponder()
+        panel.makeKeyAndOrderFront(nil)
+        // 等窗口真正成为 key 后再聚焦，输入法与键入才可靠。
+        DispatchQueue.main.async { [weak panel, weak field] in
+            panel?.makeFirstResponder(field)
+        }
     }
 
     /// 检查更新后输入的搜索：设置待发送查询并打开 AI 面板。
