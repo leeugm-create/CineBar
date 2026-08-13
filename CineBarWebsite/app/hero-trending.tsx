@@ -11,7 +11,7 @@ type TrendingMovie = {
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-106-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-107-universal.zip";
 
 const isChinese = (locale: Locale) => locale === "zh-Hans" || locale === "zh-Hant";
 
