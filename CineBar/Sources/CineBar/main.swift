@@ -10851,6 +10851,8 @@ struct SettingsRootView: View {
     @ObservedObject var localLibraryStore: LocalLibraryStore
     @State private var selection: SettingsSection = .general
     @Environment(\.openURL) private var openURL
+    /// 错误日志上传反馈：nil=未操作；否则显示提示文字。
+    @State private var logUploadState: String?
 
     private let regions = [
         ("CN", "中国大陆"), ("HK", "中国香港"), ("TW", "中国台湾"),
@@ -11276,6 +11278,31 @@ struct SettingsRootView: View {
             settingsCard {
                 Text("版本更新记录").font(.subheadline.bold())
                 VersionHistoryCard()
+            }
+            settingsCard {
+                Text("错误日志").font(.subheadline.bold())
+                Text("遇到问题时可把本地错误日志上传，帮助开发者定位故障；也可以直接用邮箱联系反馈。仅上传技术诊断，不包含你的对话与隐私。")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    Button("查看日志") {
+                        CineBarLogCenter.openLogFile()
+                    }
+                    Button("上传错误日志") {
+                        logUploadState = "正在上传…"
+                        CineBarLogCenter.upload { ok in
+                            logUploadState = ok ? "上传成功，感谢反馈" : "上传失败，可改用邮箱联系"
+                        }
+                    }
+                    Link("邮箱联系", destination: URL(string: "mailto:leeugm@vip.qq.com")!)
+                }
+                .controlSize(.small)
+                if let logUploadState {
+                    Text(logUploadState)
+                        .font(.caption)
+                        .foregroundStyle(
+                            logUploadState.contains("成功") ? Color.green : Color.secondary
+                        )
+                }
             }
             settingsCard {
                 MagnetIndexCard()

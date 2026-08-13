@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// DeepSeek V4 Flash 的 Provider 实现（OpenAI /v1/chat/completions 兼容接口）。
 ///
@@ -243,5 +244,43 @@ enum CineBarLogCenter {
         guard s.utf8.count > maxBytes else { return s }
         let start = s.utf8.index(s.utf8.startIndex, offsetBy: s.utf8.count - maxBytes)
         return String(s[start...])
+    }
+
+    /// 把最近日志上传到 telemetry 错误收集接口。只传技术诊断，不传隐私。
+    /// 成功返回 true；网络/服务端异常返回 false（静默，不打扰用户）。
+    static func upload(completion: @escaping (Bool) -> Void) {
+        let endpoint = URL(string: "https://telemetry.cinebar.cc/v1/telemetry/errors")!
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let payload: [String: Any] = [
+            "app": "CineBar",
+            "version": version,
+            "build": build,
+            "osVersion": "\(ProcessInfo.processInfo.operatingSystemVersion.majorVersion).\(ProcessInfo.processInfo.operatingSystemVersion.minorVersion)",
+            "log": recentLog(maxBytes: 16_384),
+            "sentAt": ISO8601DateFormatter().string(from: Date()),
+        ]
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else {
+            completion(false)
+            return
+        }
+        var request = URLRequest(url: endpoint)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.httpBody = body
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("CineBar/\(version)", forHTTPHeaderField: "User-Agent")
+        URLSession.shared.dataTask(with: request) { _, response, _ in
+            let ok = (response as? HTTPURLResponse)?.statusCode == 200
+            if !ok {
+                CineBarLogCenter.log("upload", "日志上传失败 status=\((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            }
+            DispatchQueue.main.async { completion(ok) }
+        }.resume()
+    }
+
+    /// 用系统默认文本编辑器打开日志文件，方便用户查看/手动发送。
+    static func openLogFile() {
+        NSWorkspace.shared.open(logURL)
     }
 }
