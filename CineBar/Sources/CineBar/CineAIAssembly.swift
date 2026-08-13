@@ -275,6 +275,12 @@ extension MovieStore {
                 }
                 ms = Array(ms.prefix(8))
             } else {
+                // 纯标题搜索（无类型/年份/地区等结构化条件）：优先用豆瓣候选。
+                // 豆瓣对中文片名匹配更好（老版/冷门/未上映都能列出，如蜘蛛侠2002）。
+                let douban = await DoubanRatingClient().searchCandidates(query)
+                if !douban.isEmpty {
+                    return douban
+                }
                 ms = try await client.search(query)
             }
             let lines = ms.prefix(8).map { m -> String in

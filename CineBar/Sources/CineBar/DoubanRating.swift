@@ -239,6 +239,58 @@ struct DoubanRatingClient {
         return result
     }
 
+    /// 用豆瓣 rexxar 搜索接口查候选片单（电影），返回标题/年份/评分 文本块。
+    /// 供 CineAI 的"候选资料"使用：豆瓣对中文片名匹配好，能覆盖 TMDB 搜不到的
+    /// 老版本/冷门/未上映（如搜"蜘蛛侠"能列出 2002 托比版、新片等）。
+    /// 一次请求返回多条，比逐条 bing+rexxar 高效。走全局闸门限流；失败返回空。
+    func searchCandidates(_ query: String) async -> String {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !q.isEmpty,
+              let encoded = q.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
+            return ""
+        }
+        guard let url = URL(string: "https://m.douban.com/rexxar/api/v2/search?type=movie&q=\(encoded)") else {
+            return ""
+        }
+        let text: String = await (try? DoubanSearchGate.shared.throttled {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 12
+            request.setValue(Self.mobileUA, forHTTPHeaderField: "User-Agent")
+            request.setValue(
+                "https://m.douban.com/movie/subject/",
+                forHTTPHeaderField: "Referer"
+            )
+            let (data, response) = try await self.session.data(for: request)
+            guard (response as? HTTPURLResponse)?.statusCode == 200,
+                  let s = String(data: data, encoding: .utf8) else { return "" }
+            return s
+        }) ?? ""
+
+        // 解析 subjects.items[].target: title/year/rating.value/count
+        var lines: [String] = []
+        do {
+            guard let json = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+                  let subjects = json["subjects"] as? [String: Any],
+                  let items = subjects["items"] as? [[String: Any]] else {
+                return ""
+            }
+            for item in items.prefix(8) {
+                guard let target = item["target"] as? [String: Any],
+                      let title = target["title"] as? String,
+                      !title.isEmpty else { continue }
+                var line = "《\(title)》"
+                if let year = target["year"] as? Int { line += " (\(year))" }
+                if let rating = target["rating"] as? [String: Any],
+                   let value = rating["value"] as? Double, value > 0 {
+                    line += String(format: " 豆瓣 %.1f", value)
+                    if let count = rating["count"] as? Int { line += "/\(count)人" }
+                }
+                lines.append(line)
+            }
+        }
+        return lines.joined(separator: "\n")
+    }
+
     /// 标题→豆瓣 subjectID列表：扫必应站内搜结果里的 movie.douban.com/subject/数字。
     /// 返回全部候选项（去重、>0），由调用方逐个校验年份。
     private func bingSubjectIDs(title: String) async -> [Int] {
