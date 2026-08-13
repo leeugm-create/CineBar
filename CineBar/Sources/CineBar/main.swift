@@ -7429,8 +7429,8 @@ struct ColumnCountSlider: NSViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.valueChanged(_:))
         )
-        slider.numberOfTickMarks = 4
-        slider.allowsTickMarkValuesOnly = false
+        // 关键：不要设置 numberOfTickMarks/allowsTickMarkValuesOnly，否则 macOS 会吸附刻度，
+        // 表现为只能点按跳档、拖动被强拉回，无法自由连续拖动。
         slider.isContinuous = true
         slider.controlSize = .small
         slider.isEnabled = true
@@ -7438,7 +7438,7 @@ struct ColumnCountSlider: NSViewRepresentable {
     }
 
     func updateNSView(_ slider: NSSlider, context: Context) {
-        if slider.doubleValue != value {
+        if abs(slider.doubleValue - value) > 0.01 {
             slider.doubleValue = value
         }
         context.coordinator.value = $value
@@ -7452,7 +7452,8 @@ struct ColumnCountSlider: NSViewRepresentable {
         }
 
         @objc func valueChanged(_ sender: NSSlider) {
-            value.wrappedValue = sender.doubleValue.rounded()
+            // 保持滑块值的平滑变化（不在此处取整），列数显示时再取整，避免拖动抖动。
+            value.wrappedValue = sender.doubleValue
         }
     }
 }
