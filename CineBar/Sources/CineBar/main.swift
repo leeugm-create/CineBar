@@ -13326,6 +13326,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         panel.isMovableByWindowBackground = true
         panel.hidesOnDeactivate = false
         panel.isReleasedWhenClosed = false
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.level = .statusBar
 
@@ -13339,46 +13342,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
             display: true
         )
 
-        // 外层圆角容器 + 流光彩色描边。
+        // 外层圆角容器 + 流光彩色描边（边框不动，光点沿边框流动）。
         let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
         container.wantsLayer = true
         container.layer?.cornerRadius = cornerRadius
         container.layer?.masksToBounds = true
         container.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
 
-        // 流光彩色描边：CAShapeLayer 圆角环 + 渐变填充，颜色随时间缓慢流动变化。
-        let gradient = CAGradientLayer()
-        gradient.frame = container.bounds
-        gradient.type = .conic
-        gradient.startPoint = CGPoint(x: 0.5, y: 0.5)
-        gradient.endPoint = CGPoint(x: 1, y: 1)
-        gradient.colors = [
-            NSColor.systemCyan.cgColor,
-            NSColor.systemBlue.cgColor,
-            NSColor.systemPurple.cgColor,
-            NSColor.systemPink.cgColor,
-            NSColor.systemOrange.cgColor,
-            NSColor.systemCyan.cgColor,
-        ]
-        // 用圆角环 mask 只保留一圈描边。
-        let borderWidth: CGFloat = 2
-        let ring = CAShapeLayer()
+        let borderWidth: CGFloat = 2.5
         let ringRect = container.bounds.insetBy(dx: borderWidth / 2, dy: borderWidth / 2)
-        let path = CGMutablePath()
-        path.addRoundedRect(
-            in: ringRect,
+        let roundedPath = CGPath(
+            roundedRect: ringRect,
             cornerWidth: cornerRadius, cornerHeight: cornerRadius,
-            transform: .identity
+            transform: nil
         )
-        path.addRoundedRect(
-            in: ringRect.insetBy(dx: borderWidth, dy: borderWidth),
-            cornerWidth: cornerRadius - 1, cornerHeight: cornerRadius - 1,
-            transform: .identity
-        )
-        ring.path = path
-        ring.fillRule = .evenOdd
-        gradient.mask = ring
-        container.layer?.addSublayer(gradient)
+
+        // 1) 静态彩色细边：让边框本身有色彩轮廓（形状固定不动）。
+        let staticBorder = CAShapeLayer()
+        staticBorder.path = roundedPath
+        staticBorder.fillColor = nil
+        staticBorder.strokeColor = NSColor.systemIndigo.cgColor
+        staticBorder.lineWidth = borderWidth
+        staticBorder.opacity = 0.35
+        container.layer?.addSublayer(staticBorder)
+
+        // 2) 流光：用虚线描边，动画 lineDashPhase，让「亮色虚线段」沿固定边框循环跑动。
+        //    边框位置不变，只是虚线上的光点流动，形成霓虹流光效果。
+        let flowDash = CAShapeLayer()
+        flowDash.path = roundedPath
+        flowDash.fillColor = nil
+        flowDash.strokeColor = NSColor.systemTeal.cgColor
+        flowDash.lineWidth = borderWidth
+        flowDash.lineDashPattern = [10, 8]   // 一段光 + 一段空
+        flowDash.lineCap = .round
+        container.layer?.addSublayer(flowDash)
+
+        let dashAnim = CABasicAnimation(keyPath: "lineDashPhase")
+        dashAnim.fromValue = 0
+        dashAnim.toValue = -18              // 等于 pattern 周期，负号让光向前跑
+        dashAnim.duration = 1.0
+        dashAnim.repeatCount = .infinity
+        flowDash.add(dashAnim, forKey: "dashFlow")
+
+        // 3) 几段不同颜色、不同相位的虚线，叠加出多色光沿边框流动。
+        let colors: [(NSColor, CGFloat, CGFloat)] = [
+            (NSColor.systemCyan, 4, 0),
+            (NSColor.systemPink, 6, 1.6),
+            (NSColor.systemOrange, 8, 3.2),
+        ]
+        for (color, dash, phaseOffset) in colors {
+            let layer = CAShapeLayer()
+            layer.path = roundedPath
+            layer.fillColor = nil
+            layer.strokeColor = color.cgColor
+            layer.lineWidth = borderWidth
+            layer.lineDashPattern = [dash as NSNumber, 14]
+            layer.lineCap = .round
+            layer.opacity = 0.9
+            container.layer?.addSublayer(layer)
+
+            let anim = CABasicAnimation(keyPath: "lineDashPhase")
+            anim.fromValue = phaseOffset
+            anim.toValue = phaseOffset - 18
+            anim.duration = 1.2
+            anim.repeatCount = .infinity
+            layer.add(anim, forKey: "dashFlow")
+        }
 
         // 标题在上、输入框在下，中间留足空隙，避免文字被遮挡。
         let label = NSTextField(labelWithString: "🔍 问 CineAI")
@@ -13429,15 +13458,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
 
         aiSearchWindow = panel
         aiSearchField = field
-
-        // 流光动画：让渐变旋转角随时间变化，颜色沿边框缓慢流动。
-        let rotate = CABasicAnimation(keyPath: "transform.rotation")
-        rotate.fromValue = 0
-        rotate.toValue = CGFloat.pi * 2
-        rotate.duration = 6.0
-        rotate.repeatCount = .infinity
-        rotate.isCumulative = true
-        gradient.add(rotate, forKey: "gradientSpin")
 
         NSApplication.shared.activate(ignoringOtherApps: true)
         panel.makeKeyAndOrderFront(nil)
