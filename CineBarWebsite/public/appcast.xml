@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 99&lt;/li&gt;&lt;li&gt;- 优化：菜单栏「AI 搜索」悬浮框更美观——标题与输入框拉开间距不再遮挡、整体大圆角、外框加流光彩色描边（颜色缓慢流动变化）。&lt;/li&gt;&lt;li&gt;- 新增：悬浮搜索框右上角关闭按钮，可主动收起。&lt;/li&gt;&lt;li&gt;- 含 Build 98：CineAI 候选资料只是参考，细分主题（运动/励志等）与冷门、老版本完全按 DeepSeek 影视知识回答；主题词自动路由到模型推荐；未找到时用温柔措辞。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 100&lt;/li&gt;&lt;li&gt;- 修复：菜单栏「AI 搜索」悬浮框流光效果——改为光点沿固定边框流动（多色霓虹流动），边框本身不移动；外框四角真正显示圆角（不再直角）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-99-universal.zip"
-        sparkle:version="99"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-100-universal.zip"
+        sparkle:version="100"
         sparkle:shortVersionString="0.9.0"
-        length="8468942"
+        length="8471575"
         type="application/octet-stream"
-        sparkle:edSignature="XDThwQJ0z8PBuXK9SNW/Tw/Ew1XFIF/06lmngqAlkNxESCx1V6l7BaZA39luCSThPFtIsNFb7fUb+fsKelsaCg=="/>
+        sparkle:edSignature="AcrNYPmvzEB69d1QncDiplKqYaZY1XbuK7z/hutJ2BtyP17ZOPO9t91hw4IyNb2efWt8WGDGABgBU/MM8T6uBg=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 99&lt;/li&gt;&lt;li&gt;- 优化：菜单栏「AI 搜索」悬浮框更美观——标题与输入框拉开间距不再遮挡、整体大圆角、外框加流光彩色描边（颜色缓慢流动变化）。&lt;/li&gt;&lt;li&gt;- 新增：悬浮搜索框右上角关闭按钮，可主动收起。&lt;/li&gt;&lt;li&gt;- 含 Build 98：CineAI 候选资料只是参考，细分主题（运动/励志等）与冷门、老版本完全按 DeepSeek 影视知识回答；主题词自动路由到模型推荐；未找到时用温柔措辞。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-99-universal.zip" sparkle:version="99" sparkle:shortVersionString="0.9.0" length="8468942" type="application/octet-stream" sparkle:edSignature="XDThwQJ0z8PBuXK9SNW/Tw/Ew1XFIF/06lmngqAlkNxESCx1V6l7BaZA39luCSThPFtIsNFb7fUb+fsKelsaCg=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
