@@ -7429,8 +7429,6 @@ struct ColumnCountSlider: NSViewRepresentable {
             target: context.coordinator,
             action: #selector(Coordinator.valueChanged(_:))
         )
-        // 关键：不要设置 numberOfTickMarks/allowsTickMarkValuesOnly，否则 macOS 会吸附刻度，
-        // 表现为只能点按跳档、拖动被强拉回，无法自由连续拖动。
         slider.isContinuous = true
         slider.controlSize = .small
         slider.isEnabled = true
@@ -7438,6 +7436,12 @@ struct ColumnCountSlider: NSViewRepresentable {
     }
 
     func updateNSView(_ slider: NSSlider, context: Context) {
+        // 拖动过程中（最近 0.3 秒内滑块仍在被操作）不强制拉回滑块位置，
+        // 否则会把滑块吸回整数档，表现为拖不动/只能点按。
+        if Date().timeIntervalSince(context.coordinator.lastChange) < 0.3 {
+            context.coordinator.value = $value
+            return
+        }
         if abs(slider.doubleValue - value) > 0.01 {
             slider.doubleValue = value
         }
@@ -7446,13 +7450,15 @@ struct ColumnCountSlider: NSViewRepresentable {
 
     final class Coordinator: NSObject {
         var value: Binding<Double>
+        /// 最近一次滑块值变化的时间，用于判断是否仍在拖动。
+        var lastChange = Date.distantPast
 
         init(value: Binding<Double>) {
             self.value = value
         }
 
         @objc func valueChanged(_ sender: NSSlider) {
-            // 保持滑块值的平滑变化（不在此处取整），列数显示时再取整，避免拖动抖动。
+            lastChange = Date()
             value.wrappedValue = sender.doubleValue
         }
     }
