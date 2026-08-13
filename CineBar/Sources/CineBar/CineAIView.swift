@@ -127,6 +127,14 @@ struct CineAIView: View {
                     .padding(.horizontal)
                     .padding(.vertical, 6)
                 }
+                .onAppear {
+                    // 重新进入聊天框：自动滚到最底部（最新消息），避免停在顶部。
+                    DispatchQueue.main.async {
+                        withAnimation(.none) {
+                            proxy.scrollTo("bottom", anchor: .bottom)
+                        }
+                    }
+                }
                 .onChange(of: messages) { _ in
                     // 有新消息/回答后滚到底部
                     withAnimation {
