@@ -168,11 +168,39 @@ struct CineAIRAG {
             ]
         }
         // 插入历史（排在首条 system 之后），让 AI 能引用上文。
+        // 重要：必须裁剪历史，否则多轮对话后消息体积膨胀会触发代理 413「input too large」。
         if !history.isEmpty,
            let firstSystem = built.firstIndex(where: { $0.role == "system" }) {
-            built.insert(contentsOf: history, at: firstSystem + 1)
+            built.insert(contentsOf: Self.trimmedHistory(history), at: firstSystem + 1)
         }
         return built
+    }
+
+    /// 裁剪历史，避免请求体过大触发代理 413：最多保留最近 6 条消息（约 3 轮），
+    /// 且历史文本总长不超过 ~3000 字符，单条再截断到 ~800 字符。general 等宽泛意图
+    /// 上下文价值低，更应裁剪（调用方已尽量精简，这里统一兜底）。
+    private static func trimmedHistory(_ history: [AIChatMessage]) -> [AIChatMessage] {
+        let maxCount = 6
+        let totalBudget = 3000
+        let perMessageLimit = 800
+
+        // 保留最近 maxCount 条
+        let recent = Array(history.suffix(maxCount))
+
+        var kept: [AIChatMessage] = []
+        var used = 0
+        for msg in recent.reversed() {
+            var content = msg.content
+            if content.count > perMessageLimit {
+                content = String(content.prefix(perMessageLimit)) + "…"
+            }
+            // 先看是否超总预算（从新到旧加，保证最近的内容优先保留）
+            if used + content.count > totalBudget, !kept.isEmpty { break }
+            kept.append(AIChatMessage(role: msg.role, content: content))
+            used += content.count
+        }
+        // 还原时间顺序
+        return kept.reversed()
     }
 
     private func system(_ text: String) -> AIChatMessage {

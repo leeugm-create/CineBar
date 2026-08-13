@@ -190,5 +190,32 @@ struct CineAIEval {
         } catch {
             check(false, "E2E-F offScope 应不抛错")
         }
+
+        // G) 历史裁剪：多轮长对话后历史被限制，避免请求体过大触发 413 input too large。
+        do {
+            let cap = CaptureProvider()
+            let rag = CineAIRAG(provider: cap, data: data())
+            // 塞入 30 条超长历史（远超 6 条 / 3000 字符上限）
+            var huge: [AIChatMessage] = []
+            for i in 0..<30 {
+                huge.append(AIChatMessage(
+                    role: i % 2 == 0 ? "user" : "assistant",
+                    content: "这是第\(i)条很长的历史消息，内容反复出现以撑大请求体。" + String(repeating: "字", count: 200)
+                ))
+            }
+            _ = try await rag.answer(.findMovie, input: "找一部动作片", history: huge)
+            let captured = cap.captured
+            let systemCount = captured.filter { $0.role == "system" }.count
+            // 历史条数应远少于 30
+            let historyCount = captured.count - systemCount
+            check(historyCount <= 7, "E2E-G 历史被裁剪(\(historyCount) <= 7)")
+            // 历史总字符应被限制在预算内（30 条 × ~210 字 = 6300，应被压到预算内）
+            let historyChars = captured
+                .filter { $0.role != "system" }
+                .reduce(0) { $0 + $1.content.count }
+            check(historyChars <= 3200, "E2E-G 历史总长受限(\(historyChars) <= 3200)")
+        } catch {
+            check(false, "E2E-G 历史裁剪不抛错")
+        }
     }
 }
