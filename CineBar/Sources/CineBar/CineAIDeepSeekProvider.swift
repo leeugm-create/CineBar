@@ -155,10 +155,12 @@ final class CineAIProxyProvider: AIProvider {
             throw CineAIError.networkUnavailable
         }
         guard let http = response as? HTTPURLResponse else {
+            CineBarLogCenter.recordProxyFailure(status: -1, body: data, baseURL: baseURL)
             throw CineAIError.badResponse
         }
         // 非 200：收敛到统一错误（429→限流，5xx→服务错，其它→badResponse）。
         guard http.statusCode == 200 else {
+            CineBarLogCenter.recordProxyFailure(status: http.statusCode, body: data, baseURL: baseURL)
             switch http.statusCode {
             case 429: throw CineAIError.rateLimited
             case 500..<600: throw CineAIError.serverError
@@ -169,6 +171,7 @@ final class CineAIProxyProvider: AIProvider {
             as? [String: Any]
         // 代理返回 { cached, result: <DeepSeek chat/completions 响应> }。
         guard let result = body?["result"] as? [String: Any] else {
+            CineBarLogCenter.recordProxyFailure(status: http.statusCode, body: data, baseURL: baseURL)
             throw CineAIError.badResponse
         }
         let choices = result["choices"] as? [[String: Any]]
@@ -180,5 +183,65 @@ final class CineAIProxyProvider: AIProvider {
             inputTokens: (usage?["prompt_tokens"] as? Int) ?? 0,
             outputTokens: (usage?["completion_tokens"] as? Int) ?? 0
         )
+    }
+}
+
+/// CineBar 本地错误日志中心：统一记录各类故障（AI/网络/播放/数据源等）到
+/// ~/Library/Logs/CineBar/cinebar.log，供排查问题与后续上传分析。
+/// 只记技术诊断（错误码、来源、摘要、时间），不记对话内容与个人隐私。
+enum CineBarLogCenter {
+    private static let logURL: URL = {
+        let fm = FileManager.default
+        let base = fm.urls(for: .libraryDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library")
+        let dir = base.appendingPathComponent("Logs/CineBar", isDirectory: true)
+        try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("cinebar.log")
+    }()
+
+    private static let stampFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return f
+    }()
+
+    private static let lock = NSLock()
+
+    /// 追加一条日志。category：错误来源（ai/proxy/playback/network/magnet/…）。
+    static func log(_ category: String, _ message: String) {
+        let stamp = stampFormatter.string(from: Date())
+        let line = "[\(stamp)] [\(category)] \(message)\n"
+        lock.lock()
+        defer { lock.unlock() }
+        if let handle = try? FileHandle(forWritingTo: logURL) {
+            handle.seekToEndOfFile()
+            if let d = line.data(using: .utf8) { try? handle.write(contentsOf: d) }
+            try? handle.close()
+        } else {
+            try? line.data(using: .utf8)?.write(to: logURL)
+        }
+    }
+
+    /// 记录一次 AI 代理调用失败（含状态码与响应体前缀），供排查"无法解析"等 badResponse。
+    static func recordProxyFailure(status: Int, body: Data, baseURL: URL) {
+        var msg = "proxy status=\(status) url=\(baseURL.absoluteString)"
+        if let s = String(data: body.prefix(2000), encoding: .utf8) {
+            msg += " body=\(s)"
+        } else {
+            msg += " body=<非utf8 \(body.count)字节>"
+        }
+        log("ai/proxy", msg)
+    }
+
+    /// 日志文件路径（给用户排查用）。
+    static var logFilePath: String { logURL.path }
+
+    /// 日志文件内容（最多返回尾部若干 KB），供导出/上传。
+    static func recentLog(maxBytes: Int = 16_384) -> String {
+        guard let data = try? Data(contentsOf: logURL) else { return "" }
+        let s = String(data: data, encoding: .utf8) ?? ""
+        guard s.utf8.count > maxBytes else { return s }
+        let start = s.utf8.index(s.utf8.startIndex, offsetBy: s.utf8.count - maxBytes)
+        return String(s[start...])
     }
 }

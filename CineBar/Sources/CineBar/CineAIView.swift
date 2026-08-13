@@ -418,6 +418,10 @@ struct CineAIView: View {
                 // 统一错误模型：只展示 displayText，不直接处理底层网络/HTTP 原始错误。
                 let text = (error as? CineAIError)?.displayText
                     ?? "出错了，请重试。"
+                CineBarLogCenter.log(
+                    "ai/answer",
+                    "调用失败 error=\(error) display=\(text) intent=\(intent)"
+                )
                 await MainActor.run {
                     store.cineAIMessages.append(
                         AIChatMessage(role: "assistant", content: text)
