@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 102&lt;/li&gt;&lt;li&gt;- 修复：CineAI 现在会拒绝写推文、改文章、写代码、翻译等非影视通用操作（本地拦截，不调用模型），避免被当成通用 AI 使用。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏「AI 搜索」悬浮框去掉边框跑马灯流光，仅保留磨砂玻璃质感。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 103&lt;/li&gt;&lt;li&gt;- 新增：本地错误日志中心，记录 AI 调用失败（含代理状态码与响应体）、网络等故障到 ~/Library/Logs/CineBar/cinebar.log，便于排查「AI 返回了无法解析的内容」等问题（不记录对话内容与隐私）。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-102-universal.zip"
-        sparkle:version="102"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-103-universal.zip"
+        sparkle:version="103"
         sparkle:shortVersionString="0.9.0"
-        length="8474245"
+        length="8483677"
         type="application/octet-stream"
-        sparkle:edSignature="MllbxITgTdauGNSQQ2DqtGx1xKL55iiRI0fjFhYmL9FoFCEs2tu1RO+jidffkqOY1rd+e9dN1gH2m+XHzzd4Bw=="/>
+        sparkle:edSignature="dx5+LvncjqJwMYuewGAA3wfltYrgSTNnqNpreqVZJHdYG12stGlsfUlaOQSy3R3KifrXSxQLJ2YOPBCMUh6JCA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 102&lt;/li&gt;&lt;li&gt;- 修复：CineAI 现在会拒绝写推文、改文章、写代码、翻译等非影视通用操作（本地拦截，不调用模型），避免被当成通用 AI 使用。&lt;/li&gt;&lt;li&gt;- 优化：菜单栏「AI 搜索」悬浮框去掉边框跑马灯流光，仅保留磨砂玻璃质感。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-102-universal.zip" sparkle:version="102" sparkle:shortVersionString="0.9.0" length="8474245" type="application/octet-stream" sparkle:edSignature="MllbxITgTdauGNSQQ2DqtGx1xKL55iiRI0fjFhYmL9FoFCEs2tu1RO+jidffkqOY1rd+e9dN1gH2m+XHzzd4Bw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
