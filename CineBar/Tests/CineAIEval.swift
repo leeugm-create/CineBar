@@ -44,6 +44,11 @@ struct CineAIEval {
         check(CineAIIntentRouter.route("帮我写一篇推文") == .offScope, "route offScope 推文")
         check(CineAIIntentRouter.route("帮我修改这篇文章") == .offScope, "route offScope 改文章")
         check(CineAIIntentRouter.route("写一段python代码") == .offScope, "route offScope 代码")
+        check(CineAIIntentRouter.route("我想汲取灵感写自己的原创故事") == .offScope, "route offScope 写原创故事")
+        check(CineAIIntentRouter.route("帮我写个故事") == .offScope, "route offScope 写故事")
+        // 影视相关不被误伤
+        check(CineAIIntentRouter.route("这部电影的故事讲什么") != .offScope, "route 影视故事不误伤")
+        check(CineAIIntentRouter.route("推荐一部关于创作的电影") != .offScope, "route 创作电影不误伤")
 
         // ---- 2. 找片语义拆解 ----
         var q = CineMovieQueryParser.parse("找一部时间循环的喜剧")
@@ -88,7 +93,7 @@ struct CineAIEval {
         _ = try? await rag.answer(.general, input: "给我讲个笑话")
         let sysGeneral = cap.captured.first { $0.role == "system" }?.content ?? ""
         check(
-            sysGeneral.contains("只管影视") || sysGeneral.contains("无法回答"),
+            sysGeneral.contains("只做影视") || sysGeneral.contains("只懂影视") || sysGeneral.contains("无法回答"),
             "general system 明确只管影视、拒绝无关"
         )
 

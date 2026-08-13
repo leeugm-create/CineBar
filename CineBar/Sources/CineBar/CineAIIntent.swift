@@ -26,7 +26,7 @@ enum CineAIIntentRouter {
 
         // 非影视通用操作硬拦截：写推文/写文章/写代码/翻译/改稿等，直接归 offScope，
         // 由 RAG 本地返回固定回复（不调模型），防止被套话越界当成通用 AI 用。
-        if contains(text, anyOf: Self.offScopeKeywords) {
+        if Self.isOffScope(text) {
             return .offScope
         }
 
@@ -107,9 +107,37 @@ enum CineAIIntentRouter {
         "代码", "python", "javascript", "swift代码",
         "写邮件", "写简历", "写合同", "写报告", "写论文", "写作业",
         "翻译", "算一下", "计算", "写诗", "写歌词", "写小说",
+        "写故事", "写原创", "写剧本", "写情节", "写台词", "写作",
+        "创作灵感", "汲取灵感", "想写个故事", "写背景故事", "想创作",
     ]
 
     private static func contains(_ text: String, anyOf keywords: [String]) -> Bool {
         keywords.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    /// 判是否为"非影视通用操作"。两层：
+    /// 1) 连续关键词精准命中（写推文/写代码/翻译…）
+    /// 2) 组合检测：文本同时出现「创作/处理动词」+「非影视对象」，即使中间插字也能拦
+    ///   （如"写个故事"、"写自己的原创故事"、"写一段宣传文案"），弥补连续子串匹配的漏洞。
+    private static func isOffScope(_ text: String) -> Bool {
+        // 连续关键词精准命中
+        if contains(text, anyOf: offScopeKeywords) {
+            return true
+        }
+        // 组合检测：动词 + 非影视对象
+        let verbs: [String] = [
+            "写", "创作", "润色", "改写", "修改", "改", "编", "生成",
+            "翻译", "算", "计算", "编个", "起个", "想个", "拟", "策划",
+            "起草", "整理", "总结", "总结一下", "提炼",
+        ]
+        let nonFilmObjects: [String] = [
+            "故事", "剧本", "小说", "文章", "文案", "推文", "微博", "小红书",
+            "代码", "程序", "脚本", "邮件", "简历", "合同", "报告", "论文",
+            "作业", "歌词", "诗歌", "台词", "标题", "宣传语", "简介",
+            "方案", "策划", "提纲", "大纲", "总结", "摘要", "提纲挈领",
+        ]
+        let hasVerb = verbs.contains { text.localizedCaseInsensitiveContains($0) }
+        let hasObject = nonFilmObjects.contains { text.localizedCaseInsensitiveContains($0) }
+        return hasVerb && hasObject
     }
 }
