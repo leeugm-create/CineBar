@@ -7430,7 +7430,7 @@ struct ColumnCountSlider: NSViewRepresentable {
             action: #selector(Coordinator.valueChanged(_:))
         )
         slider.numberOfTickMarks = 4
-        slider.allowsTickMarkValuesOnly = true
+        slider.allowsTickMarkValuesOnly = false
         slider.isContinuous = true
         slider.controlSize = .small
         slider.isEnabled = true
@@ -12483,26 +12483,24 @@ struct ContentView: View {
                     .menuStyle(.borderlessButton)
                     .fixedSize()
                 }
-                if !store.isShowingWatchlist {
-                    HStack(spacing: 6) {
-                        Image(systemName: "square.grid.2x2")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                        ColumnCountSlider(
-                            value: Binding(
-                                get: { Double(store.gridColumnCount) },
-                                set: { store.gridColumnCount = Int($0.rounded()) }
-                            )
+                HStack(spacing: 6) {
+                    Image(systemName: "square.grid.2x2")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    ColumnCountSlider(
+                        value: Binding(
+                            get: { Double(store.gridColumnCount) },
+                            set: { store.gridColumnCount = Int($0.rounded()) }
                         )
-                        .frame(width: 110, height: 20)
-                        Text("\(store.gridColumnCount) 列")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                            .frame(width: 28, alignment: .trailing)
-                    }
-                    .help("卡片列数（2~5 列）")
+                    )
+                    .frame(width: 110, height: 20)
+                    Text("\(store.gridColumnCount) 列")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .frame(width: 28, alignment: .trailing)
                 }
+                .help("卡片列数（2~5 列）")
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
@@ -12560,10 +12558,7 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 7)
                             LazyVGrid(
-                                columns: [
-                                    GridItem(.flexible(), spacing: 12),
-                                    GridItem(.flexible(), spacing: 12)
-                                ],
+                                columns: movieGridColumns,
                                 spacing: 14
                             ) {
                                 ForEach(store.watchlistMovies) { movie in
@@ -12598,10 +12593,7 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 7)
                             LazyVGrid(
-                                columns: [
-                                    GridItem(.flexible(), spacing: 12),
-                                    GridItem(.flexible(), spacing: 12)
-                                ],
+                                columns: movieGridColumns,
                                 spacing: 14
                             ) {
                                 ForEach(store.watchlistTVShows) { show in
@@ -12856,26 +12848,11 @@ struct ContentView: View {
                 }
                 .padding(.horizontal)
             }
-
-            Divider()
-            HStack {
-                Spacer()
-                ZStack {
-                    ResizeTriangle()
-                        .fill(.secondary.opacity(0.55))
-                        .padding(3)
-                    VerticalResizeHandle()
-                }
-                .frame(width: 24, height: 24)
-                .help("拖动这里可上下拉伸")
-            }
-            .font(.caption)
-            .padding(.horizontal)
-            .frame(height: 36)
             }
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 // 主页最下面的 AI 搜索入口框（默认，点放大镜才切普通搜索）。
+                VStack(spacing: 0) {
                 HStack(spacing: 8) {
                     if store.isShowingSearchBar {
                         TextField(
@@ -12920,6 +12897,24 @@ struct ContentView: View {
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 4)
+
+                // 底部拉伸手柄：与 CineAI 一致，放在最底部，可上下调整窗口高度。
+                Divider()
+                HStack {
+                    Spacer()
+                    ZStack {
+                        ResizeTriangle()
+                            .fill(.secondary.opacity(0.55))
+                            .padding(3)
+                        VerticalResizeHandle()
+                    }
+                    .frame(width: 24, height: 24)
+                    .help("拖动这里可上下拉伸")
+                }
+                .font(.caption)
+                .padding(.horizontal)
+                .frame(height: 32)
+            }
             }
         }
     }
