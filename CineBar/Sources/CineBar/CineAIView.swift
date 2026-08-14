@@ -104,6 +104,8 @@ struct CineAIView: View {
                     .buttonStyle(.bordered)
             }
             .padding(.horizontal)
+            .padding(.top, 14)
+            .padding(.bottom, 4)
 
             Divider()
 
@@ -316,6 +318,13 @@ struct CineAIView: View {
                             Color.secondary.opacity(0.10),
                             in: RoundedRectangle(cornerRadius: 10)
                         )
+                        .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
                     AIPosterStrip(message: msg.content, store: store)
                 }
                 timestampView(msg)
@@ -606,6 +615,13 @@ private struct AIPosterCard: View {
             }
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            if hovering {
+                NSCursor.pointingHand.push()
+            } else {
+                NSCursor.pop()
+            }
+        }
         .task {
             guard posterImage == nil, let url = movie.posterURL else { return }
             posterImage = await cachedPosterImage(for: url)
