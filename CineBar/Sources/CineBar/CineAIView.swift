@@ -304,7 +304,7 @@ struct CineAIView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkles")
                             .font(.system(size: 9, weight: .bold))
-                        Text("CineBar AI")
+                        Text("CINEAI")
                             .font(.system(size: 10, weight: .medium))
                         Spacer(minLength: 0)
                     }
@@ -490,6 +490,7 @@ struct CineAIView: View {
                 AIChatMessage(role: "assistant", content: shield)
             )
             busy = false
+            inputFocused = true
             return
         }
         // 历史：发送前已有的 user/assistant 对话（含上文），供 AI 联想读取。
@@ -517,7 +518,11 @@ struct CineAIView: View {
                     )
                 }
             }
-            await MainActor.run { busy = false }
+            await MainActor.run {
+                busy = false
+                // 回答完成后重新聚焦输入框，方便用户直接继续打字，无需再点一下。
+                inputFocused = true
+            }
         }
     }
 }
