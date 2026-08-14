@@ -13061,13 +13061,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
         container.layer?.masksToBounds = true
-        // 给整个主面板加一层不透明背景，避免 isOpaque=false 时透出桌面
-        // （此前主页底部 CineAI 入口栏及 CineAI 页面会显得透明）。
-        let backdrop = CALayer()
-        backdrop.frame = container.bounds
-        backdrop.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.96).cgColor
-        backdrop.cornerRadius = 18
-        container.layer?.insertSublayer(backdrop, at: 0)
+        // 给整个主面板加不透明背景，避免 isOpaque=false 时透出桌面。
+        // 用 layer.backgroundColor（随容器布局自适应），而非手动 frame 的 CALayer。
+        container.layer?.backgroundColor =
+            NSColor.windowBackgroundColor.withAlphaComponent(0.96).cgColor
         panel.contentView = container
         self.panel = panel
 
