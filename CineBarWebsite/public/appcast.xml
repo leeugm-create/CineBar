@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 118&lt;/li&gt;&lt;li&gt;- 优化：CineAI 推荐影片的海报卡与片名链接，鼠标悬停时改为手型（可交互）。&lt;/li&gt;&lt;li&gt;- 优化：CineAI 顶部快捷入口（今晚看什么等）与清屏/返回按钮整体下移，不再顶得太满。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 119&lt;/li&gt;&lt;li&gt;- 修复：主面板（含主页下方 CineAI 入口框、CineAI 聊天框下方）不再透出桌面，改为不透明背景。&lt;/li&gt;&lt;li&gt;- 修复：CineAI 回答完成后输入框自动重新聚焦，可直接连续打字，无需再点一下。&lt;/li&gt;&lt;li&gt;- 调整：AI 回答来源标签「CineBar AI」改为「CINEAI」。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 14 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-118-universal.zip"
-        sparkle:version="118"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-119-universal.zip"
+        sparkle:version="119"
         sparkle:shortVersionString="0.9.0"
-        length="8565184"
+        length="8565991"
         type="application/octet-stream"
-        sparkle:edSignature="rmRxqkzBylW3ntqn149sRN7jtYBMeCsF7bYcNiYWXlHML3eImu33BAbgxKtXgNlw7DmTv/bjdHvdc4UuSwW1DA=="/>
+        sparkle:edSignature="Y3uYrG49YIrvLZxcgyRl3r7aMdtDCysxkrNOLZ3h1XOwTTdiHvilNNQSxfbT4s4HGVVcZqwD0SiDvuzmeu+oBQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 118&lt;/li&gt;&lt;li&gt;- 优化：CineAI 推荐影片的海报卡与片名链接，鼠标悬停时改为手型（可交互）。&lt;/li&gt;&lt;li&gt;- 优化：CineAI 顶部快捷入口（今晚看什么等）与清屏/返回按钮整体下移，不再顶得太满。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 14 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-118-universal.zip" sparkle:version="118" sparkle:shortVersionString="0.9.0" length="8565184" type="application/octet-stream" sparkle:edSignature="rmRxqkzBylW3ntqn149sRN7jtYBMeCsF7bYcNiYWXlHML3eImu33BAbgxKtXgNlw7DmTv/bjdHvdc4UuSwW1DA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
