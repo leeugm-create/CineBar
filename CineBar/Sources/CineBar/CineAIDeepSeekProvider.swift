@@ -116,17 +116,51 @@ private struct ChatCompletion: Decodable {
 /// 不接触任何模型 Key（Key 由代理保管并做限额/缓存）。这是产品正式路径。
 final class CineAIProxyProvider: AIProvider {
 
+    /// web_search 工具的 JSON Schema（OpenAI 兼容），与网站 worker 保持一致。
+    static let webSearchTool: [String: Any] = [
+        "type": "function",
+        "function": [
+            "name": "web_search",
+            "description":
+                "联网搜索一部影片的真实资料（上映日期、剧情、是否未上映/定档）。" +
+                "当用户询问的影片你印象中不存在、或可能是新片/未上映/冷门片、或用户明确要求联网搜索时，调用此工具获取真实信息。",
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "query": [
+                        "type": "string",
+                        "description": "要搜索的影片名称或关键词，如：小黄人与大怪兽",
+                    ]
+                ],
+                "required": ["query"],
+            ],
+        ],
+    ]
+
     private let baseURL: URL
     private let device: String
     private let session: URLSession
+    /// 真实联网执行器：调用方注入（生产用 CineWebSearchClient；测试可注入替身）。
+    private let webSearch: (String) async -> String
+
     init(
         baseURL: URL,
         device: String = CineBarDeviceIdentity.value(),
-        session: URLSession = .shared
+        session: URLSession = .shared,
+        webSearch: @escaping (String) async -> String = { query in
+            let items = await CineWebSearchClient().search(query, limit: 5)
+            guard !items.isEmpty else { return "" }
+            return items.enumerated().map { i, item in
+                var line = "\(i + 1). \(item.title)"
+                if !item.snippet.isEmpty { line += "：\(item.snippet)" }
+                return line
+            }.joined(separator: "\n")
+        }
     ) {
         self.baseURL = baseURL
         self.device = device
         self.session = session
+        self.webSearch = webSearch
     }
 
     func complete(
@@ -134,15 +168,90 @@ final class CineAIProxyProvider: AIProvider {
         maxTokens: Int?,
         reasoning: Bool
     ) async throws -> AIResult {
+        // 走工具循环：第一轮带 web_search 工具，模型可自主决定联网；
+        // 若返回 tool_calls 则执行真实搜索，回填 tool 结果，再发下一轮，最多若干轮。
+        let toolResult = try await completeWithTools(messages: messages, maxTokens: maxTokens)
+        return toolResult
+    }
+
+    /// 多轮工具循环实现。返回最终文本（含空内容兜底）。
+    private func completeWithTools(
+        messages: [AIChatMessage],
+        maxTokens: Int?
+    ) async throws -> AIResult {
+        let maxRounds = 3
+        var searchBudget = 3
+        // running：累计完整消息序列（system + user + assistant(tool_calls) + tool 结果）。
+        var running: [[String: Any]] = messages.map { Self.dictMessage($0) }
+        var firstMsg: [String: Any]? = nil
+
+        for _ in 0..<maxRounds {
+            let result = try await sendChat(dictMessages: running, maxTokens: maxTokens)
+            let choices = result["choices"] as? [[String: Any]]
+            let message = choices?.first?["message"] as? [String: Any]
+            let toolCalls = message?["tool_calls"] as? [[String: Any]] ?? []
+            firstMsg = message
+
+            if toolCalls.isEmpty {
+                break
+            }
+
+            // 保留发起工具调用的这条 assistant 消息（含 tool_calls），再追加工具结果。
+            var asst: [String: Any] = ["role": "assistant"]
+            if let content = message?["content"] as? String, !content.isEmpty {
+                asst["content"] = content
+            }
+            asst["tool_calls"] = toolCalls
+            running.append(asst)
+            for call in toolCalls {
+                let fn = call["function"] as? [String: Any]
+                guard fn?["name"] as? String == "web_search" else { continue }
+                if searchBudget <= 0 {
+                    running.append(Self.toolDict(id: call["id"] as? String ?? "",
+                        content: "（已达到本次联网次数上限，请直接基于已有信息回答，不要再调用搜索。）"))
+                    continue
+                }
+                searchBudget -= 1
+                let args = (fn?["arguments"] as? String).flatMap { (s: String) -> [String: Any]? in
+                    (try? JSONSerialization.jsonObject(with: Data(s.utf8))) as? [String: Any]
+                }
+                let query = (args?["query"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                let output = query.isEmpty ? "" : await webSearch(query)
+                let neutral = output.isEmpty
+                    ? "（未查到该片的确切资料，请如实说明信息有限，不要编造。）"
+                    : output
+                running.append(Self.toolDict(id: call["id"] as? String ?? "", content: neutral))
+            }
+        }
+
+        let raw = (firstMsg?["content"] as? String) ?? ""
+        let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // 空内容兜底：避免 UI 显示空白。
+        let finalText = text.isEmpty
+            ? "抱歉，我刚才没整理好答案。如果你问的是具体某部影片，可以告诉我片名，我再帮你查；如果是找片推荐，换个说法我再试试。"
+            : text
+        return AIResult(text: finalText, inputTokens: 0, outputTokens: 0)
+    }
+
+    /// 发送一次 chat/completions，返回代理响应里的 result（DeepSeek 响应）。
+    private func sendChat(
+        dictMessages: [[String: Any]],
+        maxTokens: Int?
+    ) async throws -> [String: Any] {
         let endpoint = baseURL.appendingPathComponent("v1/chat/completions")
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        request.timeoutInterval = 90
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let payload: [String: Any] = [
+
+        var payload: [String: Any] = [
             "device": device,
-            "messages": messages.map { ["role": $0.role, "content": $0.content] },
+            "messages": dictMessages,
+            "tools": [Self.webSearchTool],
         ]
+        if let maxTokens {
+            payload["max_tokens"] = maxTokens
+        }
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
 
         var data: Data
@@ -159,7 +268,6 @@ final class CineAIProxyProvider: AIProvider {
             CineBarLogCenter.recordProxyFailure(status: -1, body: data, baseURL: baseURL)
             throw CineAIError.badResponse
         }
-        // 非 200：收敛到统一错误（429→限流，5xx→服务错，其它→badResponse）。
         guard http.statusCode == 200 else {
             CineBarLogCenter.recordProxyFailure(status: http.statusCode, body: data, baseURL: baseURL)
             switch http.statusCode {
@@ -168,22 +276,22 @@ final class CineAIProxyProvider: AIProvider {
             default: throw CineAIError.badResponse
             }
         }
-        let body = (try? JSONSerialization.jsonObject(with: data))
-            as? [String: Any]
-        // 代理返回 { cached, result: <DeepSeek chat/completions 响应> }。
-        guard let result = body?["result"] as? [String: Any] else {
+        guard let body = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let result = body["result"] as? [String: Any] else {
             CineBarLogCenter.recordProxyFailure(status: http.statusCode, body: data, baseURL: baseURL)
             throw CineAIError.badResponse
         }
-        let choices = result["choices"] as? [[String: Any]]
-        let firstMessage = choices?.first?["message"] as? [String: Any]
-        let text = firstMessage?["content"] as? String ?? ""
-        let usage = result["usage"] as? [String: Any]
-        return AIResult(
-            text: text,
-            inputTokens: (usage?["prompt_tokens"] as? Int) ?? 0,
-            outputTokens: (usage?["completion_tokens"] as? Int) ?? 0
-        )
+        return result
+    }
+
+    /// AIChatMessage → 字典（普通 system/user/assistant 消息）。
+    private static func dictMessage(_ m: AIChatMessage) -> [String: Any] {
+        ["role": m.role, "content": m.content]
+    }
+
+    /// tool 结果消息字典。
+    private static func toolDict(id: String, content: String) -> [String: Any] {
+        ["role": "tool", "tool_call_id": id, "content": content]
     }
 }
 
