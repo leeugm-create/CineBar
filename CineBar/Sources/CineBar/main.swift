@@ -6910,9 +6910,7 @@ struct MooviePlaySection: View {
                         episodeGrid
                     }
                     HStack {
-                        Text("正片播放 · \(sourceName)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        // 播放控制条：仅保留弹幕开关，去掉"正片播放/倍速/放大播放/全屏"。
                         Spacer()
                         if !danmaku.isEmpty {
                             Toggle(isOn: $danmakuVisible) {
@@ -6929,46 +6927,6 @@ struct MooviePlaySection: View {
                             ProgressView()
                                 .controlSize(.small)
                         }
-                        Menu {
-                            ForEach([0.5, 0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { rate in
-                                Button("\(rateDisplay(rate))") {
-                                    playbackRate = rate
-                                }
-                            }
-                        } label: {
-                            Label("倍速 \(rateDisplay(playbackRate))", systemImage: "speedometer")
-                        }
-                        .menuStyle(.borderlessButton)
-                        .controlSize(.small)
-                        .help("播放速度设置")
-                        Button {
-                            inlinePaused = true
-                            MooviePlaybackController.shared.show(
-                                url: streamURL,
-                                title: "\(title) · \(sourceName)",
-                                danmaku: danmaku,
-                                mode: .floating
-                            )
-                        } label: {
-                            Label("放大播放", systemImage: "arrow.up.left.and.arrow.down.right")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .help("在独立浮窗中放大播放")
-                        Button {
-                            inlinePaused = true
-                            MooviePlaybackController.shared.show(
-                                url: streamURL,
-                                title: "\(title) · \(sourceName)",
-                                danmaku: danmaku,
-                                mode: .fullScreen
-                            )
-                        } label: {
-                            Label("全屏", systemImage: "rectangle.expand.vertical")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .help("全屏播放")
                     }
                     MooviePlayerView(
                         url: streamURL,
