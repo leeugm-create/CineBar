@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 121&lt;/li&gt;&lt;li&gt;- 修复：「提交评分无效」——评分滑块步进由 0.1 改为 0.5，与服务端 0.5 间隔校验一致，任意档位拖动后保存都能成功生效。&lt;/li&gt;&lt;li&gt;- 修复：CineAI 聊天界面（含输入框下方）与主页 AI 入口框改为完全不透明，不再透出桌面。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 122&lt;/li&gt;&lt;li&gt;- 修复：评分「提交无效」——热门榜、豆瓣「即将上映」等条目进入详情时先显示占位页（id 暂为 0），此时不再显示评分面板，避免提交评分因 mediaID=0 被跳过；条目匹配到真实数据后评分面板正常可用。&lt;/li&gt;&lt;li&gt;- 修复：主页底部「问 CineAI」入口框下方区域（分隔线与拉伸手柄）改为不透明背景，滑动片单时不再透出内容产生割裂感。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Fri, 14 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-121-universal.zip"
-        sparkle:version="121"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-122-universal.zip"
+        sparkle:version="122"
         sparkle:shortVersionString="0.9.0"
-        length="8555216"
+        length="8559415"
         type="application/octet-stream"
-        sparkle:edSignature="MfpGi/f08kHFPMe1/MJXN9TpIsYvewIVApPykMoqvo/Sas3xb5oLP3xNBb+n89FhPUfZhLrsu3MLnO3YjmtsCw=="/>
+        sparkle:edSignature="yD6H/sXmuXpoD3XzBUeS4IrO9Sye0qVuScoQkIJ3vvjsFi1K0ZBLMW7xwfvapAI/RNP+a8qut6shEwMHjwxJAQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 121&lt;/li&gt;&lt;li&gt;- 修复：「提交评分无效」——评分滑块步进由 0.1 改为 0.5，与服务端 0.5 间隔校验一致，任意档位拖动后保存都能成功生效。&lt;/li&gt;&lt;li&gt;- 修复：CineAI 聊天界面（含输入框下方）与主页 AI 入口框改为完全不透明，不再透出桌面。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Fri, 14 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-121-universal.zip" sparkle:version="121" sparkle:shortVersionString="0.9.0" length="8555216" type="application/octet-stream" sparkle:edSignature="MfpGi/f08kHFPMe1/MJXN9TpIsYvewIVApPykMoqvo/Sas3xb5oLP3xNBb+n89FhPUfZhLrsu3MLnO3YjmtsCw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
