@@ -218,7 +218,7 @@ struct CineAIView: View {
         // 给 CineAI 页面加不透明背景，避免面板透明（isOpaque=false）时透出桌面。
         .background {
             Color(nsColor: .windowBackgroundColor)
-                .opacity(max(store.glassBackgroundOpacity, 0.92))
+                .opacity(1.0)
         }
         .environment(\.openURL, OpenURLAction { url in
             // 点击回答里的《片名》→ 按片名进入详情页。

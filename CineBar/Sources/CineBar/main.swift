@@ -4006,7 +4006,10 @@ final class MovieStore: ObservableObject {
     func saveCommunityRating(
         mediaType: CommunityMediaType,
         mediaID: Int
-    ) {        guard mediaID > 0, hasCommunityService else {
+    ) {        // 提交前把分数收拢到 0.5 间隔，与服务端校验保持一致，
+        // 避免历史遗留/滑块产生的非 0.5 档分值被服务端 400 拒绝。
+        communityRatingDraft = (communityRatingDraft * 2).rounded() / 2
+        guard mediaID > 0, hasCommunityService else {
             CineBarLogCenter.log(
                 "rating",
                 "提交评分被跳过 mediaID=\(mediaID) hasCommunityService=\(hasCommunityService) draft=\(communityRatingDraft)"
@@ -7340,8 +7343,10 @@ final class RatingNSSlider: NSSlider {
     private func configure() {
         minValue = 0
         maxValue = 10
-        // 101 个刻度 = 0.1 步进（原为 21 刻度 = 0.5 步进）。
-        numberOfTickMarks = 101
+        // 21 个刻度 = 0.5 步进，与服务端 normalizeScore 的 0.5 间隔校验一致。
+        // （此前 101 刻度 = 0.1 步进，用户拖到 8.3/9.2 这类档位提交时被服务端
+        // 以“评分须为 0–10，且以 0.5 为间隔”拒绝，表现为“提交评分无效”。）
+        numberOfTickMarks = 21
         tickMarkPosition = .below
         allowsTickMarkValuesOnly = true
         isContinuous = true
@@ -7379,7 +7384,11 @@ struct RatingSlider: NSViewRepresentable {
         }
 
         @objc func valueChanged(_ sender: NSSlider) {
-            value.wrappedValue = sender.doubleValue
+            // 双保险：无论刻度如何，都把值收拢到 0.5 间隔，
+            // 与服务端 normalizeScore（value * 2 === round(value * 2)）一致。
+            let snapped = (sender.doubleValue * 2).rounded() / 2
+            value.wrappedValue = snapped
+            sender.doubleValue = snapped
         }
     }
 }
@@ -12838,8 +12847,7 @@ struct ContentView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
                             .background(
-                                Color(nsColor: .controlBackgroundColor)
-                                    .opacity(0.85),
+                                Color(nsColor: .controlBackgroundColor),
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                         }
@@ -13035,7 +13043,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         // 给整个主面板加不透明背景，避免 isOpaque=false 时透出桌面。
         // 用 layer.backgroundColor（随容器布局自适应），而非手动 frame 的 CALayer。
         container.layer?.backgroundColor =
-            NSColor.windowBackgroundColor.withAlphaComponent(0.96).cgColor
+            NSColor.windowBackgroundColor.cgColor
         panel.contentView = container
         self.panel = panel
 
