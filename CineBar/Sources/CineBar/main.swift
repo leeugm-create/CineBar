@@ -12867,7 +12867,8 @@ struct ContentView: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 7)
                             .background(
-                                Color.secondary.opacity(0.08),
+                                Color(nsColor: .controlBackgroundColor)
+                                    .opacity(0.85),
                                 in: RoundedRectangle(cornerRadius: 8)
                             )
                         }
@@ -13060,6 +13061,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate,
         container.wantsLayer = true
         container.layer?.cornerRadius = 18
         container.layer?.masksToBounds = true
+        // 给整个主面板加一层不透明背景，避免 isOpaque=false 时透出桌面
+        // （此前主页底部 CineAI 入口栏及 CineAI 页面会显得透明）。
+        let backdrop = CALayer()
+        backdrop.frame = container.bounds
+        backdrop.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.96).cgColor
+        backdrop.cornerRadius = 18
+        container.layer?.insertSublayer(backdrop, at: 0)
         panel.contentView = container
         self.panel = panel
 
