@@ -7452,8 +7452,11 @@ struct CommunityRatingPanel: View {
 
     @ViewBuilder
     var body: some View {
-        // 已评分（服务端或本地标记）则不再显示提交框，防"提交无反应/重复提"。
-        if !store.hasRatedCommunity(mediaType: mediaType, mediaID: mediaID),
+        // 占位详情（mediaID<=0，如热门榜/豆瓣即将上映待 TMDB 匹配）无法评分，
+        // 不显示评分面板，避免提交被 guard mediaID > 0 跳过（表现为"提交无效"）。
+        if mediaID <= 0 {
+            EmptyView()
+        } else if !store.hasRatedCommunity(mediaType: mediaType, mediaID: mediaID),
            !store.isLoadingCommunityRating {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
@@ -12875,6 +12878,7 @@ struct ContentView: View {
                 .padding(.horizontal)
                 .frame(height: 32)
             }
+            .background(Color(nsColor: .windowBackgroundColor))
             }
         }
     }
