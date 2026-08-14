@@ -8,12 +8,12 @@ type TrendingMovie = {
   doubanID: string;
   rating: number;
   poster: string;
+  tmdbId?: number;
+  type?: "movie" | "tv";
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-116-universal.zip";
-
-const isChinese = (locale: Locale) => locale === "zh-Hans" || locale === "zh-Hant";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-117-universal.zip";
 
 export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
@@ -96,13 +96,6 @@ function TrendingRow({
     track.scrollBy({ left: step, behavior: "smooth" });
   }
 
-  function itemHref(item: TrendingMovie): string {
-    if (isChinese(locale) && item.doubanID) {
-      return `https://www.douban.com/subject/${item.doubanID}/`;
-    }
-    return `https://www.themoviedb.org/search?query=${encodeURIComponent(item.title)}`;
-  }
-
   return (
     <section className="section ht-section">
       <div className="ht-head">
@@ -131,29 +124,65 @@ function TrendingRow({
       ) : (
         <div className="ht-track" ref={trackRef}>
           {items.map((item) => (
-            <a
-              className="ht-card"
-              key={`${kind}-${item.doubanID}`}
-              href={itemHref(item)}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <img
-                className="ht-poster"
-                src={item.poster}
-                alt={item.title}
-                loading="lazy"
-              />
-              <span className="ht-card-meta">
-                <strong>{item.title}</strong>
-                {item.rating > 0 && (
-                  <small>★ {item.rating.toFixed(1)}</small>
-                )}
-              </span>
-            </a>
+            <TrendingCard key={`${kind}-${item.doubanID}`} item={item} kind={kind} />
           ))}
         </div>
       )}
     </section>
+  );
+}
+
+type TrendingCardItem = TrendingMovie;
+
+/** 本周热门单卡：优先用 Moovie 数据已补齐的 tmdbId 跳自家详情页；
+ *  若没有 tmdbId 则用 lookup 解析；都失败降级跳 Moovie。绝不跳豆瓣。 */
+function TrendingCard({ item, kind }: { item: TrendingCardItem; kind: "movie" | "tv" }) {
+  const [link, setLink] = useState<string | null>(() =>
+    item.tmdbId ? `https://share.cinebar.cc/${item.type === "tv" ? "t" : "m"}/${item.tmdbId}?t=${encodeURIComponent(item.title)}` : null
+  );
+
+  useEffect(() => {
+    if (item.tmdbId) return; // 已有 tmdbId，无需 lookup
+    let alive = true;
+    fetch(`/api/lookup?title=${encodeURIComponent(item.title)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { found?: boolean; type?: "movie" | "tv"; id?: number } | null) => {
+        if (!alive) return;
+        if (body && body.found && body.id != null) {
+          const slug = body.type === "tv" ? "t" : "m";
+          setLink(`https://share.cinebar.cc/${slug}/${body.id}?t=${encodeURIComponent(item.title)}`);
+        } else {
+          setLink(`https://moovie.c2v2.com/search?kw=${encodeURIComponent(item.title)}`);
+        }
+      })
+      .catch(() => {
+        if (alive) setLink(`https://moovie.c2v2.com/search?kw=${encodeURIComponent(item.title)}`);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [item.title, item.tmdbId]);
+
+  const href = link ?? "#";
+  return (
+    <a
+      className="ht-card"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+    >
+      <img
+        className="ht-poster"
+        src={item.poster}
+        alt={item.title}
+        loading="lazy"
+      />
+      <span className="ht-card-meta">
+        <strong>{item.title}</strong>
+        {item.rating > 0 && (
+          <small>★ {item.rating.toFixed(1)}</small>
+        )}
+      </span>
+    </a>
   );
 }
