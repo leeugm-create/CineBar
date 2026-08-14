@@ -4006,9 +4006,19 @@ final class MovieStore: ObservableObject {
     func saveCommunityRating(
         mediaType: CommunityMediaType,
         mediaID: Int
-    ) {        guard mediaID > 0, hasCommunityService else { return }
+    ) {        guard mediaID > 0, hasCommunityService else {
+            CineBarLogCenter.log(
+                "rating",
+                "提交评分被跳过 mediaID=\(mediaID) hasCommunityService=\(hasCommunityService) draft=\(communityRatingDraft)"
+            )
+            return
+        }
         isLoadingCommunityRating = true
         communityRatingMessage = "正在保存评分…"
+        CineBarLogCenter.log(
+            "rating",
+            "开始提交评分 type=\(mediaType.rawValue) id=\(mediaID) score=\(communityRatingDraft)"
+        )
         Task {
             do {
                 communityRating = try await communityClient.save(
@@ -4018,9 +4028,11 @@ final class MovieStore: ObservableObject {
                 )
                 communityRatingMessage = "评分已保存，其他 CineBar 用户现在可以看到"
                 communityRatedMedia.insert("\(mediaType.rawValue):\(mediaID)")
+                CineBarLogCenter.log("rating", "评分提交成功 id=\(mediaID) score=\(communityRatingDraft)")
             } catch CommunityRatingError.alreadyRated {
                 communityRatingMessage = "这部影片已经评分，不能重复评分"
                 communityRatedMedia.insert("\(mediaType.rawValue):\(mediaID)")
+                CineBarLogCenter.log("rating", "重复评分拦截 id=\(mediaID)")
                 do {
                     communityRating = try await communityClient.summary(
                         mediaType: mediaType,
@@ -4032,6 +4044,7 @@ final class MovieStore: ObservableObject {
                 }
             } catch {
                 communityRatingMessage = error.localizedDescription
+                CineBarLogCenter.log("rating", "评分提交失败 id=\(mediaID) error=\(error)")
                 recordServiceDiagnostic(
                     service: "community",
                     endpoint: communityServiceURL,
