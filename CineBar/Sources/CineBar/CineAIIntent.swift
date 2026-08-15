@@ -30,6 +30,12 @@ enum CineAIIntentRouter {
             return .offScope
         }
 
+        // 排名型事实查询（年份 + 评分/榜单/票房，如"2025年评分最高的电影"）：
+        // 模型知识截止早于近年，必须走 findMovie 并强制联网拿真实榜单，不能凭记忆编。
+        if Self.isRankingQuery(text) {
+            return .findMovie
+        }
+
         // 防剧透：含"剧透/剧透吗/结局/谁死了/最后.../别剧透"等。
         if contains(text, anyOf: [
             "剧透", "结局", "谁死", "最后", "活没活", "死了没", "别剧透",
@@ -95,6 +101,24 @@ enum CineAIIntentRouter {
 
     private static func hasThemeWord(_ text: String) -> Bool {
         themeWords.contains { text.localizedCaseInsensitiveContains($0) }
+    }
+
+    /// 排名型事实查询：同时含具体年份 + 评分/榜单/票房类关键词。
+    /// 这类问题模型记忆往往过时（知识截止早于近年榜单），应强制联网取真实数据。
+    static func isRankingQuery(_ text: String) -> Bool {
+        let hasYear = text.range(
+            of: "20[0-9]{2}",
+            options: .regularExpression
+        ) != nil
+        guard hasYear else { return false }
+        let rankingWords = [
+            "评分最高", "最高分", "高分", "最佳", "榜首", "排名",
+            "榜单", "票房冠军", "票房最高", "评分排行", "年度最佳",
+            "神作", "top", "豆瓣9分", "豆瓣 9 分",
+        ]
+        return rankingWords.contains {
+            text.localizedCaseInsensitiveContains($0)
+        }
     }
 
     /// 明显非影视的通用操作词。命中即本地硬拦截，不调用模型。

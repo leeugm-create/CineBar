@@ -71,6 +71,14 @@ struct CineAIRAG {
                 at: 0
             )
         }
+        // 注入当前日期：模型知识有截止时间，不告诉它现在是什么时候，
+        // 时间相关问题（如"2025年评分最高的电影"）会按过时记忆回答（如"2025年还没结束"）。
+        if let firstSystem = messages.firstIndex(where: { $0.role == "system" }) {
+            messages[firstSystem] = AIChatMessage(
+                role: "system",
+                content: messages[firstSystem].content + "\n\n今天是 \(Self.currentDateString())。回答涉及年份/时间时以此为准。"
+            )
+        }
         return try await provider.complete(
             messages: messages,
             maxTokens: 900,
@@ -84,10 +92,11 @@ struct CineAIRAG {
 
     /// 联网工具使用规则：模型有 web_search 能力，但要克制调用、不泄露过程。
     static let webCapabilityRule =
-        "你具有 web_search 联网搜索能力，可用它查一部影片的真实资料（上映日期、剧情、是否未上映/定档）。" +
-        "只有当你被问到一部【具体指定的影片】、而你印象中不存在或不确定（如新片/未上映/冷门片），" +
-        "或用户明确要求联网搜索时，才调用 web_search。" +
-        "开放式的找片/推荐请求（如'推荐一部悬疑剧''找一部喜剧片''2025年最高分电影'这类没有指定具体片名的）一律不要调用 web_search，直接用你的知识回答。" +
+        "你具有 web_search 联网搜索能力，可用它查一部影片的真实资料（上映日期、剧情、是否未上映/定档、评分榜单等）。" +
+        "必须调用 web_search 的情形：被问到【具体指定影片】而你印象中不存在或不确定（如新片/未上映/冷门片）；" +
+        "或用户明确要求联网搜索；" +
+        "或问题涉及【具体年份 + 评分/榜单/票房/排名】（如'2025年评分最高的电影''2024年票房冠军'）——这类排名数据你的记忆往往过时，必须联网取真实榜单，禁止凭记忆编造。" +
+        "开放式的找片/推荐请求（如'推荐一部悬疑剧''找一部喜剧片'这类没有指定具体片名、也不涉及年份排名的）一律不要调用 web_search，直接用你的知识回答。" +
         "不要凭过时记忆断言某片'不存在'或'分属不同IP'——那很可能只是你知识没覆盖到。" +
         "调用 web_search 后，直接依据搜到的资料回答即可，不要在回答里提及'搜索/联网/没有搜到/搜索结果'等工具调用过程。"
 
@@ -110,12 +119,18 @@ struct CineAIRAG {
                 ? await data.searchSeries(input)
                 : await data.searchMovies(input)
             var web = ""
-            if facts.isEmpty {
-                // 片库/TMDB 查不到（未上映、影库没有、冷门新片）→ 联网搜索兜底。
+            // 排名型查询（如"2025年评分最高的电影"）：即使片库有候选，也要强制联网
+            // 拿真实评分榜单——模型知识截止早于近年，候选里的高分片可能是旧片，会跑题。
+            let isRanking = CineAIIntentRouter.isRankingQuery(input)
+            if facts.isEmpty || isRanking {
+                // 片库/TMDB 查不到（未上映、影库没有、冷门新片）→ 联网搜索兜底；
+                // 排名型查询 → 强制联网取真实榜单。
                 web = await data.webSearch(input)
             }
             let factsPrompt: String
-            if !facts.isEmpty {
+            if isRanking, !web.isEmpty {
+                factsPrompt = "用户问的是年份排名类问题，以下是联网搜索到的真实榜单（据此回答，不要凭记忆编造）：\n\(web)"
+            } else if !facts.isEmpty {
                 factsPrompt = "候选资料：\(facts)"
             } else if !web.isEmpty {
                 factsPrompt = "片库没有对应候选，以下是联网搜索到的真实资料（可据此回答，不要编造）：\n\(web)"
@@ -210,6 +225,14 @@ struct CineAIRAG {
         }
         // 还原时间顺序
         return kept.reversed()
+    }
+
+    /// 当前日期（中文格式），注入 system prompt 供模型判断时间相关问题。
+    static func currentDateString() -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.dateFormat = "yyyy年M月d日"
+        return f.string(from: Date())
     }
 
     private func system(_ text: String) -> AIChatMessage {

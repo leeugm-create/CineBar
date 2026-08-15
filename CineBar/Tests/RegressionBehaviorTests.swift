@@ -657,13 +657,13 @@ struct CineBarRegressionBehaviorTests {
 
 let calendarDetails = CalendarReleaseEventComposer.make(
             title: "奥德赛",
-            dateText: "2026-08-14",
+            dateText: "2026-09-01",
             region: "CN",
             language: .zhCN
         )
         precondition(calendarDetails?.title == "《奥德赛》上映")
-        precondition(calendarDetails?.dateText == "2026-08-14")
-        precondition(calendarDetails?.notes.contains("2026-08-14") == true)
+        precondition(calendarDetails?.dateText == "2026-09-01")
+        precondition(calendarDetails?.notes.contains("2026-09-01") == true)
         precondition(calendarDetails?.notes.contains("CN") == true)
         precondition(
             CalendarReleaseEventComposer.shouldOffer(
