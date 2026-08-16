@@ -587,6 +587,15 @@ function parseIPVPlaylist(text: string): IPTVChannel[] {
 /** GET /api/iptv 返回分组频道列表。 */
 async function handleIPTV(request: Request, env: Env): Promise<Response> {
   let channels = await readIPTVCache(env);
+  // 历史缓存可能由旧版本写入（未去重），读取时也做一遍 URL 去重，保证结果稳定。
+  if (channels) {
+    const seenCache = new Set<string>();
+    channels = channels.filter((ch) => {
+      if (seenCache.has(ch.url)) return false;
+      seenCache.add(ch.url);
+      return true;
+    });
+  }
   if (!channels) {
     const all: IPTVChannel[] = [];
     for (const src of IPTV_SOURCES) {
