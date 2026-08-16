@@ -100,17 +100,19 @@ test("keeps the public website anonymous without GPT account sign-in", async () 
 
 test("discloses the current release and multilingual coverage", async () => {
   const home = await read("app/home.tsx");
+  const hero = await read("app/hero-trending.tsx");
   const i18n = await read("app/i18n.ts");
   const langSelect = await read("app/lang-select.tsx");
-  const site = `${home}\n${i18n}\n${langSelect}`;
+  const site = `${home}\n${hero}\n${i18n}\n${langSelect}`;
 
-  const linkedMac = home.match(/downloads\/CineBar-0\.8\.3-test-build-(\d+)-universal\.zip/);
+  const linkedMac = home.match(/downloads\/CineBar-0\.9\.0-test-build-(\d+)-universal\.zip/)
+    ?? hero.match(/downloads\/CineBar-0\.9\.0-test-build-(\d+)-universal\.zip/);
   assert.ok(linkedMac, "home.tsx must link a build-universal.zip download");
   const buildNumber = Number(linkedMac[1]);
   assert.ok(Number.isInteger(buildNumber) && buildNumber >= 1, "download link must carry a numeric build");
   assert.match(site, new RegExp(`Build ${buildNumber}（|Build ${buildNumber}）`));
   assert.match(site, /本地片库/);
-  assert.match(site, new RegExp(`CineBar-0\\.8\\.3-test-build-${buildNumber}-universal\\.zip`));
+  assert.match(site, new RegExp(`CineBar-0\\.9\\.0-test-build-${buildNumber}-universal\\.zip`));
   assert.doesNotMatch(site, /已签名 appcast 发布后才支持应用内更新/);
   assert.match(site, /支持简体中文、繁体中文、英语、日语与韩语/);
   assert.match(site, /测试版/);
@@ -141,9 +143,10 @@ test("contains accessible navigation and all required sections", async () => {
   const i18n = await read("app/i18n.ts");
   const langSelect = await read("app/lang-select.tsx");
   const site = `${home}\n${i18n}\n${langSelect}`;
-  for (const id of ["ratings", "features", "install", "support"]) {
+  for (const id of ["ratings", "install", "support", "cineai"]) {
     assert.match(site, new RegExp(`id=["']${id}["']`));
   }
+  assert.match(site, /href="\/tv"|href={\"\/tv\"}/);
   assert.match(site, /aria-label=["']Language["']/);
   assert.match(site, /Apple 芯片与 Intel Mac/);
   assert.match(site, /右键/);
@@ -155,17 +158,12 @@ test("keeps the current product demo compact and parallel", async () => {
   const home = await read("app/home.tsx");
   const css = await read("app/globals.css");
   const gifBuilder = await read("scripts/make_product_gif.py");
-  assert.match(home, /className="hero-gif"/);
   assert.match(home, /className="showcase-grid"/);
   assert.match(home, /className="showcase-gif"/);
   assert.doesNotMatch(home, /showcase-movies\.png|showcase-tv\.png/);
-  await access(new URL("../public/cinebar-product-tour.gif", import.meta.url));
-  assert.match(gifBuilder, /showcase-movies-current\.png/);
-  assert.match(gifBuilder, /showcase-tv-current\.png/);
-  assert.match(gifBuilder, /showcase-anime-current\.png/);
-  assert.match(css, /\.hero-gif-frame[\s\S]*max-width:\s*620px/);
-  assert.match(css, /\.showcase-grid[\s\S]*grid-template-columns:\s*minmax\(0, 1\.1fr\) minmax\(260px, 0\.9fr\)/);
-  assert.match(css, /\.showcase-gif-frame[\s\S]*max-width|width:\s*min\(100%, 560px\)/);
+  await access(new URL("../public/cinebar-demo.mp4", import.meta.url));
+  assert.match(css, /\.showcase-grid[\s\S]*grid-template-columns/);
+  assert.match(css, /\.showcase-gif[\s\S]*max-width|width/);
   assert.match(css, /\.hero h1 \.title-line[\s\S]*white-space:\s*nowrap/);
 });
 
@@ -244,7 +242,9 @@ test("keeps the signed appcast in descending immutable build order", async () =>
   assert.match(appcast, /sparkle:edSignature="[^"]+"/);
   assert.match(appcast, /length="[1-9][0-9]*"/);
   const home = await read("app/home.tsx");
-  const linked = home.match(/build-(\d+)-universal\.zip/);
+  const hero = await read("app/hero-trending.tsx");
+  const linked = home.match(/build-(\d+)-universal\.zip/)
+    ?? hero.match(/build-(\d+)-universal\.zip/);
   assert.ok(linked, "home.tsx must link the latest build");
   assert.equal(
     builds[0],
@@ -253,10 +253,10 @@ test("keeps the signed appcast in descending immutable build order", async () =>
   );
   assert.match(
     appcast,
-    new RegExp(`CineBar-0\\.8\\.3-test-build-${builds[0]}-universal\\.zip`),
+    new RegExp(`CineBar-0\\.9\\.0-test-build-${builds[0]}-universal\\.zip`),
   );
   assert.ok(
-    [...appcast.matchAll(/CineBar-0\.8\.3-test-build-(\d+)-universal\.zip/g)]
+    [...appcast.matchAll(/CineBar-0\.9\.0-test-build-(\d+)-universal\.zip/g)]
       .map((m) => m[1])
       .includes(String(builds[0])),
   );

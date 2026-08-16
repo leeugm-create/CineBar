@@ -1,10 +1,11 @@
+import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import LangSelect from "./lang-select";
-import SiteSearch from "./site-search";
 import ThemeToggle from "./theme-toggle";
+import HomeHero from "./hero-trending";
+import SiteSearch from "./site-search";
+import ContinueWatching from "./continue-watching";
 
-const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-88-universal.zip";
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
 
 function ratingIcon(id: string) {
@@ -47,42 +48,26 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
           <SiteSearch m={m} locale={locale} />
           <p className="mobile-search-lede">{m.mobileSearchLede}</p>
         </div>
-        <LangSelect locale={locale} />
-        <ThemeToggle label={m.appearance} />
-        <nav aria-label="Main">
-          <a href="#showcase">{m.navShowcase}</a>
-          <a href="#features">{m.navFeatures}</a>
-          <a href="#install">{m.navInstall}</a>
-          <a href="#support">{m.navSupport}</a>
-        </nav>
+        <div className="header-right">
+          <nav aria-label="Main">
+            <a href="#showcase">{m.navShowcase}</a>
+            <a href="#install">{m.navInstall}</a>
+            <a href="#support">{m.navSupport}</a>
+            <Link href="/tv">{m.tvNav}</Link>
+          </nav>
+          <LangSelect locale={locale} />
+          <ThemeToggle label={m.appearance} />
+        </div>
       </header>
 
-      <section className="hero" id="top">
-        <div className="hero-grid">
-          <div className="hero-copy">
-            <p className="hero-version">{m.heroVersion}</p>
-            <div className="hero-title">
-              <h1 data-text={`${m.heroTitle1}\n${m.heroTitle2}`}>
-                <span className="title-line">{m.heroTitle1}</span>
-                <br />
-                <span className="title-line">{m.heroTitle2}</span>
-              </h1>
-            </div>
-            <p className="hero-lede">{m.heroLede}</p>
-            <div className="hero-actions">
-              <a className="button primary" href={releaseURL}>
-                {m.download}
-              </a>
-            </div>
-            <p className="hero-compat">{m.compat}</p>
-          </div>
-        </div>
-      </section>
+      <HomeHero m={m} locale={locale} />
+
+      <ContinueWatching m={m} />
 
       <section className="section" id="cineai">
         <h2>{m.caiTitle}</h2>
         <p className="section-lede">{m.caiLead}</p>
-        <div className="feature-grid">
+        <div className="feature-grid cineai-grid">
           {m.caiPoints.map(([title, body]) => (
             <article className="feature-card" key={title}>
               <h3>{title}</h3>
@@ -99,8 +84,16 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         <div className="showcase-grid">
           <figure className="showcase-gif">
             <div className="showcase-gif-frame">
-              <img className="demo-static" src="/cinebar-product-tour-poster.png" alt="" loading="lazy" />
-              <img className="demo-animated" src="/cinebar-product-tour.gif" alt={m.demoHint} loading="lazy" />
+              <video
+                className="demo-static"
+                src="/cinebar-demo.mp4"
+                poster="/cinebar-demo-poster.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                aria-label="CineBar 产品界面演示"
+              />
             </div>
             <figcaption>{m.demoHint}</figcaption>
           </figure>
@@ -125,27 +118,6 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
             <RatingBadge key={r.id} id={r.id} label={r.label} big />
           ))}
         </div>
-      </section>
-
-      <section className="section" id="features">
-        <h2>{m.featuresTitle}</h2>
-        <div className="feature-grid">
-          {m.features.slice(0, 3).map(([title, body], index) => (
-            <article className="feature-card" key={title}>
-              <span className="feature-card-index" aria-hidden="true">0{index + 1}</span>
-              <h3>{title}</h3>
-              <p>{body}</p>
-            </article>
-          ))}
-        </div>
-        <ol className="feature-list feature-list-compact">
-          {m.features.slice(3).map(([title, body]) => (
-            <li key={title}>
-              <span className="feature-title">{title}</span>
-              <span className="feature-body">{body}</span>
-            </li>
-          ))}
-        </ol>
       </section>
 
       <section className="section install-section" id="install">

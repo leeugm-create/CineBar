@@ -47,6 +47,19 @@ export type Messages = {
   playerLoading: string;
   playerError: string;
   playerSource: string;
+  watchContinue: string;
+  watchContinueEyebrow: string;
+  watchLocalNote: string;
+  watchLeft: string;
+  watchResume: string;
+  tvNav: string;
+  tvTitle: string;
+  tvLede: string;
+  tvSearchPlaceholder: string;
+  tvLoading: string;
+  tvErrorTitle: string;
+  tvErrorBody: string;
+  tvGroupsLabel: string;
   today: string;
   trending: string;
   aiSearch: string;
@@ -95,7 +108,7 @@ export type Messages = {
 export const messages: Record<Locale, Messages> = {
   "zh-Hans": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 123）测试版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）测试版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在菜单栏发现并在线观看电影、电视剧与动漫。",
@@ -130,6 +143,19 @@ export const messages: Record<Locale, Messages> = {
     playerLoading: "正在加载播放源…",
     playerError: "播放失败，请稍后重试",
     playerSource: "可在线播放",
+    watchContinue: "接着上次看",
+    watchContinueEyebrow: "YOUR LIBRARY",
+    watchLocalNote: "进度仅保存在当前设备",
+    watchLeft: "剩余",
+    watchResume: "继续观看",
+    tvNav: "电视台",
+    tvTitle: "电视台直播",
+    tvLede: "央视、卫视与地方台，打开即看。",
+    tvSearchPlaceholder: "搜索频道…",
+    tvLoading: "正在载入频道列表…",
+    tvErrorTitle: "频道加载失败",
+    tvErrorBody: "直播源暂时不可用，请稍后重试。",
+    tvGroupsLabel: "频道分组",
     today: "每日推荐",
     trending: "本周热门",
     aiSearch: "AI 找电影",
@@ -211,7 +237,7 @@ export const messages: Record<Locale, Messages> = {
   },
   "zh-Hant": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 123）測試版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）測試版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在選單列發現並在線觀看電影、電視劇與動畫。",
@@ -246,6 +272,19 @@ export const messages: Record<Locale, Messages> = {
     playerLoading: "正在載入播放來源…",
     playerError: "播放失敗，請稍後重試",
     playerSource: "可線上播放",
+    watchContinue: "接著上次看",
+    watchContinueEyebrow: "YOUR LIBRARY",
+    watchLocalNote: "進度僅儲存在目前裝置",
+    watchLeft: "剩餘",
+    watchResume: "繼續觀看",
+    tvNav: "電視台",
+    tvTitle: "電視台直播",
+    tvLede: "央視、衛視與地方台，打開即看。",
+    tvSearchPlaceholder: "搜尋頻道…",
+    tvLoading: "正在載入頻道清單…",
+    tvErrorTitle: "頻道載入失敗",
+    tvErrorBody: "直播源暫時不可用，請稍後重試。",
+    tvGroupsLabel: "頻道分組",
     today: "每日推薦",
     trending: "本週熱門",
     aiSearch: "AI 找電影",
@@ -327,7 +366,7 @@ export const messages: Record<Locale, Messages> = {
   },
   en: {
     metaTitle: "CineBar — Find your next great film",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 123) Beta",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 124) Beta",
     heroTitle1: "Find your",
     heroTitle2: "next great film",
     heroLede: "Find and watch movies, TV shows and anime from your Mac menu bar.",
@@ -362,6 +401,19 @@ export const messages: Record<Locale, Messages> = {
     playerLoading: "Loading playback source…",
     playerError: "Playback failed. Try again later.",
     playerSource: "Watch online",
+    watchContinue: "Continue Watching",
+    watchContinueEyebrow: "YOUR LIBRARY",
+    watchLocalNote: "Progress is stored on this device only",
+    watchLeft: "Left",
+    watchResume: "Resume",
+    tvNav: "Live TV",
+    tvTitle: "Live TV Channels",
+    tvLede: "CCTV, satellite and local channels — watch instantly.",
+    tvSearchPlaceholder: "Search channels…",
+    tvLoading: "Loading channels…",
+    tvErrorTitle: "Failed to load channels",
+    tvErrorBody: "Live sources are temporarily unavailable. Try again later.",
+    tvGroupsLabel: "Channel groups",
     today: "Daily Picks",
     trending: "Trending this week",
     aiSearch: "AI Find a Movie",
@@ -442,7 +494,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ja: {
     metaTitle: "CineBar — 次の名作を見つけよう",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 123）テスト版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）テスト版",
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
     heroLede: "メニューバーから映画・ドラマ・アニメを見つけて視聴。",
@@ -477,6 +529,19 @@ export const messages: Record<Locale, Messages> = {
     playerLoading: "再生ソースを読み込み中…",
     playerError: "再生に失敗しました。もう一度お試しください。",
     playerSource: "オンラインで再生",
+    watchContinue: "前回の続き",
+    watchContinueEyebrow: "YOUR LIBRARY",
+    watchLocalNote: "再生履歴はこの端末のみに保存",
+    watchLeft: "残り",
+    watchResume: "続きを見る",
+    tvNav: "テレビ",
+    tvTitle: "テレビ生放送",
+    tvLede: "CCTV・衛星・地方局をすぐに視聴。",
+    tvSearchPlaceholder: "チャンネルを検索…",
+    tvLoading: "チャンネルを読み込み中…",
+    tvErrorTitle: "チャンネルの読み込みに失敗",
+    tvErrorBody: "配信元が一時的に利用できません。後でもう一度お試しください。",
+    tvGroupsLabel: "チャンネルグループ",
     today: "今日のおすすめ",
     trending: "今週のトレンド",
     aiSearch: "AIで映画を探す",
@@ -557,7 +622,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ko: {
     metaTitle: "CineBar — 다음 영화를 찾아보세요",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 123) 베타",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 124) 베타",
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
     heroLede: "메뉴 바에서 영화·드라마·애니메이션을 찾고 시청하세요.",
@@ -592,6 +657,19 @@ export const messages: Record<Locale, Messages> = {
     playerLoading: "재생 소스를 불러오는 중…",
     playerError: "재생에 실패했습니다. 잠시 후 다시 시도하세요.",
     playerSource: "온라인 재생",
+    watchContinue: "이어서 보기",
+    watchContinueEyebrow: "YOUR LIBRARY",
+    watchLocalNote: "시청 기록은 이 기기에만 저장됩니다",
+    watchLeft: "남음",
+    watchResume: "계속 시청",
+    tvNav: "TV 생방송",
+    tvTitle: "TV 생방송",
+    tvLede: "CCTV, 위성, 지방 채널을 바로 시청하세요.",
+    tvSearchPlaceholder: "채널 검색…",
+    tvLoading: "채널을 불러오는 중…",
+    tvErrorTitle: "채널 로드 실패",
+    tvErrorBody: "방송 소스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요.",
+    tvGroupsLabel: "채널 그룹",
     today: "오늘의 추천",
     trending: "이번 주 인기",
     aiSearch: "AI로 영화 찾기",

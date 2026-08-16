@@ -31,6 +31,7 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   const [data, setData] = useState<{ q: string; results: SearchHit[] } | null>(null);
   const [selected, setSelected] = useState<SearchHit | null>(null);
   const [inflight, setInflight] = useState(false);
+  const [loadKey, setLoadKey] = useState<string | null>(null);
   const [history, setHistory] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -48,6 +49,20 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
+
+  // 「接着上次看」点击 → 打开搜索、填入片名、自动触发搜索。
+  useEffect(() => {
+    function onResume(e: Event) {
+      const detail = (e as CustomEvent<{ title: string }>).detail;
+      if (!detail?.title) return;
+      setOpen(true);
+      setQuery(detail.title);
+      setSelected(null);
+      setData(null);
+    }
+    window.addEventListener("cinebar:resume-watch", onResume);
+    return () => window.removeEventListener("cinebar:resume-watch", onResume);
+  }, []);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -123,6 +138,26 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
     setSelected(result);
   }
 
+  /** 官网直接在线播放：调 /api/play 取 m3u8 直链，填入 watch 后交给 InlinePlayer。 */
+  function playHere(event: ReactMouseEvent, result: SearchHit) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (typeof window === "undefined") return;
+    setLoadKey(`${result.type}-${result.id}`);
+    fetch(`/api/play?title=${encodeURIComponent(result.title)}&year=${encodeURIComponent(result.year)}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json() as Promise<{ kind: "hls"; url: string; label: string }>;
+      })
+      .then((source) => {
+        setSelected({ ...result, watch: [{ kind: source.kind, url: source.url, label: source.label }] });
+      })
+      .catch(() => {
+        setSelected(null);
+      })
+      .finally(() => setLoadKey(null));
+  }
+
   const visible = !current || current.length === 0 ? null : (
     <ul className="search-results">
       {current.map((r) => (
@@ -152,6 +187,14 @@ export default function SiteSearch({ m, locale }: { m: Messages; locale: Locale 
               </small>
             </span>
           </a>
+          <button
+            type="button"
+            className="search-play-btn"
+            onClick={(event) => playHere(event, r)}
+            disabled={loadKey === `${r.type}-${r.id}`}
+          >
+            {loadKey === `${r.type}-${r.id}` ? "…" : m.playerPlay}
+          </button>
         </li>
       ))}
     </ul>

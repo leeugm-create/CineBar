@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 
 type TrendingMovie = {
@@ -13,7 +14,7 @@ type TrendingMovie = {
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-123-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-124-universal.zip";
 
 export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
@@ -47,10 +48,10 @@ export default function HomeHero({ m, locale }: { m: Messages; locale: Locale })
           </div>
           <p className="hero-lede">{m.heroLede}</p>
           <div className="hero-actions">
-            <a className="button primary ai-search-btn" href="/ai">
+            <Link className="button primary ai-search-btn" href="/ai">
               <span className="ai-search-icon" aria-hidden="true">✦</span>
               {m.aiSearch}
-            </a>
+            </Link>
             <a className="button link" href={releaseURL}>
               {m.download}
             </a>
