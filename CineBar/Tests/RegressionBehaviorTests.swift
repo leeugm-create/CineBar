@@ -69,11 +69,22 @@ struct CineBarRegressionBehaviorTests {
     @MainActor
     static func main() async {
         precondition(MainBrowseSection.allCases.contains(.localLibrary))
+        precondition(MainBrowseSection.allCases.contains(.liveTV))
         for language in AppLanguage.allCases {
             precondition(
                 !MainBrowseSection.localLibrary.title(language: language).isEmpty
             )
+            precondition(
+                !MainBrowseSection.liveTV.title(language: language).isEmpty
+            )
         }
+        let liveTVStore = MovieStore()
+        liveTVStore.setMainBrowseSection(.liveTV)
+        precondition(liveTVStore.isShowingLiveTV)
+        precondition(liveTVStore.mainBrowseSection == .liveTV)
+        liveTVStore.setMainBrowseSection(.movies)
+        precondition(!liveTVStore.isShowingLiveTV)
+
         let localLibraryNavigationStore = MovieStore()
         localLibraryNavigationStore.setMainBrowseSection(.localLibrary)
         precondition(localLibraryNavigationStore.isShowingLocalLibrary)

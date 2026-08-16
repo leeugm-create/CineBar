@@ -2419,121 +2419,367 @@ footer {
   color: var(--muted);
 }
 
-/* 分组导航 */
-.tv-body {
-  padding-top: 30px;
-}
+/* 分组导航 → 双栏 watch 布局（对标 zip0.com/tv 的 watch-tv 排版） */
 
-.tv-groups {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 30px;
-}
-
-.tv-group-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 16px;
-  font-size: 0.92rem;
-  color: var(--foreground);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease;
-}
-
-.tv-group-btn span {
-  padding: 1px 8px;
-  font-size: 0.78rem;
-  color: var(--muted);
-  background: var(--surface);
-  border-radius: 999px;
-}
-
-.tv-group-btn.is-active {
-  border-color: var(--accent);
+.eyebrow {
+  display: block;
   color: var(--accent);
-}
-
-.tv-channel-section h2 {
-  margin: 0 0 18px;
-  font-size: 1.3rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-.tv-channel-grid {
+.watch-layout {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  align-items: start;
+  gap: 24px;
+  padding: 26px 0 30px;
 }
 
-.tv-channel-card {
+.watch-main {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 10px;
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  cursor: pointer;
-  transition: border-color 160ms ease, transform 160ms ease;
+  min-width: 0;
 }
 
-.tv-channel-card:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-}
-
-.tv-channel-card.is-current {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
-}
-
-.tv-channel-logo {
+.watch-sidebar {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  flex-direction: column;
+  min-width: 0;
 }
 
-.tv-channel-logo img {
+/* 播放器舞台（zip0 player-shell / player-state） */
+.player-shell {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+}
+
+.artplayer-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.artplayer-container video {
   width: 100%;
   height: 100%;
   object-fit: contain;
 }
 
-.tv-channel-logo span {
+.player-state {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.85);
+  background: radial-gradient(circle, #171a18, #060706 68%);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.player-state__loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+
+.player-state--error strong {
+  color: #fff;
   font-size: 1rem;
+}
+
+.player-state--error span {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  max-width: 380px;
+}
+
+.player-state--error button {
+  margin-top: 4px;
+  padding: 8px 20px;
+  color: var(--primary-foreground);
+  background: var(--primary-background);
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+/* 当前频道（zip0 now-playing） */
+.now-playing {
+  padding: 22px 2px 0;
+}
+
+.now-playing__summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.now-playing h1 {
+  letter-spacing: -0.03em;
+  margin: 6px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.now-playing p {
+  color: var(--muted);
+  margin: 5px 0 0;
+  font-size: 12px;
+}
+
+/* 频道列表（zip0 related-videos + tv-station-grid） */
+.related-videos {
+  border-top: 1px solid var(--border);
+  margin-top: 34px;
+  padding-top: 26px;
+}
+
+.related-videos__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.related-videos__heading h2 {
+  color: var(--foreground);
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.related-videos__heading span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.tv-station-grid {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
+.tv-station-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+  color: var(--foreground);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.16s ease;
+}
+
+.tv-station-card:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  transform: translateY(-2px);
+}
+
+.tv-station-card.is-playing {
+  background: color-mix(in srgb, var(--accent) 13%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 72%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.tv-station-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.tv-station-logo-wrap img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.tv-station-fallback {
+  font-size: 0.85rem;
   font-weight: 700;
   color: var(--muted);
 }
 
-.tv-channel-card strong {
-  font-size: 0.9rem;
-  line-height: 1.2;
+.tv-station-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
 }
 
-.tv-channel-card small {
+.tv-station-info strong {
+  font-size: 0.88rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tv-station-info small {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 切换分组侧边栏（zip0 source-panel--watch） */
+.source-panel {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.source-panel--watch {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: sticky;
+  top: 24px;
+}
+
+.source-panel__heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.source-panel__heading > svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.source-panel__heading strong,
+.source-panel__heading span {
+  display: block;
+}
+
+.source-panel__heading strong {
+  font-size: 12px;
+  color: var(--foreground);
+}
+
+.source-panel__heading span {
+  color: var(--muted);
+  margin-top: 3px;
+  font-size: 12px;
+}
+
+.source-panel__list {
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 300px);
+  padding: 7px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.source-option {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  color: var(--foreground);
+  background: none;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.source-option:hover {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.source-option.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.source-option__content strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.source-option__meta span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* 窄屏：单栏，侧边栏上移到播放器上方做横向滚动（zip0 移动端同款） */
+@media (max-width: 900px) {
+  .watch-layout {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .watch-sidebar {
+    order: -1;
+  }
+  .source-panel--watch {
+    position: static;
+  }
+  .source-panel--watch .source-panel__heading {
+    padding: 10px 14px;
+  }
+  .source-panel--watch .source-panel__heading span {
+    display: none;
+  }
+  .source-panel--watch .source-panel__list {
+    display: flex;
+    gap: 6px;
+    padding: 8px 14px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .source-panel--watch .source-option {
+    flex: 0 0 auto;
+    min-width: 140px;
+  }
 }
 
 @media (max-width: 720px) {
-  .tv-channel-grid {
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  }
-  .live-player__stage {
+  .player-shell {
     aspect-ratio: 4 / 3;
+  }
+  .now-playing h1 {
+    font-size: 18px;
   }
 }

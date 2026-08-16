@@ -603,6 +603,13 @@ async function handleIPTV(request: Request, env: Env): Promise<Response> {
       }
     }
     channels = all;
+    // 多源（直连+镜像）可能返回同一份列表，按 URL 去重，避免频道翻倍。
+    const seen = new Set<string>();
+    channels = channels.filter((ch) => {
+      if (seen.has(ch.url)) return false;
+      seen.add(ch.url);
+      return true;
+    });
     if (channels.length > 0) {
       await writeIPTVCache(env, channels);
     }

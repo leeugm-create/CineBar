@@ -60,6 +60,18 @@ export type Messages = {
   tvErrorTitle: string;
   tvErrorBody: string;
   tvGroupsLabel: string;
+  tvNowPlaying: string;
+  tvAllDaySignal: string;
+  tvSwitchGroups: string;
+  tvGroupCount: string;
+  tvConnecting: string;
+  tvSignalError: string;
+  tvChooseOther: string;
+  tvRetry: string;
+  tvChannelList: string;
+  tvChannelCount: string;
+  tvLiveSource: string;
+  tvStationCount: string;
   today: string;
   trending: string;
   aiSearch: string;
@@ -108,7 +120,7 @@ export type Messages = {
 export const messages: Record<Locale, Messages> = {
   "zh-Hans": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）测试版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 125）测试版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在菜单栏发现并在线观看电影、电视剧与动漫。",
@@ -156,6 +168,18 @@ export const messages: Record<Locale, Messages> = {
     tvErrorTitle: "频道加载失败",
     tvErrorBody: "直播源暂时不可用，请稍后重试。",
     tvGroupsLabel: "频道分组",
+    tvNowPlaying: "当前频道",
+    tvAllDaySignal: "全天候 24 小时直播信号",
+    tvSwitchGroups: "切换分组",
+    tvGroupCount: "共计 {n} 个分组",
+    tvConnecting: "正在连接直播信号",
+    tvSignalError: "该电视台直连线路暂未响应",
+    tvChooseOther: "请在右侧列表中选择其它频道",
+    tvRetry: "重试",
+    tvChannelList: "频道列表",
+    tvChannelCount: "共计 {n} 个频道",
+    tvLiveSource: "直播源",
+    tvStationCount: "个电视台",
     today: "每日推荐",
     trending: "本周热门",
     aiSearch: "AI 找电影",
@@ -237,7 +261,7 @@ export const messages: Record<Locale, Messages> = {
   },
   "zh-Hant": {
     metaTitle: "CineBar — 找到下一部好片",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）測試版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 125）測試版",
     heroTitle1: "找到",
     heroTitle2: "下一部好片",
     heroLede: "在選單列發現並在線觀看電影、電視劇與動畫。",
@@ -285,6 +309,18 @@ export const messages: Record<Locale, Messages> = {
     tvErrorTitle: "頻道載入失敗",
     tvErrorBody: "直播源暫時不可用，請稍後重試。",
     tvGroupsLabel: "頻道分組",
+    tvNowPlaying: "當前頻道",
+    tvAllDaySignal: "全天候 24 小時直播信號",
+    tvSwitchGroups: "切換分組",
+    tvGroupCount: "共計 {n} 個分組",
+    tvConnecting: "正在連接直播信號",
+    tvSignalError: "該電視台直連線路暫未回應",
+    tvChooseOther: "請在右側清單中選擇其他頻道",
+    tvRetry: "重試",
+    tvChannelList: "頻道清單",
+    tvChannelCount: "共計 {n} 個頻道",
+    tvLiveSource: "直播源",
+    tvStationCount: "個電視台",
     today: "每日推薦",
     trending: "本週熱門",
     aiSearch: "AI 找電影",
@@ -366,7 +402,7 @@ export const messages: Record<Locale, Messages> = {
   },
   en: {
     metaTitle: "CineBar — Find your next great film",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 124) Beta",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 125) Beta",
     heroTitle1: "Find your",
     heroTitle2: "next great film",
     heroLede: "Find and watch movies, TV shows and anime from your Mac menu bar.",
@@ -414,6 +450,18 @@ export const messages: Record<Locale, Messages> = {
     tvErrorTitle: "Failed to load channels",
     tvErrorBody: "Live sources are temporarily unavailable. Try again later.",
     tvGroupsLabel: "Channel groups",
+    tvNowPlaying: "Now playing",
+    tvAllDaySignal: "24/7 live broadcast signal",
+    tvSwitchGroups: "Switch groups",
+    tvGroupCount: "{n} groups total",
+    tvConnecting: "Connecting to live signal…",
+    tvSignalError: "This channel is not responding",
+    tvChooseOther: "Please choose another channel from the list.",
+    tvRetry: "Retry",
+    tvChannelList: "channels",
+    tvChannelCount: "{n} channels total",
+    tvLiveSource: "Live source",
+    tvStationCount: "channels",
     today: "Daily Picks",
     trending: "Trending this week",
     aiSearch: "AI Find a Movie",
@@ -494,7 +542,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ja: {
     metaTitle: "CineBar — 次の名作を見つけよう",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 124）テスト版",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1（Build 125）テスト版",
     heroTitle1: "次の名作を",
     heroTitle2: "見つけよう",
     heroLede: "メニューバーから映画・ドラマ・アニメを見つけて視聴。",
@@ -542,6 +590,18 @@ export const messages: Record<Locale, Messages> = {
     tvErrorTitle: "チャンネルの読み込みに失敗",
     tvErrorBody: "配信元が一時的に利用できません。後でもう一度お試しください。",
     tvGroupsLabel: "チャンネルグループ",
+    tvNowPlaying: "再生中",
+    tvAllDaySignal: "24時間ライブ配信",
+    tvSwitchGroups: "グループ切替",
+    tvGroupCount: "全{n}グループ",
+    tvConnecting: "ライブ信号に接続中…",
+    tvSignalError: "このチャンネルは応答していません",
+    tvChooseOther: "右側のリストから他のチャンネルを選択してください",
+    tvRetry: "再試行",
+    tvChannelList: "チャンネル一覧",
+    tvChannelCount: "全{n}チャンネル",
+    tvLiveSource: "ライブ配信元",
+    tvStationCount: "局",
     today: "今日のおすすめ",
     trending: "今週のトレンド",
     aiSearch: "AIで映画を探す",
@@ -622,7 +682,7 @@ export const messages: Record<Locale, Messages> = {
   },
   ko: {
     metaTitle: "CineBar — 다음 영화를 찾아보세요",
-    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 124) 베타",
+    heroVersion: "CineBar for macOS · 0.9.0-test.1 (Build 125) 베타",
     heroTitle1: "다음 볼",
     heroTitle2: "영화를 찾아보세요",
     heroLede: "메뉴 바에서 영화·드라마·애니메이션을 찾고 시청하세요.",
@@ -670,6 +730,18 @@ export const messages: Record<Locale, Messages> = {
     tvErrorTitle: "채널 로드 실패",
     tvErrorBody: "방송 소스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도하세요.",
     tvGroupsLabel: "채널 그룹",
+    tvNowPlaying: "현재 채널",
+    tvAllDaySignal: "24시간 라이브 방송 신호",
+    tvSwitchGroups: "그룹 전환",
+    tvGroupCount: "총 {n}개 그룹",
+    tvConnecting: "라이브 신호 연결 중…",
+    tvSignalError: "이 채널이 응답하지 않습니다",
+    tvChooseOther: "오른쪽 목록에서 다른 채널을 선택하세요",
+    tvRetry: "다시 시도",
+    tvChannelList: "채널 목록",
+    tvChannelCount: "총 {n}개 채널",
+    tvLiveSource: "라이브 소스",
+    tvStationCount: "개 채널",
     today: "오늘의 추천",
     trending: "이번 주 인기",
     aiSearch: "AI로 영화 찾기",

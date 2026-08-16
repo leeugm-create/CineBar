@@ -2,6 +2,13 @@ import AVKit
 import AppKit
 import SwiftUI
 
+/// 在线播放器的加载/失败状态（供 UI 显示加载遮罩与错误提示）。
+enum MooviePlaybackStatus: Equatable {
+    case loading
+    case readyToPlay
+    case failed(String)
+}
+
 /// 程序内在线正片播放器：AVPlayerView（自带播放/暂停、进度、音量、全屏控制条）
 /// 之上叠加弹幕层，支持倍速与弹幕开关。详情页内嵌与独立窗口共用。
 struct MooviePlayerView: View {
@@ -17,6 +24,8 @@ struct MooviePlayerView: View {
     var registerPlayer: Bool = false
     /// 是否把播放器注册为"内嵌播放"（主面板内联播放），供主面板键盘快捷键使用。
     var registerInline: Bool = false
+    /// 播放状态回调（加载中/可播放/失败），直播流 UI 用它显示遮罩。默认 nil 不回调。
+    var onStatus: ((MooviePlaybackStatus) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -27,7 +36,8 @@ struct MooviePlayerView: View {
                 paused: paused,
                 registerPlayer: registerPlayer,
                 registerInline: registerInline,
-                onTick: { currentTime = $0 }
+                onTick: { currentTime = $0 },
+                onStatus: onStatus
             )
             if danmakuVisible, !danmaku.isEmpty {
                 DanmakuOverlay(items: danmaku, currentTime: currentTime)
@@ -45,14 +55,21 @@ struct MoovieVideoView: NSViewRepresentable {
     var registerPlayer: Bool = false
     var registerInline: Bool = false
     let onTick: (Double) -> Void
+    var onStatus: ((MooviePlaybackStatus) -> Void)? = nil
 
     final class VideoNSView: NSView {
         let playerView = AVPlayerView()
         let player = AVPlayer()
         private var loadedURL: URL?
         private var observer: Any?
+        private var itemStatusObserver: NSKeyValueObservation?
+        private var timeControlObserver: NSKeyValueObservation?
+        private var stallWorkItem: DispatchWorkItem?
         private var onTick: ((Double) -> Void)?
+        private var onStatus: ((MooviePlaybackStatus) -> Void)?
         private var lastTick: Double = -1
+        /// 直播流等待起播超过该时长视为信号失败（针对 HLS live 卡死但 item 状态仍是 ready 的情况）。
+        private static let stallTimeout: TimeInterval = 12
 
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
@@ -91,11 +108,73 @@ struct MoovieVideoView: NSViewRepresentable {
             onTick = closure
         }
 
+        func setOnStatus(_ closure: ((MooviePlaybackStatus) -> Void)?) {
+            onStatus = closure
+        }
+
+        private func reportStatus(_ status: MooviePlaybackStatus) {
+            onStatus?(status)
+        }
+
+        private func armStallTimer() {
+            stallWorkItem?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                self?.reportStatus(.failed("该电视台直连线路暂未响应，请换一个频道"))
+            }
+            stallWorkItem = work
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + Self.stallTimeout,
+                execute: work
+            )
+        }
+
         func play(_ url: URL, rate: Double, paused: Bool) {
             if loadedURL != url {
                 loadedURL = url
                 player.pause()
-                player.replaceCurrentItem(with: AVPlayerItem(url: url))
+                itemStatusObserver?.invalidate()
+                timeControlObserver?.invalidate()
+                let item = AVPlayerItem(url: url)
+                player.replaceCurrentItem(with: item)
+
+                reportStatus(.loading)
+                armStallTimer()
+
+                itemStatusObserver = item.observe(\.status, options: [.new]) {
+                    [weak self] item, _ in
+                    DispatchQueue.main.async {
+                        switch item.status {
+                        case .failed:
+                            let message = item.error?.localizedDescription
+                                ?? "该电视台直连线路暂未响应，请换一个频道"
+                            self?.reportStatus(.failed(message))
+                        case .readyToPlay:
+                            break // 起播与否由 timeControlStatus 决定
+                        case .unknown:
+                            break
+                        @unknown default:
+                            break
+                        }
+                    }
+                }
+
+                timeControlObserver = player.observe(\.timeControlStatus, options: [.new]) {
+                    [weak self] player, _ in
+                    DispatchQueue.main.async {
+                        switch player.timeControlStatus {
+                        case .playing:
+                            self?.stallWorkItem?.cancel()
+                            self?.reportStatus(.readyToPlay)
+                        case .waitingToPlayAtSpecifiedRate:
+                            self?.reportStatus(.loading)
+                        case .paused:
+                            break
+                        @unknown default:
+                            break
+                        }
+                    }
+                }
+
                 if !paused {
                     player.rate = Float(rate)
                 }
@@ -119,6 +198,7 @@ struct MoovieVideoView: NSViewRepresentable {
     func makeNSView(context: Context) -> VideoNSView {
         let view = VideoNSView()
         view.setOnTick(onTick)
+        view.setOnStatus(onStatus)
         view.play(url, rate: rate, paused: paused)
         Task { @MainActor in
             if registerPlayer {
@@ -133,6 +213,7 @@ struct MoovieVideoView: NSViewRepresentable {
 
     func updateNSView(_ nsView: VideoNSView, context: Context) {
         nsView.setOnTick(onTick)
+        nsView.setOnStatus(onStatus)
         nsView.play(url, rate: rate, paused: paused)
         nsView.setRate(rate, paused: paused)
     }

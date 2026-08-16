@@ -29,7 +29,7 @@
 	<key>CFBundleShortVersionString</key>
 	<string>0.9.0</string>
 	<key>CFBundleVersion</key>
-	<string>124</string>
+	<string>125</string>
 	<key>CineBarCommunityBackupURLs</key>
 	<array/>
 	<key>CineBarCommunityPublicKey</key>
@@ -56,6 +56,10 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
+		<key>NSAllowsArbitraryLoadsForMedia</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 	</dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>用于将影片上映日期添加到 macOS 日历并设置提醒。</string>

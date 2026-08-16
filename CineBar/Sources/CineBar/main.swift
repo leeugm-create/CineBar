@@ -465,6 +465,7 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
     case anime
     case watchlist
     case localLibrary
+    case liveTV
 
     var id: String { rawValue }
 
@@ -495,6 +496,11 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
         case (.localLibrary, .enUS): return "Local Library"
         case (.localLibrary, .jaJP): return "ローカルライブラリ"
         case (.localLibrary, .koKR): return "로컬 라이브러리"
+        case (.liveTV, .zhCN): return "电视台"
+        case (.liveTV, .zhHK), (.liveTV, .zhTW): return "電視台"
+        case (.liveTV, .enUS): return "Live TV"
+        case (.liveTV, .jaJP): return "テレビ"
+        case (.liveTV, .koKR): return "라이브 TV"
         }
     }
 }
@@ -3209,6 +3215,7 @@ final class MovieStore: ObservableObject {
     @Published var tvBrowseSection: TVBrowseSection = .trending
     @Published var isShowingWatchlist = false
     @Published var isShowingLocalLibrary = false
+    @Published var isShowingLiveTV = false
     @Published var selectedTVShow: TVShow?
     @Published var tvDetails: TVDetails?
     @Published var tvCast: [CastMember] = []
@@ -4076,6 +4083,7 @@ final class MovieStore: ObservableObject {
         movieBrowseSection = section
         isShowingWatchlist = false
         isShowingLocalLibrary = false
+        isShowingLiveTV = false
         searchText = ""
         peopleSearchResults = []
         isShowingSearchResults = false
@@ -4607,12 +4615,14 @@ final class MovieStore: ObservableObject {
         isShowingSearchResults = false
         isShowingWatchlist = false
         isShowingLocalLibrary = false
+        isShowingLiveTV = false
         loadTrending()
     }
 
     func toggleWatchlist() {
         isShowingWatchlist.toggle()
         isShowingLocalLibrary = false
+        isShowingLiveTV = false
         searchText = ""
         peopleSearchResults = []
         showCatalog = false
@@ -4627,6 +4637,7 @@ final class MovieStore: ObservableObject {
 
     var mainBrowseSection: MainBrowseSection {
         if isShowingLocalLibrary { return .localLibrary }
+        if isShowingLiveTV { return .liveTV }
         if isShowingWatchlist { return .watchlist }
         switch mediaSection {
         case .movies: return .movies
@@ -4639,6 +4650,7 @@ final class MovieStore: ObservableObject {
         switch section {
         case .movies:
             isShowingLocalLibrary = false
+            isShowingLiveTV = false
             if mediaSection != .movies {
                 setMediaSection(.movies)
             } else if isShowingWatchlist {
@@ -4646,6 +4658,7 @@ final class MovieStore: ObservableObject {
             }
         case .television:
             isShowingLocalLibrary = false
+            isShowingLiveTV = false
             if mediaSection != .television {
                 setMediaSection(.television)
             } else if isShowingWatchlist {
@@ -4653,6 +4666,7 @@ final class MovieStore: ObservableObject {
             }
         case .anime:
             isShowingLocalLibrary = false
+            isShowingLiveTV = false
             if mediaSection != .anime {
                 setMediaSection(.anime)
             } else if isShowingWatchlist {
@@ -4660,11 +4674,15 @@ final class MovieStore: ObservableObject {
             }
         case .watchlist:
             isShowingLocalLibrary = false
+            isShowingLiveTV = false
             if !isShowingWatchlist {
                 toggleWatchlist()
             }
         case .localLibrary:
+            isShowingLiveTV = false
             showLocalLibrary()
+        case .liveTV:
+            showLiveTV()
         }
     }
 
@@ -4672,6 +4690,24 @@ final class MovieStore: ObservableObject {
         guard !isShowingLocalLibrary else { return }
         TrailerPlaybackController.shared.close()
         isShowingLocalLibrary = true
+        isShowingWatchlist = false
+        selectedMovie = nil
+        selectedTVShow = nil
+        selectedPerson = nil
+        showMovieStills = false
+        showCatalog = false
+        showTVCatalog = false
+        peopleSearchResults = []
+        searchText = ""
+        trailers = []
+        tvTrailers = []
+    }
+
+    private func showLiveTV() {
+        guard !isShowingLiveTV else { return }
+        TrailerPlaybackController.shared.close()
+        isShowingLiveTV = true
+        isShowingLocalLibrary = false
         isShowingWatchlist = false
         selectedMovie = nil
         selectedTVShow = nil
@@ -5011,6 +5047,7 @@ final class MovieStore: ObservableObject {
         showTVCatalog = false
         isShowingWatchlist = false
         isShowingLocalLibrary = false
+        isShowingLiveTV = false
         peopleSearchResults = []
         searchText = ""
         loadTrending()
@@ -5034,6 +5071,7 @@ final class MovieStore: ObservableObject {
         tvBrowseSection = section
         isShowingWatchlist = false
         isShowingLocalLibrary = false
+        isShowingLiveTV = false
         searchText = ""
         peopleSearchResults = []
         loadTVBrowseSection(section)
@@ -12089,7 +12127,8 @@ struct ContentView: View {
             store.selectedPerson != nil ||
             store.selectedMovie != nil ||
             store.selectedTVShow != nil ||
-            store.isShowingLocalLibrary
+            store.isShowingLocalLibrary ||
+            store.isShowingLiveTV
     }
 
     var body: some View {
@@ -12123,6 +12162,8 @@ struct ContentView: View {
                     categoryFilter: $localLibraryCategoryFilter,
                     statusFilter: $localLibraryStatusFilter
                 )
+            } else if store.isShowingLiveTV {
+                LiveTVView(store: store)
             }
         }
         .frame(width: 520)
