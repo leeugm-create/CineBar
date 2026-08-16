@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0</title>
+      <description>&lt;ul&gt;&lt;li&gt;# CineBar 0.9.0-test.1 Build 124&lt;/li&gt;&lt;li&gt;## 本版内容&lt;/li&gt;&lt;li&gt;### 苹果CMS 资源站接入（新增 5 条影视源）&lt;/li&gt;&lt;li&gt;- 新增量子、暴风、最大、急速、非凡 5 条苹果CMS 影视资源站（与 zip0 同类数据源）&lt;/li&gt;&lt;li&gt;- 补齐 Moovie 覆盖短板：短剧每日更新、动漫全集分集、同名多版本&lt;/li&gt;&lt;li&gt;- App 端新增 `CineCMSClient`（5 源并发搜索 + 直链解析 + 可播性探测）&lt;/li&gt;&lt;li&gt;- 网页端新增 `/api/cms/search` 端点；`/api/play` 在 Moovie 无结果时自动回退到 CMS 源&lt;/li&gt;&lt;li&gt;### 网页端「接着上次看」（对标 zip0）&lt;/li&gt;&lt;li&gt;- 播放进度自动记录（localStorage，每 5 秒 + 暂停时，看完自动清除）&lt;/li&gt;&lt;li&gt;- 首页新增「接着上次看」横条：海报 + 进度条 + 剩余时间，点击自动续播&lt;/li&gt;&lt;li&gt;- 五语言支持&lt;/li&gt;&lt;li&gt;### 网页端电视台直播（对标 zip0 /tv）&lt;/li&gt;&lt;li&gt;- 新增 `/tv` 页面：央视 168 台 / 卫视 237 台 / 地方台等 423 个国内频道&lt;/li&gt;&lt;li&gt;- 顶部导航新增「电视台」入口&lt;/li&gt;&lt;li&gt;- hls.js 直播播放器 + 频道搜索 + 分组切换 + 失败重试&lt;/li&gt;&lt;li&gt;- 数据源：best-fan/iptv-sources（GitHub 开源，每日自动构建）&lt;/li&gt;&lt;li&gt;### 其他&lt;/li&gt;&lt;li&gt;- 官网首页接入搜索框（SiteSearch 挂载到 header）&lt;/li&gt;&lt;li&gt;- 修复测试：版本号同步到 0.9.0、CSP 断言同步、移动端搜索布局恢复&lt;/li&gt;&lt;li&gt;- lint 全绿（含 ai-chat 历史遗留规则修复）&lt;/li&gt;&lt;li&gt;## 已知说明&lt;/li&gt;&lt;li&gt;- 苹果CMS 资源站域名可能变化，需定期健康检查（代码已配置多源）&lt;/li&gt;&lt;li&gt;- 直播源时效性依赖开源项目每日重建，个别频道可能失效（有重试机制）&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Sun, 16 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-124-universal.zip"
+        sparkle:version="124"
+        sparkle:shortVersionString="0.9.0"
+        length="8612858"
+        type="application/octet-stream"
+        sparkle:edSignature="6A0YAuggBz0qxtjSHsou7tqZ81JIjv6W+04QmKmPH3VyEkkf45XTrSCUQk79jWdGzc44CD+z2EOr2B0jDH6+BA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 123&lt;/li&gt;&lt;li&gt;- 修复：CineAI 时间相关回答——向模型注入当前日期，不再出现「2025年还没结束」这类过时判断。&lt;/li&gt;&lt;li&gt;- 修复：CineAI 排名类问题（如「2025年评分最高的电影」「2024年票房冠军」）——命中年份+评分/榜单/票房关键词时强制联网搜索真实榜单，禁止凭模型记忆编造；此类问题也改走找片意图并优先采用联网真实数据。&lt;/li&gt;&lt;li&gt;- 修复：CineAI 联网规则调整——涉及具体年份+评分/榜单/票房的问题必须调用 web_search，开放式的主题推荐仍不联网，避免误调。&lt;/li&gt;&lt;li&gt;- 同步：以上 CineAI 修复同步到网页版（/ai）。&lt;/li&gt;&lt;li&gt;- 测试：修复回归测试中上映日历断言使用了已过期日期导致门禁失败的问题。&lt;/li&gt;&lt;li&gt;本版本为测试版，未经过 Apple 公证。更新包仍通过 CineBar 内置签名校验。&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Sat, 15 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-123-universal.zip"
-        sparkle:version="123"
-        sparkle:shortVersionString="0.9.0"
-        length="8564239"
-        type="application/octet-stream"
-        sparkle:edSignature="+Iw2PPhwL+8eHmlFzl/ubERlO/17AmkWaM6BwlsdulQnWsU0gQ16HPgLxyXmjWkFR7xwW0slWB2RQdQV4Uo5AQ=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-123-universal.zip" sparkle:version="123" sparkle:shortVersionString="0.9.0" length="8564239" type="application/octet-stream" sparkle:edSignature="+Iw2PPhwL+8eHmlFzl/ubERlO/17AmkWaM6BwlsdulQnWsU0gQ16HPgLxyXmjWkFR7xwW0slWB2RQdQV4Uo5AQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
