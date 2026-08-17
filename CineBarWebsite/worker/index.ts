@@ -419,6 +419,9 @@ function cmsRankMatch(t: CMSTitle, query: string, year: string): number {
   if (cmsNormalizeTitle(t.title) === cmsNormalizeTitle(query)) rank += 4;
   if (year && t.year === year) rank += 3;
   if (t.playURL) rank += 1;
+  // 同分 tiebreaker：vod_year 最新优先（同名多版本默认选最新版，避免源站顺序把老版本排前面）。
+  // 年份 4 位数 /10000 → 0.xxxx 小数权重，不影响整数档位。
+  rank += (Number(t.year) || 0) / 10000;
   return rank;
 }
 
