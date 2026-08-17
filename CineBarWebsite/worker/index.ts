@@ -381,6 +381,9 @@ type CMSTitle = {
   category: string;      // type_name（短剧/动漫/电影...）
   playURL: string;       // vod_play_url（"第01集$url#第02集$url"）
   episodeCount: number;
+  remarks: string;       // vod_remarks（"TC国语v2"/"正片"等质量标签）
+  playFrom: string;      // vod_play_from（线路组名，如 ffzy-m3u8）
+  vodContent?: string;   // vod_content（简介，仅 detail 时带）
 };
 
 /** 并发搜索全部 CMS 源，返回合并结果（每个源取前 6 条，总量封顶 30 条）。 */
@@ -415,6 +418,8 @@ async function cmsSearchAll(
           category: String(v.type_name ?? ""),
           playURL,
           episodeCount: playURL ? playURL.split("#").length : 0,
+          remarks: String(v.vod_remarks ?? ""),
+          playFrom: String(v.vod_play_from ?? ""),
         };
       });
     })
@@ -507,6 +512,9 @@ async function handleCMSPlay(request: Request, env: Env): Promise<Response> {
     poster: t.poster,
     category: t.category,
     episodeCount: t.episodeCount,
+    remarks: t.remarks,
+    playFrom: t.playFrom,
+    playURL: t.playURL,
     streamURL: cmsResolveStreamURL(t.playURL, episode),
   }));
   return new Response(
@@ -610,6 +618,8 @@ async function cmsListByCategory(
     category: x.categoryRaw,
     playURL: "",
     episodeCount: 0,
+    remarks: x.remarks,
+    playFrom: "",
   }));
   // 补海报：ac=list 不带海报，前 12 部用 ac=detail 补（首页展示量，并行控速）。
   const posterMissing = items.slice(0, 12).filter((i) => !i.poster);
@@ -685,6 +695,9 @@ async function handleCMSDetail(request: Request): Promise<Response> {
           category: String(v.type_name ?? ""),
           playURL,
           episodeCount: playURL ? playURL.split("#").length : 0,
+          remarks: String(v.vod_remarks ?? ""),
+          playFrom: String(v.vod_play_from ?? ""),
+          vodContent: String(v.vod_content ?? "").slice(0, 400),
           streamURL,
         };
       } catch {

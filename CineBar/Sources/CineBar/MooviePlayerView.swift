@@ -643,12 +643,26 @@ struct MooviePlayerWindowView: View {
                     } label: {
                         Label("切换浮窗", systemImage: "pip.exit")
                     }
+                } else {
                     Button {
-                        MooviePlaybackController.shared
-                            .closeAndRestoreMainPanel()
+                        MooviePlaybackController.shared.show(
+                            url: url,
+                            title: title,
+                            danmaku: danmaku,
+                            mode: .fullScreen,
+                            isLive: isLive
+                        )
                     } label: {
-                        Label("关闭播放", systemImage: "xmark.circle.fill")
+                        Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
                     }
+                }
+                // 浮窗与全屏都提供显式返回按钮：此前只有全屏有，
+                // 直播浮窗（isLive 无控制条）无返回入口，用户被困在播放界面。
+                Button {
+                    MooviePlaybackController.shared
+                        .closeAndRestoreMainPanel()
+                } label: {
+                    Label("关闭播放", systemImage: "xmark.circle.fill")
                 }
             }
             .buttonStyle(.bordered)
