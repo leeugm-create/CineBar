@@ -234,6 +234,7 @@ export const messages: Record<Locale, Messages> = {
     supportAction: "支持 CineBar →",
     supportNote: "一次性自愿支持，不会解锁任何功能，也不是订阅。",
     releases: "GitHub 发行",
+    footerDisclaimer: "本站及APP端不存储视频文件，仅供检索公开接口。请支持正版内容。",
     contactTitle: "联系我",
     contactLinks: [
       [
@@ -376,6 +377,7 @@ export const messages: Record<Locale, Messages> = {
     supportAction: "支持 CineBar →",
     supportNote: "一次性自願支持，不會解鎖任何功能，也不是訂閱。",
     releases: "GitHub 發行",
+    footerDisclaimer: "本站及APP端不儲存影片檔案，僅供檢索公開介面。請支持正版內容。",
     contactTitle: "聯絡我",
     contactLinks: [
       [
@@ -517,6 +519,7 @@ export const messages: Record<Locale, Messages> = {
     supportAction: "Support CineBar →",
     supportNote: "One-time, completely voluntary. It unlocks nothing and is not a subscription.",
     releases: "GitHub Releases",
+    footerDisclaimer: "This site and the app do not store video files; they only search public interfaces. Please support legitimate content.",
     contactTitle: "Contact",
     contactLinks: [
       [
@@ -658,6 +661,7 @@ export const messages: Record<Locale, Messages> = {
     supportAction: "CineBar を支援 →",
     supportNote: "ワンタイムの任意の支援です。機能が解放されるわけでも、サブスクでもありません。",
     releases: "GitHub リリース",
+    footerDisclaimer: "本サイトおよびアプリは動画ファイルを保存せず、公開インターフェースの検索のみを提供します。正規コンテンツを応援してください。",
     contactTitle: "お問い合わせ",
     contactLinks: [
       [
@@ -799,6 +803,7 @@ export const messages: Record<Locale, Messages> = {
     supportAction: "CineBar 지원 →",
     supportNote: "일회성, 자발적 후원입니다. 어떤 기능도 잠금 해제되지 않으며 구독이 아닙니다.",
     releases: "GitHub 릴리스",
+    footerDisclaimer: "본 사이트 및 앱은 동영상 파일을 저장하지 않으며 공개 인터페이스 검색만 제공합니다. 정식 콘텐츠를 지원해 주세요.",
     contactTitle: "문의하기",
     contactLinks: [
       [
