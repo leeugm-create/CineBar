@@ -178,11 +178,15 @@ function Player({
     }
     function onTick() { write(false); }
     function onPause() { write(true); }
+    // 离开页面（返回/后退/关标签）前强制写一次，避免 bfcache 恢复首页时看不到最新进度
+    function onPageHide() { write(true); }
     video.addEventListener("timeupdate", onTick);
     video.addEventListener("pause", onPause);
+    window.addEventListener("pagehide", onPageHide);
     return () => {
       video.removeEventListener("timeupdate", onTick);
       video.removeEventListener("pause", onPause);
+      window.removeEventListener("pagehide", onPageHide);
     };
   }, [item, armed]);
 

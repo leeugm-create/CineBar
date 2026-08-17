@@ -20,8 +20,8 @@ export type WatchProgress = {
 
 const KEY = "cinebar.watch.progress";
 const MAX_ITEMS = 12;
-/** 少于 10 秒的观看不记录（误点不算）。 */
-const MIN_SECONDS = 10;
+/** 少于 5 秒的观看不记录（误点不算；2026-08-18 从 10 秒调低：缓冲耗时后实际播放时长易低于旧门槛）。 */
+const MIN_SECONDS = 5;
 /** 距片尾不足 20 秒视为看完，清掉记录。 */
 const END_THRESHOLD = 20;
 

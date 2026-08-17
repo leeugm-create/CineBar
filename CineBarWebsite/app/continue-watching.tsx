@@ -33,8 +33,19 @@ export default function ContinueWatching({
         setItems(listProgress().slice(0, 3));
       }
     }
+    // bfcache 恢复（浏览器后退/前进返回首页）不会重新挂载组件，也不会触发 storage 事件，
+    // 必须在 pageshow(persisted) 时强制重新读取本地进度（2026-08-18 修复：返回首页看不到新记录）。
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) {
+        setItems(listProgress().slice(0, 3));
+      }
+    }
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    window.addEventListener("pageshow", onPageShow);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("pageshow", onPageShow);
+    };
   }, []);
 
   if (items.length === 0) return null;
