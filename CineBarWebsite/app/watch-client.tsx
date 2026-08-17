@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
+import { recordProgress, removeProgress, MIN_SECONDS } from "./watch-progress";
 
 type CmsItem = {
   source: string;
@@ -72,11 +73,12 @@ function probeLatency(url: string): Promise<number | null> {
 
 /** 播放器：对标 zip0，hls.js 播放 + 失败态 + 换线路。 */
 function Player({
-  item, episode, onEpisodeChange,
+  item, episode, onEpisodeChange, resumeAt,
 }: {
   item: CmsItem;
   episode: number;
   onEpisodeChange: (n: number) => void;
+  resumeAt?: number;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   // 进入即播（zip0 风格）：armed 初始 true，视频自动加载；失败再显示错误态（2026-08-18）。
@@ -149,6 +151,55 @@ function Player({
     return () => { cancelled = true; window.clearTimeout(timeout); settled = true; hls?.destroy(); video.removeAttribute("src"); };
   }, [armed, currentRaw]);
 
+  // 本地观看进度（对标 zip0 watch-history）：每 5 秒 + 暂停时记录；看完自动清除。
+  // 2026-08-18 接入：播放迁移到 /watch 独立页后进度记录一度断掉，首页「上次观看」因此长期为空。
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !armed) return;
+    let lastWrite = 0;
+    const type = /剧|动漫|综艺/.test(item.category) ? "tv" : "movie";
+    function write(force: boolean) {
+      const dur = video.duration;
+      if (!Number.isFinite(dur) || dur <= 0) return;
+      if (video.currentTime < MIN_SECONDS) return;
+      if (!force && Date.now() - lastWrite < 5000) return;
+      lastWrite = Date.now();
+      recordProgress({
+        key: `${type}:${item.title}:${item.year || ""}`,
+        type,
+        title: item.title,
+        year: item.year,
+        poster: item.poster,
+        sourceLabel: item.sourceName,
+        currentTime: video.currentTime,
+        duration: dur,
+        updatedAt: Date.now(),
+      });
+    }
+    function onTick() { write(false); }
+    function onPause() { write(true); }
+    video.addEventListener("timeupdate", onTick);
+    video.addEventListener("pause", onPause);
+    return () => {
+      video.removeEventListener("timeupdate", onTick);
+      video.removeEventListener("pause", onPause);
+    };
+  }, [item, armed]);
+
+  // 续播：URL 带 t 参数（上次观看点击进入）→ 起播后 seek 到原进度。
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !resumeAt || resumeAt <= 0) return;
+    function seek() {
+      const dur = video.duration;
+      if (Number.isFinite(dur) && dur > 0 && resumeAt < dur - 20 && resumeAt > 0) {
+        video.currentTime = resumeAt;
+      }
+    }
+    video.addEventListener("loadedmetadata", seek);
+    return () => video.removeEventListener("loadedmetadata", seek);
+  }, [resumeAt, armed]);
+
   return (
     <div className="player-shell">
       <div className="player-frame">
@@ -190,6 +241,7 @@ export default function WatchClient() {
   const [notFound, setNotFound] = useState(false);
   const [query, setQuery] = useState("");
   const [year, setYear] = useState("");
+  const [resumeAt, setResumeAt] = useState<number | undefined>(undefined);
   const [probed, setProbed] = useState(false);
 
   const activeLineNo = useMemo(() => {
@@ -205,9 +257,11 @@ export default function WatchClient() {
     const title = params.get("title") ?? params.get("q") ?? "";
     const year = params.get("year") ?? "";
     const ep = Number(params.get("episode")) || 1;
+    const t = Number(params.get("t")) || 0;
     setEpisode(ep);
     setQuery(title);
     setYear(year);
+    setResumeAt(t > 0 ? t : undefined);
     const ctrl = new AbortController();
 
     async function load() {
@@ -325,7 +379,7 @@ export default function WatchClient() {
   return (
     <div className="container watch-layout">
       <div className="watch-main">
-        <Player key={playerKey} item={current} episode={episode} onEpisodeChange={pickEpisode} />
+        <Player key={playerKey} item={current} episode={episode} onEpisodeChange={pickEpisode} resumeAt={resumeAt} />
 
         <div className="now-playing">
           <div className="now-playing__summary">

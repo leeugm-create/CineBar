@@ -13,10 +13,13 @@ export default function ContinueWatching({
 }: {
   m: Messages;
 }) {
+  // 点击直接进入播放页并续播原进度（2026-08-18 改：原事件机制只传 title 打开搜索弹窗，
+  // 播放已迁移到独立 /watch 页，改为带 t 参数跳转，播放器起播后 seek 到原进度）。
   function resume(item: WatchProgress) {
-    window.dispatchEvent(
-      new CustomEvent("cinebar:resume-watch", { detail: { title: item.title } })
-    );
+    const params = new URLSearchParams({ title: item.title });
+    if (item.year) params.set("year", item.year);
+    if (item.currentTime > 0) params.set("t", String(Math.floor(item.currentTime)));
+    window.location.href = `/watch?${params.toString()}`;
   }
   const [items, setItems] = useState<WatchProgress[]>(() => {
     if (typeof window === "undefined") return [];
