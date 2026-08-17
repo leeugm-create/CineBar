@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 127&lt;/li&gt;&lt;li&gt;【修复】电视直播浮窗无法返回（Build 126 反馈）&lt;/li&gt;&lt;li&gt;- 独立播放窗口的「关闭播放」按钮此前只在全屏模式显示，浮窗（直播/正片）模式下没有返回入口，点「浮窗」后主面板隐藏即被困在播放界面&lt;/li&gt;&lt;li&gt;- 修复：浮窗模式新增「全屏」与「关闭播放」按钮，任何模式均可显式返回主面板（Esc 与窗口红点关闭仍有效）&lt;/li&gt;&lt;li&gt;【网页】播放页 /watch 升级为 zip0 完整布局&lt;/li&gt;&lt;li&gt;- 双栏布局：左主栏（播放器 → NOW PLAYING 摘要 → 选集 → 影片详情 → 相关影视推荐），右侧 300px 线路面板&lt;/li&gt;&lt;li&gt;- 右侧「播放来源」线路列表：同片名多源聚合（量子/暴风/最大/急速/非凡），每条显示「线路 N + 质量标签 + 探测延迟 ms」，当前线路高亮，点击整页切换线路（zip0 同款）&lt;/li&gt;&lt;li&gt;- 播放器下方选集：全集按钮网格（电影 1 集也显示，与 zip0 一致），点集即播并同步 URL episode 参数&lt;/li&gt;&lt;li&gt;- 底部「相关影视推荐」：同分类热门卡片（海报 + 状态标签 + 标题），点击直达对应源播放页&lt;/li&gt;&lt;li&gt;- 影片详情区：海报 + 年份/类型/质量标签 + 简介（剥离源站 HTML 标签）&lt;/li&gt;&lt;li&gt;- URL 双兼容：/watch?source=&amp;amp;id=&amp;amp;episode=（精确直达）与 /watch?title=（搜索入口，首页卡片沿用）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 128&lt;/li&gt;&lt;li&gt;【修复】电视直播界面无法返回（Build 127 反馈续）&lt;/li&gt;&lt;li&gt;- 直播界面顶栏新增「← 返回」按钮：主面板仅 520pt 宽，6 个分区 tab 拥挤，用户进入直播后容易找不到返回入口&lt;/li&gt;&lt;li&gt;- 点击「返回」直接切回电影/电视剧分区；浮窗/全屏的「关闭播放」按钮（Build 127 已加）保持不变&lt;/li&gt;&lt;li&gt;【网页】直播源替换（同步部署 cinebar.cc）&lt;/li&gt;&lt;li&gt;- 直播源由 best-fan 开源列表替换为内置 151 台（2026-08-18 实测可用）：央视 21 / 卫视 15 / 港台 82 / 地方 33&lt;/li&gt;&lt;li&gt;- 全部含台标（epg.112114.xyz，经 /api/iptv/logo 代理加载）；同名不同省台已区分（内蒙古经济生活/少儿频道）&lt;/li&gt;&lt;li&gt;- 不可用源已剔除（4gtv 10 台 504、Astro 4 台 404、宁夏 4 台 403 等 19 台）&lt;/li&gt;&lt;li&gt;- 修复可达性误判：内置源直接标记可达，不再从 Cloudflare 网络探测（国内裸流 IP 探测结果与用户网络不符，导致央视/卫视在网页端全部灰显）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-127-universal.zip"
-        sparkle:version="127"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-128-universal.zip"
+        sparkle:version="128"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8741898"
+        length="8743896"
         type="application/octet-stream"
-        sparkle:edSignature="jNZ0osRmV/S4nRDtYiX9J+iCsoEWEXHpv0AWKtc7+oAcUOC6M9C2mi4Ev6E3BCpm6T/WIP9Qo1Yz9B1Dk3cdCQ=="/>
+        sparkle:edSignature="XkbZLnv9K9sP+8AnjHns3j2KhpgkgnkhVjiQV0Xd4jtZw0lQ5alc8hT0MuK89J0iNJx8SMVzfgJh9Ra1AZFpCw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 127&lt;/li&gt;&lt;li&gt;【修复】电视直播浮窗无法返回（Build 126 反馈）&lt;/li&gt;&lt;li&gt;- 独立播放窗口的「关闭播放」按钮此前只在全屏模式显示，浮窗（直播/正片）模式下没有返回入口，点「浮窗」后主面板隐藏即被困在播放界面&lt;/li&gt;&lt;li&gt;- 修复：浮窗模式新增「全屏」与「关闭播放」按钮，任何模式均可显式返回主面板（Esc 与窗口红点关闭仍有效）&lt;/li&gt;&lt;li&gt;【网页】播放页 /watch 升级为 zip0 完整布局&lt;/li&gt;&lt;li&gt;- 双栏布局：左主栏（播放器 → NOW PLAYING 摘要 → 选集 → 影片详情 → 相关影视推荐），右侧 300px 线路面板&lt;/li&gt;&lt;li&gt;- 右侧「播放来源」线路列表：同片名多源聚合（量子/暴风/最大/急速/非凡），每条显示「线路 N + 质量标签 + 探测延迟 ms」，当前线路高亮，点击整页切换线路（zip0 同款）&lt;/li&gt;&lt;li&gt;- 播放器下方选集：全集按钮网格（电影 1 集也显示，与 zip0 一致），点集即播并同步 URL episode 参数&lt;/li&gt;&lt;li&gt;- 底部「相关影视推荐」：同分类热门卡片（海报 + 状态标签 + 标题），点击直达对应源播放页&lt;/li&gt;&lt;li&gt;- 影片详情区：海报 + 年份/类型/质量标签 + 简介（剥离源站 HTML 标签）&lt;/li&gt;&lt;li&gt;- URL 双兼容：/watch?source=&amp;amp;id=&amp;amp;episode=（精确直达）与 /watch?title=（搜索入口，首页卡片沿用）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-127-universal.zip" sparkle:version="127" sparkle:shortVersionString="0.9.0-test.1" length="8741898" type="application/octet-stream" sparkle:edSignature="jNZ0osRmV/S4nRDtYiX9J+iCsoEWEXHpv0AWKtc7+oAcUOC6M9C2mi4Ev6E3BCpm6T/WIP9Qo1Yz9B1Dk3cdCQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
