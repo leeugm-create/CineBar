@@ -436,6 +436,48 @@ function cmsResolveStreamURL(playURL: string, episode = 1): string | null {
   return target.slice(idx + 1).trim() || null;
 }
 
+/** 播放页解析：部分源（量子/急速/非凡）的 playURL 是播放页（非 m3u8 直链），
+ *  播放页 HTML 里有相对路径的 index.m3u8（带 sign 签名），用页面域名拼出真实流。
+ *  规律（2026-08 实测）：
+ *    量子  var main = "/20260729/xxx/index.m3u8?sign=…"
+ *    非凡  const url = "/20221114/xxx/index.m3u8?sign=…"
+ *    急速  {播放页路径}/index.m3u8 直连。 */
+async function resolveCMSPlayPage(pageURL: string): Promise<string | null> {
+  const page = new URL(pageURL);
+  // 已直连播放页的情况下，尝试 {page}/index.m3u8（急速的规律）
+  const directCandidate = `${page.origin}${page.pathname.replace(/\/$/, "")}/index.m3u8`;
+  try {
+    const resp = await fetch(pageURL, {
+      headers: { "user-agent": "Mozilla/5.0", accept: "text/html", referer: page.origin },
+    });
+    if (!resp.ok) return null;
+    const html = await resp.text();
+    // 匹配 var main = "…index.m3u8…" / const url = "…index.m3u8…"
+    const m =
+      html.match(/(?:var\s+main|const\s+url)\s*=\s*["']([^"']*\.m3u8[^"']*)["']/) ??
+      html.match(/["']([^"']*index\.m3u8[^"']*)["']/);
+    if (m && m[1]) {
+      const raw = m[1].replace(/\\\//g, "/");
+      try {
+        return new URL(raw, page.origin).toString();
+      } catch {
+        return raw.startsWith("http") ? raw : null;
+      }
+    }
+    // 回退：直接尝试 {page}/index.m3u8
+    return directCandidate;
+  } catch {
+    return null;
+  }
+}
+
+/** 解析 CineCMS 的播放地址：m3u8 直链原样返回；播放页则抓页面解析出真实 m3u8。 */
+async function resolveCMSPlayable(rawURL: string): Promise<string | null> {
+  if (!rawURL) return null;
+  if (/\.m3u8(\?|$)/i.test(rawURL)) return rawURL;
+  return resolveCMSPlayPage(rawURL);
+}
+
 /** GET /api/cms/search?q=&episode= 返回苹果CMS 聚合搜索结果（含直链）。 */
 async function handleCMSPlay(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
@@ -576,6 +618,9 @@ async function handleCMSDetail(request: Request): Promise<Response> {
       const v = data.list[0];
       const playURL = String(v.vod_play_url ?? "");
       if (!playURL) return null;
+      // 第 1 集直链：m3u8 直接可用；播放页则抓页面解析出真实 m3u8。
+      const rawFirst = cmsResolveStreamURL(playURL, 1);
+      const streamURL = rawFirst ? await resolveCMSPlayable(rawFirst) : null;
       return {
         source: src.id,
         sourceName: src.name,
@@ -586,7 +631,7 @@ async function handleCMSDetail(request: Request): Promise<Response> {
         category: String(v.type_name ?? ""),
         playURL,
         episodeCount: playURL ? playURL.split("#").length : 0,
-        streamURL: cmsResolveStreamURL(playURL, 1),
+        streamURL,
       };
     })
   );
@@ -625,8 +670,34 @@ async function handleCMSList(request: Request): Promise<Response> {
   );
 }
 
-/** GET /api/cms/poster?url=…  资源站海报代理：绕开防盗链/混合内容，加 CORS。 */
-async function handleCMSPoster(request: Request): Promise<Response> {
+/** GET /api/cms/stream?url=…  解析 CineCMS 单集播放地址：m3u8 直链原样返回，播放页则抓取解析。
+ *  供前端选集播放（detail 只预解析第 1 集，其余集按需解析）。 */
+async function handleCMSStream(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const raw = url.searchParams.get("url");
+  if (!raw || raw.length > 400) {
+    return new Response(JSON.stringify({ error: "invalid url" }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  const resolved = await resolveCMSPlayable(raw);
+  if (!resolved) {
+    return new Response(JSON.stringify({ error: "cannot resolve" }), {
+      status: 502,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  return new Response(
+    JSON.stringify({ streamURL: resolved }),
+    {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" },
+    }
+  );
+}
+
+/** GET /api/cms/poster?url=…  资源站海报代理：绕开防盗链/混合内容，加 CORS。 */async function handleCMSPoster(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const target = url.searchParams.get("url");
   if (!target) return new Response("missing url", { status: 400 });
@@ -2594,6 +2665,11 @@ const worker = {
 
     if (url.pathname === "/api/cms/poster" && request.method === "GET") {
       const response = await handleCMSPoster(request);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/cms/stream" && request.method === "GET") {
+      const response = await handleCMSStream(request);
       return addSecurityHeaders(response, url);
     }
 

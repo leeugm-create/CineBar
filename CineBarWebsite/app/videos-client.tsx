@@ -38,17 +38,16 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
   const [armed, setArmed] = useState(false);
   const [failed, setFailed] = useState(false);
   const [episode, setEpisode] = useState(1);
+  const [resolvedStream, setResolvedStream] = useState<string | null>(detail.streamURL ?? null);
+  const [resolving, setResolving] = useState(false);
   const episodes = useMemo(() => {
     if (!detail.playURL) return [];
     return detail.playURL.split("#").map((s) => s.trim()).filter(Boolean);
   }, [detail.playURL]);
 
   const currentStream = useMemo(() => {
-    if (!detail.playURL || episodes.length === 0) return null;
-    const target = episodes[Math.min(Math.max(episode, 1), episodes.length) - 1];
-    const idx = target.indexOf("$");
-    return idx < 0 ? target : target.slice(idx + 1).trim() || null;
-  }, [detail.playURL, episodes, episode]);
+    return resolvedStream;
+  }, [resolvedStream]);
 
   useEffect(() => {
     if (!armed || !currentStream) return;
@@ -76,9 +75,32 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
     };
   }, [armed, currentStream]);
 
-  function changeEpisode(n: number) {
+  async function changeEpisode(n: number) {
     setEpisode(n);
-    setArmed(true);
+    setFailed(false);
+    const target = episodes[Math.min(Math.max(n, 1), episodes.length) - 1];
+    const idx = target.indexOf("$");
+    const raw = (idx < 0 ? target : target.slice(idx + 1).trim()) || "";
+    if (!raw) return;
+    if (/\.m3u8(\?|$)/i.test(raw)) {
+      setResolvedStream(raw);
+      setArmed(true);
+      return;
+    }
+    // 播放页：经 worker 解析出真实 m3u8。
+    setResolving(true);
+    setArmed(false);
+    try {
+      const resp = await fetch(`/api/cms/stream?url=${encodeURIComponent(raw)}`);
+      const body = (await resp.json()) as { streamURL?: string };
+      setResolvedStream(body.streamURL ?? null);
+      if (body.streamURL) setArmed(true);
+      else setFailed(true);
+    } catch {
+      setFailed(true);
+    } finally {
+      setResolving(false);
+    }
   }
 
   return (
@@ -112,7 +134,9 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
             style={detail.poster ? { backgroundImage: `url("${proxiedPoster(detail.poster)}")` } : undefined}
           >
             <div className="inline-player-overlay">
-              {!failed ? (
+              {resolving ? (
+                <p className="inline-player-state">正在解析播放地址…</p>
+              ) : !failed ? (
                 <button type="button" className="inline-player-play" onClick={() => setArmed(true)}>
                   <span aria-hidden="true">▶</span>
                   {episode > 1 ? `播放第 ${episode} 集` : "播放"}
