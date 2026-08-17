@@ -10,12 +10,23 @@ type IPTVChannel = {
   url: string;
   group: string;
   responseTime: string;
+  reachable?: boolean;
 };
 
 type IPTVGroup = {
   name: string;
   channels: IPTVChannel[];
 };
+
+/** 经 worker 代理的播放地址（服务端拉取 http 源 + 重写分片，解决混合内容/CORS）。 */
+function proxiedStream(raw: string): string {
+  return `/api/iptv/stream?url=${encodeURIComponent(raw)}`;
+}
+
+/** 经 worker 代理的台标地址（绕开 gitee 防盗链）。 */
+function proxiedLogo(raw: string): string {
+  return `/api/iptv/logo?url=${encodeURIComponent(raw)}`;
+}
 
 function fmt(template: string, n: number): string {
   return template.replace("{n}", String(n));
@@ -33,26 +44,44 @@ function LivePlayer({ channel, m }: { channel: IPTVChannel; m: Messages }) {
     setFailed(false);
     setLoaded(false);
     let hls: Hls | null = null;
+    let settled = false;
+    // 加载超时：源代理 502 / 慢 / 卡死时，几秒内仍未开始播放就判定失败，避免"无限转圈"。
+    const timeout = window.setTimeout(() => {
+      if (!settled && !video.currentTime) {
+        setFailed(true);
+      }
+    }, 9000);
     const isHLS = channel.url.toLowerCase().includes(".m3u8");
+    const source = proxiedStream(channel.url);
     if (isHLS && Hls.isSupported()) {
       hls = new Hls({ enableWorker: true, lowLatencyMode: true, maxBufferLength: 30 });
-      hls.loadSource(channel.url);
+      hls.loadSource(source);
       hls.attachMedia(video);
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        if (data.fatal) setFailed(true);
+        // fatal（清单/分片严重错误）立即判失败；轻微网络错误不立刻失败，
+        // 交给超时兜底，避免直播流瞬间抖动就误判（但也不无限转圈）。
+        if (data.fatal) {
+          settled = true;
+          window.clearTimeout(timeout);
+          setFailed(true);
+        }
       });
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        settled = true;
+        window.clearTimeout(timeout);
         video.play().catch(() => setFailed(true));
         setLoaded(true);
       });
     } else if (video.canPlayType("application/vnd.apple.mpegurl") || !isHLS) {
-      video.src = channel.url;
+      video.src = source;
       video.play().catch(() => setFailed(true));
       setLoaded(true);
     } else {
       setFailed(true);
     }
     return () => {
+      settled = true;
+      window.clearTimeout(timeout);
       hls?.destroy();
       video.removeAttribute("src");
     };
@@ -137,6 +166,7 @@ export default function TVClient({ m }: { m: Messages }) {
 
   const activeChannels = useMemo(() => {
     const g = visibleGroups.find((x) => x.name === activeGroup) ?? visibleGroups[0];
+    // 全部保留（含暂不可播的台，灰显标记）；worker 已按可达性排序，可播台在前。
     return g?.channels ?? [];
   }, [visibleGroups, activeGroup]);
 
@@ -151,8 +181,9 @@ export default function TVClient({ m }: { m: Messages }) {
 
   function switchGroup(group: IPTVGroup) {
     setActiveGroup(group.name);
-    // 对标 zip0：切换分组后自动播放该组第一个频道。
-    if (group.channels.length) setCurrent(group.channels[0]);
+    // 对标 zip0：切换分组后自动播放该组第一个可播频道（避免直接黑屏）。
+    const first = group.channels.find((c) => c.reachable !== false) ?? group.channels[0];
+    if (first) setCurrent(first);
   }
 
   return (
@@ -215,13 +246,15 @@ export default function TVClient({ m }: { m: Messages }) {
                   <button
                     type="button"
                     key={`${c.name}-${c.url}`}
-                    className={`tv-station-card${current?.url === c.url ? " is-playing" : ""}`}
+                    className={`tv-station-card${current?.url === c.url ? " is-playing" : ""}${
+                      c.reachable === false ? " is-offline" : ""
+                    }`}
                     onClick={() => choose(c)}
                   >
                     <span className="tv-station-logo-wrap">
                       {c.logo ? (
                         <img
-                          src={c.logo}
+                          src={proxiedLogo(c.logo)}
                           alt=""
                           loading="lazy"
                           onError={(e) => {
@@ -231,6 +264,9 @@ export default function TVClient({ m }: { m: Messages }) {
                       ) : (
                         <span className="tv-station-fallback">{c.name.slice(0, 2)}</span>
                       )}
+                      {c.reachable === false ? (
+                        <span className="tv-station-offline-badge">{m.tvSignalUnavailable}</span>
+                      ) : null}
                     </span>
                     <span className="tv-station-info">
                       <strong>{c.name}</strong>
