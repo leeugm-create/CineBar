@@ -2229,7 +2229,8 @@ footer {
 
 /* ===== 接着上次看（Continue Watching）===== */
 .continue-watching {
-  padding: clamp(48px, 7vw, 88px) 0 0;
+  /* 底部留间距：下一 section 的 border-top 分隔线不被海报紧贴/遮挡（2026-08-18 反馈） */
+  padding: clamp(48px, 7vw, 88px) 0 clamp(44px, 6vw, 72px);
 }
 
 .continue-watching__heading {
