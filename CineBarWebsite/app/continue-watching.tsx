@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import type { Messages } from "./i18n";
 import { listProgress, type WatchProgress } from "./watch-progress";
 
+/** 源站海报一律走 /api/cms/poster 代理（绕防盗链 + 同源 CORS），否则记录里的原始 URL 会加载失败。 */
+function proxiedPoster(raw: string): string {
+  return `/api/cms/poster?url=${encodeURIComponent(raw)}`;
+}
+
 /**
  * 首页「接着上次看」横条（对标 zip0 的 recent-grid）。
  * 读取本地播放进度，点击回到对应影片（网站搜索弹窗由 HomeHero 传入回调）。
@@ -90,7 +95,7 @@ export default function ContinueWatching({
             <span className="continue-card__poster">
               {item.poster ? (
                 <img
-                  src={item.poster}
+                  src={proxiedPoster(item.poster)}
                   alt=""
                   loading="lazy"
                   onError={(e) => {

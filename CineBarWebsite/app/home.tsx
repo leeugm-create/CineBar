@@ -58,9 +58,10 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         </div>
       </header>
 
-      <HomeHero m={m} locale={locale} />
-
+      {/* 上次观看置顶：用户要求放在电影区块上方（原在 HomeHero 之后会落到剧集下方） */}
       <ContinueWatching m={m} />
+
+      <HomeHero m={m} locale={locale} />
 
       <section className="section" id="cineai">
         <h2>{m.caiTitle}</h2>
