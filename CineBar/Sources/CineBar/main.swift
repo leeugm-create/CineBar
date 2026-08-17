@@ -466,6 +466,7 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
     case watchlist
     case localLibrary
     case liveTV
+    case history
 
     var id: String { rawValue }
 
@@ -501,6 +502,11 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
         case (.liveTV, .enUS): return "Live TV"
         case (.liveTV, .jaJP): return "テレビ"
         case (.liveTV, .koKR): return "라이브 TV"
+        case (.history, .zhCN): return "观影记录"
+        case (.history, .zhHK), (.history, .zhTW): return "觀影記錄"
+        case (.history, .enUS): return "History"
+        case (.history, .jaJP): return "視聴履歴"
+        case (.history, .koKR): return "시청 기록"
         }
     }
 }
@@ -3214,6 +3220,7 @@ final class MovieStore: ObservableObject {
     @Published var movieBrowseSection: MovieBrowseSection = .trending
     @Published var tvBrowseSection: TVBrowseSection = .trending
     @Published var isShowingWatchlist = false
+    @Published var isShowingWatchHistory = false
     @Published var isShowingLocalLibrary = false
     @Published var isShowingLiveTV = false
     @Published var selectedTVShow: TVShow?
@@ -4621,6 +4628,7 @@ final class MovieStore: ObservableObject {
 
     func toggleWatchlist() {
         isShowingWatchlist.toggle()
+        isShowingWatchHistory = false
         isShowingLocalLibrary = false
         isShowingLiveTV = false
         searchText = ""
@@ -4636,6 +4644,7 @@ final class MovieStore: ObservableObject {
     }
 
     var mainBrowseSection: MainBrowseSection {
+        if isShowingWatchHistory { return .history }
         if isShowingLocalLibrary { return .localLibrary }
         if isShowingLiveTV { return .liveTV }
         if isShowingWatchlist { return .watchlist }
@@ -4649,6 +4658,7 @@ final class MovieStore: ObservableObject {
     func setMainBrowseSection(_ section: MainBrowseSection) {
         switch section {
         case .movies:
+            isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
             if mediaSection != .movies {
@@ -4657,6 +4667,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .television:
+            isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
             if mediaSection != .television {
@@ -4665,6 +4676,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .anime:
+            isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
             if mediaSection != .anime {
@@ -4673,16 +4685,47 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .watchlist:
+            isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
             if !isShowingWatchlist {
                 toggleWatchlist()
             }
         case .localLibrary:
+            isShowingWatchHistory = false
             isShowingLiveTV = false
             showLocalLibrary()
         case .liveTV:
+            isShowingWatchHistory = false
             showLiveTV()
+        case .history:
+            isShowingLocalLibrary = false
+            isShowingLiveTV = false
+            isShowingWatchlist = false
+            if !isShowingWatchHistory {
+                toggleWatchHistory()
+            }
+        }
+    }
+
+    func toggleWatchHistory() {
+        isShowingWatchHistory.toggle()
+        if isShowingWatchHistory {
+            TrailerPlaybackController.shared.close()
+            isShowingLocalLibrary = false
+            isShowingWatchlist = false
+            isShowingLiveTV = false
+            selectedMovie = nil
+            selectedTVShow = nil
+            selectedPerson = nil
+            showMovieStills = false
+            showCatalog = false
+            showTVCatalog = false
+            peopleSearchResults = []
+            searchText = ""
+            message = "观影记录 · \(CineWatchHistory.load().count) 条"
+        } else if !isShowingWatchlist {
+            loadTrending()
         }
     }
 
@@ -6866,6 +6909,179 @@ struct Hao6vMagnetButton: View {
     }
 }
 
+
+/// 观影记录面板（2026-08-18 新增）：本机播放进度大海报网格，点击续播。
+/// 数据源：CineWatchHistory（UserDefaults），与网页端「上次观看」同思路。
+struct WatchHistoryView: View {
+    @ObservedObject var store: MovieStore
+    @State private var entries: [WatchHistoryEntry] = CineWatchHistory.load()
+    @State private var resuming = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Text("观影记录")
+                    .font(.headline)
+                Text("\(entries.count) 条 · 进度仅保存在本机")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if !entries.isEmpty {
+                    Button("清除全部") {
+                        CineWatchHistory.clear()
+                        entries = []
+                    }
+                    .controlSize(.small)
+                }
+            }
+            if entries.isEmpty {
+                VStack(spacing: 10) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 34))
+                        .foregroundStyle(.secondary)
+                    Text("还没有观影记录")
+                        .font(.headline)
+                    Text("播放电影或剧集后，会在这里显示进度，点击即可续播")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    LazyVGrid(
+                        columns: [GridItem(.adaptive(minimum: 128), spacing: 14)],
+                        spacing: 16
+                    ) {
+                        ForEach(entries) { entry in
+                            card(entry)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .onReceive(NotificationCenter.default.publisher(
+            for: .cineBarMediaPlaybackDidChange
+        )) { _ in
+            entries = CineWatchHistory.load()
+        }
+    }
+
+    private func card(_ entry: WatchHistoryEntry) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Button {
+                resume(entry)
+            } label: {
+                poster(entry)
+            }
+            .buttonStyle(.plain)
+            .contextMenu {
+                Button("删除这条记录") {
+                    CineWatchHistory.remove(key: entry.key)
+                    entries = CineWatchHistory.load()
+                }
+            }
+            Text(entry.title)
+                .font(.callout.bold())
+                .lineLimit(1)
+            Text(meta(entry))
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+    }
+
+    private func poster(_ entry: WatchHistoryEntry) -> some View {
+        ZStack(alignment: .bottom) {
+            Group {
+                if let urlString = entry.posterURL,
+                   let url = URL(string: urlString) {
+                    AsyncImage(url: url) { image in
+                        image
+                            .resizable()
+                            .scaledToFill()
+                    } placeholder: {
+                        Color.black.opacity(0.06)
+                    }
+                } else {
+                    Color.black.opacity(0.06)
+                }
+            }
+            .frame(width: 128, height: 192)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Color.black.opacity(0.08))
+            )
+
+            VStack(spacing: 4) {
+                Image(systemName: "play.circle.fill")
+                    .font(.system(size: 26))
+                    .foregroundStyle(.white)
+                    .shadow(radius: 3)
+                ProgressView(value: percent(entry))
+                    .progressViewStyle(.linear)
+                    .tint(.orange)
+            }
+            .padding(8)
+            .background(
+                LinearGradient(
+                    colors: [.black.opacity(0.7), .clear],
+                    startPoint: .bottom,
+                    endPoint: .top
+                )
+            )
+        }
+    }
+
+    private func percent(_ entry: WatchHistoryEntry) -> Double {
+        guard entry.duration > 0 else { return 0 }
+        return min(max(entry.currentTime / entry.duration, 0), 1)
+    }
+
+    private func meta(_ entry: WatchHistoryEntry) -> String {
+        let typeLabel = entry.type == "tv" ? "剧集" : "电影"
+        var parts = [typeLabel]
+        if !entry.year.isEmpty { parts.append(entry.year) }
+        if !entry.sourceLabel.isEmpty { parts.append(entry.sourceLabel) }
+        return parts.joined(separator: " · ")
+    }
+
+    /// 续播：按标题搜索正片源 → 解析直链 → 浮窗播放并 seek 到原进度。
+    private func resume(_ entry: WatchHistoryEntry) {
+        guard !resuming else { return }
+        resuming = true
+        Task {
+            let candidates = await MoovieStreamResolver.search(
+                title: entry.title,
+                year: entry.year.isEmpty ? nil : entry.year
+            )
+            var url: URL?
+            if let first = candidates.first(where: { !$0.isDerivative }) {
+                url = await MoovieStreamResolver.resolveStreamURL(
+                    playPath: first.playPath
+                )
+            }
+            await MainActor.run {
+                resuming = false
+                if let url {
+                    MooviePlaybackController.shared.show(
+                        url: url,
+                        title: entry.title,
+                        danmaku: [],
+                        mode: .floating,
+                        isLive: false,
+                        resumeFrom: entry.currentTime
+                    )
+                } else {
+                    store.message = "未找到《\(entry.title)》的可播放源"
+                }
+            }
+        }
+    }
+}
+
 /// "在线播放"按钮：按片名在 Moovie 影牛（moovie.c2v2.com）聚合站
 /// 搜索正片资源，解析出 HLS 直链后用内置播放器直接播放，无需下载。
 /// 仅在中文界面可用，其他语言隐藏（保留正版观看入口）。
@@ -6875,6 +7091,8 @@ struct MooviePlaySection: View {
     let language: AppLanguage
     /// 电视剧模式：搜索候选按季展示，提供集数选择。
     var isTV = false
+    /// 影片海报（观影记录展示用）。
+    var posterURL: URL? = nil
 
     @State private var status: Status = .idle
     @State private var streamURL: URL?
@@ -6884,6 +7102,8 @@ struct MooviePlaySection: View {
     @State private var danmakuVisible = true
     @State private var playbackRate: Double = 1
     @State private var currentTime: Double = 0
+    @State private var duration: Double = 0
+    @State private var lastHistoryWrite: Double = 0
     @State private var allCandidates: [MoovieStreamResolver.StreamCandidate] = []
     @State private var currentIndex = 0
     @State private var playTask: Task<Void, Never>?
@@ -6908,6 +7128,28 @@ struct MooviePlaySection: View {
                 content
             }
         }
+    }
+
+    /// 观影记录：播放中每 5 秒节流写入本机进度（2026-08-18 新增，对标网页端上次观看）。
+    private func recordWatchHistory(time: Double) {
+        guard time >= 5, duration > 0 else { return }
+        let now = Date().timeIntervalSince1970
+        guard now - lastHistoryWrite >= 5 else { return }
+        lastHistoryWrite = now
+        let type = isTV ? "tv" : "movie"
+        CineWatchHistory.record(
+            WatchHistoryEntry(
+                key: "\(type):\(title):\(year)",
+                type: type,
+                title: title,
+                year: year,
+                posterURL: posterURL?.absoluteString,
+                sourceLabel: sourceName,
+                currentTime: time,
+                duration: duration,
+                updatedAt: now
+            )
+        )
     }
 
     private var content: some View {
@@ -6989,10 +7231,14 @@ struct MooviePlaySection: View {
                         playbackRate: $playbackRate,
                         danmakuVisible: $danmakuVisible,
                         paused: inlinePaused,
-                        registerInline: true
+                        registerInline: true,
+                        onDuration: { duration = $0 }
                     )
                     .frame(height: 260)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .onChange(of: currentTime) { newTime in
+                        recordWatchHistory(time: newTime)
+                    }
                 }
             }
         }
@@ -8917,7 +9163,8 @@ struct MovieDetailView: View {
                     MooviePlaySection(
                         title: movie.title,
                         year: movie.year,
-                        language: store.appLanguage
+                        language: store.appLanguage,
+                        posterURL: movie.posterURL
                     )
 
                     BoxOfficeView(
@@ -9624,7 +9871,8 @@ struct TVDetailView: View {
                         title: show.name,
                         year: show.year,
                         language: store.appLanguage,
-                        isTV: true
+                        isTV: true,
+                        posterURL: show.posterURL
                     )
 
                     VStack(alignment: .leading, spacing: 9) {
@@ -12164,6 +12412,8 @@ struct ContentView: View {
                 )
             } else if store.isShowingLiveTV {
                 LiveTVView(store: store)
+            } else if store.isShowingWatchHistory {
+                WatchHistoryView(store: store)
             }
         }
         .frame(width: 520)
@@ -12263,6 +12513,12 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
+                    Button {
+                        store.toggleWatchHistory()
+                    } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                    }
+                    .help("观影记录")
                     Button {
                         // 切换普通"搜索电影/演员"框（默认主页显示 AI 框，点放大镜换成普通搜索）。
                         store.isShowingSearchBar.toggle()

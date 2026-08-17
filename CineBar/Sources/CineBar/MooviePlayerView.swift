@@ -29,6 +29,10 @@ struct MooviePlayerView: View {
     /// 是否为直播流（HLS live）。直播流用纯 AVPlayerLayer 渲染，避免 AVPlayerView
     /// 对无时长直播流的 SwiftUI 绑定崩溃（Build 125 崩溃报告）。
     var isLive: Bool = false
+    /// 观影记录续播：>0 时起播后 seek 到该秒数（2026-08-18 新增）。
+    var resumeFrom: Double = 0
+    /// 视频时长就绪回调（观影记录需要时长计算进度条/剩余时间）。
+    var onDuration: ((Double) -> Void)? = nil
 
     var body: some View {
         ZStack {
@@ -41,7 +45,9 @@ struct MooviePlayerView: View {
                 registerInline: registerInline,
                 onTick: { currentTime = $0 },
                 onStatus: onStatus,
-                isLive: isLive
+                isLive: isLive,
+                resumeFrom: resumeFrom,
+                onDuration: onDuration
             )
             if danmakuVisible, !danmaku.isEmpty {
                 DanmakuOverlay(items: danmaku, currentTime: currentTime)
@@ -61,6 +67,8 @@ struct MoovieVideoView: NSViewRepresentable {
     let onTick: (Double) -> Void
     var onStatus: ((MooviePlaybackStatus) -> Void)? = nil
     var isLive: Bool = false
+    var resumeFrom: Double = 0
+    var onDuration: ((Double) -> Void)? = nil
 
     final class VideoNSView: NSView {
         let playerView = AVPlayerView()
@@ -74,12 +82,18 @@ struct MoovieVideoView: NSViewRepresentable {
         private var stallWorkItem: DispatchWorkItem?
         private var onTick: ((Double) -> Void)?
         private var onStatus: ((MooviePlaybackStatus) -> Void)?
+        private var resumeFrom: Double = 0
+        private var didSeekResume = false
+        private var onDuration: ((Double) -> Void)?
+        private var didReportDuration = false
         private var lastTick: Double = -1
         /// 直播流等待起播超过该时长视为信号失败（针对 HLS live 卡死但 item 状态仍是 ready 的情况）。
         private static let stallTimeout: TimeInterval = 12
 
-        init(frame frameRect: NSRect, isLive: Bool) {
+        init(frame frameRect: NSRect, isLive: Bool, resumeFrom: Double = 0, onDuration: ((Double) -> Void)? = nil) {
             super.init(frame: frameRect)
+            self.resumeFrom = resumeFrom
+            self.onDuration = onDuration
             if isLive {
                 // 直播：纯 AVPlayerLayer 渲染，不挂 AVPlayerView 控件。
                 wantsLayer = true
@@ -168,6 +182,20 @@ struct MoovieVideoView: NSViewRepresentable {
                                 ?? "该电视台直连线路暂未响应，请换一个频道"
                             self?.reportStatus(.failed(message))
                         case .readyToPlay:
+                            // 观影记录续播：就绪后 seek 到上次进度（仅一次，容差归零避免跳帧）。
+                            if let self, self.resumeFrom > 0, !self.didSeekResume {
+                                self.didSeekResume = true
+                                let target = CMTime(seconds: self.resumeFrom, preferredTimescale: 600)
+                                self.player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
+                            }
+                            // 时长就绪回调（观影记录进度条用）。
+                            if let self, !self.didReportDuration {
+                                let dur = item.duration.seconds
+                                if dur.isFinite, dur > 0 {
+                                    self.didReportDuration = true
+                                    self.onDuration?(dur)
+                                }
+                            }
                             break // 起播与否由 timeControlStatus 决定
                         case .unknown:
                             break
@@ -215,7 +243,7 @@ struct MoovieVideoView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> VideoNSView {
-        let view = VideoNSView(frame: .zero, isLive: isLive)
+        let view = VideoNSView(frame: .zero, isLive: isLive, resumeFrom: resumeFrom, onDuration: onDuration)
         view.setOnTick(onTick)
         view.setOnStatus(onStatus)
         view.play(url, rate: rate, paused: paused)
@@ -452,7 +480,9 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
         title: String,
         danmaku: [DanmakuItem],
         mode: MooviePlaybackMode,
-        isLive: Bool = false
+        isLive: Bool = false,
+        resumeFrom: Double = 0,
+        onDuration: ((Double) -> Void)? = nil
     ) {
         close()
         NotificationCenter.default.post(
@@ -527,7 +557,9 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
                 title: title,
                 danmaku: danmaku,
                 mode: mode,
-                isLive: isLive
+                isLive: isLive,
+                resumeFrom: resumeFrom,
+                onDuration: onDuration
             )
         )
         playerWindow = window
@@ -590,6 +622,8 @@ struct MooviePlayerWindowView: View {
     let danmaku: [DanmakuItem]
     let mode: MooviePlaybackMode
     var isLive: Bool = false
+    var resumeFrom: Double = 0
+    var onDuration: ((Double) -> Void)? = nil
 
     @State private var currentTime: Double = 0
     @State private var playbackRate: Double = 1
@@ -605,7 +639,9 @@ struct MooviePlayerWindowView: View {
                 playbackRate: $playbackRate,
                 danmakuVisible: $danmakuVisible,
                 registerPlayer: true,
-                isLive: isLive
+                isLive: isLive,
+                resumeFrom: resumeFrom,
+                onDuration: onDuration
             )
 
             HStack(spacing: 10) {
