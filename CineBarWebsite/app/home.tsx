@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import LangSelect from "./lang-select";
 import ThemeToggle from "./theme-toggle";
@@ -53,7 +52,6 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
             <a href="#showcase">{m.navShowcase}</a>
             <a href="#install">{m.navInstall}</a>
             <a href="#support">{m.navSupport}</a>
-            <Link href="/tv">{m.tvNav}</Link>
           </nav>
           <LangSelect locale={locale} />
           <ThemeToggle label={m.appearance} />

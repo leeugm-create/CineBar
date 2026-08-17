@@ -414,13 +414,20 @@ function cmsNormalizeTitle(raw: string): string {
  * 同名条目排序：规范化标题精确匹配 > vod_year 与请求年份一致 > 直链可播。
  * 用于"同名不同年份"场景避免拉错（如《痴迷》2022 解说 vs 2026 正片）。
  */
+/**
+ * 匹配分三级（2026-08-18 重构）：
+ *  rank≥6 精确匹配（title 与查询逐字符相等）——永远优先（《狂飙》2023 赢《狂飙1998》，后者是独立片名）；
+ *  rank≥4 剥离匹配（去括号/尾部年份后相等）——《痴迷2025》匹配查询"痴迷"，无精确条目时按年份最新取胜；
+ *  rank<4 仅"包含"关系（《泰坦尼克号：沉没之夜》包含"泰坦尼克号"但不同作品）——线路聚合时直接剔除，宁缺毋滥。
+ */
 function cmsRankMatch(t: CMSTitle, query: string, year: string): number {
+  const q = query.trim();
   let rank = 0;
-  if (cmsNormalizeTitle(t.title) === cmsNormalizeTitle(query)) rank += 4;
+  if (t.title.trim() === q) rank = 6;
+  else if (cmsNormalizeTitle(t.title) === cmsNormalizeTitle(q)) rank = 4;
   if (year && t.year === year) rank += 3;
   if (t.playURL) rank += 1;
   // 同分 tiebreaker：vod_year 最新优先（同名多版本默认选最新版，避免源站顺序把老版本排前面）。
-  // 年份 4 位数 /10000 → 0.xxxx 小数权重，不影响整数档位。
   rank += (Number(t.year) || 0) / 10000;
   return rank;
 }
@@ -461,10 +468,13 @@ async function cmsSearchAll(
           playFrom: String(v.vod_play_from ?? ""),
         };
       });
-      // 先过滤衍生内容（解说/预告/花絮…）
-      const clean = rows.filter((r) => !cmsIsDerivative(r.title, r.category));
+      // ①过滤衍生内容（解说/预告/花絮…）；②只保留"匹配"条目（精确或剥离匹配，rank≥4；
+      // 仅包含关系如《泰坦尼克号：沉没之夜》《蒙超联赛 乌海队》直接剔除，避免拉错片）；
+      // ③排序后每源只留排名最高的 1 条（同名多版本合并，zip0 线路 = 每源一条）。
+      const clean = rows
+        .filter((r) => !cmsIsDerivative(r.title, r.category))
+        .filter((r) => cmsRankMatch(r, query, year ?? "") >= 4);
       if (clean.length === 0) return [] as CMSTitle[];
-      // 排序后每源只留排名最高的 1 条（同名多版本合并，zip0 线路 = 每源一条）
       clean.sort((a, b) => cmsRankMatch(b, query, year ?? "") - cmsRankMatch(a, query, year ?? ""));
       return [clean[0]];
     })
