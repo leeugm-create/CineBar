@@ -5,16 +5,22 @@
     <link>https://cinebar.cc/appcast.xml</link>
     <description>CineBar signed application updates</description>
     <item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 126&lt;/li&gt;&lt;li&gt;【修复】电视直播播放崩溃（Build 125 崩溃报告）&lt;/li&gt;&lt;li&gt;- 直播流（HLS live）改用纯 AVPlayerLayer 渲染，不再挂 AVPlayerView 控件，规避无时长直播流在 SwiftUI 绑定下的崩溃&lt;/li&gt;&lt;li&gt;- 频道 logo 图片改经 worker /api/iptv/logo 代理加载，修复部分频道台标加载失败&lt;/li&gt;&lt;li&gt;- /api/iptv 增加 ?app=1 模式：App 端保留国内最快直连源（网页模式仍优先 https 可播源）&lt;/li&gt;&lt;li&gt;【修复】Moovie 在线播放搜索失效&lt;/li&gt;&lt;li&gt;- Moovie 搜索接口 2026-08 起要求参数名 q（kw 已废弃，返回 invalid_query），App 端与分享页 worker 均已适配&lt;/li&gt;&lt;li&gt;【新增】分享页播放器增强（cinebar.cc/share 短链落地页）&lt;/li&gt;&lt;li&gt;- 集数区改为横向胶囊块 + 集数跳转输入框，长剧集不再纵向铺满&lt;/li&gt;&lt;li&gt;- 键盘 ←/→ 快退/快进 15 秒（全屏与内嵌均生效，输入框聚焦时不触发）&lt;/li&gt;&lt;li&gt;- URL 带 ?ep=N 时自动定位并播放指定集（CINEAI 联动直达）&lt;/li&gt;&lt;li&gt;【网页】影视库 zip0 化（本轮主体）&lt;/li&gt;&lt;li&gt;- 首页「今日热门 / 院线热门电影」与 /videos 影视库卡片改为 zip0 卡片结构（2/3 海报、圆角 16、悬停播放钮、年份/类型 meta），点击直接进入 /watch 独立播放页&lt;/li&gt;&lt;li&gt;- 新增 /watch 播放页：深色沉浸式播放 + 换源 + 选集播放（hls.js 原生播放）&lt;/li&gt;&lt;li&gt;- 片源限定为实测可播源（量子 + 最大，排除暴风 manifestLoadError），每源聚合 3 页共 300 条&lt;/li&gt;&lt;li&gt;- 播放页源（量子/急速/非凡）解析重试最多 5 次，提高 Cloudflare 抓取国内播放页的成功率&lt;/li&gt;&lt;li&gt;【修复】院线热门电影海报不显示&lt;/li&gt;&lt;li&gt;- /api/nowplaying-cn 返回的 poster 已是代理路径（绝对 URL 形态），前端旧判断只识别相对路径导致二次编码 → 502；改为包含式判断，两种形态均直接使用&lt;/li&gt;&lt;li&gt;- 真实浏览器验证：32/32 海报全部加载成功&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Mon, 17 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-126-universal.zip"
+        sparkle:version="126"
+        sparkle:shortVersionString="0.9.0-test.1"
+        length="8740024"
+        type="application/octet-stream"
+        sparkle:edSignature="B9HCaw9Nm9TdWrolP1lfJkByTwlGPE/QVcEboxMuHcImj62yn++Fiq+IFvlGCoOMwgS8XcZh+qPU/ckZpGzIBw=="/>
+    </item>
+<item>
       <title>CineBar 0.9.0</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 125&lt;/li&gt;&lt;li&gt;【新增】电视直播（App 端，对标 zip0.com/tv 排版）&lt;/li&gt;&lt;li&gt;- 主面板新增「电视台」分区：左栏播放器舞台 + 当前频道摘要 + 频道列表，右栏「切换分组」侧边栏&lt;/li&gt;&lt;li&gt;- 打开自动播放首频道，点频道卡片立即换台，切组自动播该组首个频道&lt;/li&gt;&lt;li&gt;- 加载遮罩「正在连接直播信号」，失败提示「该电视台直连线路暂未响应」&lt;/li&gt;&lt;li&gt;- 频道数据来自 GitHub 开源源 best-fan/iptv-sources（每日自动更新），经 worker /api/iptv 中转（多镜像兜底 + 6 小时缓存）&lt;/li&gt;&lt;li&gt;- 覆盖央视频道 / 卫视频道 / 地方台等 400+ 频道，支持内联播放与浮窗播放&lt;/li&gt;&lt;li&gt;【新增】网页版 /tv 页面升级（zip0 watch-tv 双栏排版）&lt;/li&gt;&lt;li&gt;- 左栏播放器 + 频道列表，右栏分组切换侧边栏；窄屏自动单栏 + 横向分组滚动&lt;/li&gt;&lt;li&gt;- 进入即播、点卡片换台、加载/失败状态层&lt;/li&gt;&lt;li&gt;【修复】worker /api/iptv 多源拼接未去重导致频道翻倍（846 → 423 条）&lt;/li&gt;&lt;li&gt;【说明】直播源时效依赖开源项目每日重建，个别失效频道可切换其他频道收看&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Sun, 16 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-125-universal.zip"
-        sparkle:version="125"
-        sparkle:shortVersionString="0.9.0"
-        length="8828219"
-        type="application/octet-stream"
-        sparkle:edSignature="9AFg6S5pJ1qkz8pJbI6xnD5y43Do5aJ9ps4JKL6fL5UAhxaEDBy0c9aDRS2wYJXZuj9xR3GlcczzSmnpN+y5Dg=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-125-universal.zip" sparkle:version="125" sparkle:shortVersionString="0.9.0" length="8828219" type="application/octet-stream" sparkle:edSignature="9AFg6S5pJ1qkz8pJbI6xnD5y43Do5aJ9ps4JKL6fL5UAhxaEDBy0c9aDRS2wYJXZuj9xR3GlcczzSmnpN+y5Dg=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
