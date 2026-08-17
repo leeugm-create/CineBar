@@ -99,6 +99,7 @@ export type Messages = {
   supportAction: string;
   supportNote: string;
   releases: string;
+  footerDisclaimer: string;
   contactTitle: string;
   contactLinks: readonly [string, string, string][];
 

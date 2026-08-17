@@ -2,7 +2,6 @@ import type { Locale, Messages } from "./i18n";
 import LangSelect from "./lang-select";
 import ThemeToggle from "./theme-toggle";
 import HomeHero from "./hero-trending";
-import SiteSearch from "./site-search";
 import ContinueWatching from "./continue-watching";
 
 const releasesURL = "https://github.com/leeugm-create/CineBar/releases";
@@ -43,10 +42,6 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
           />
           <span>CineBar</span>
         </a>
-        <div className="mobile-search-stack">
-          <SiteSearch m={m} locale={locale} />
-          <p className="mobile-search-lede">{m.mobileSearchLede}</p>
-        </div>
         <div className="header-right">
           <nav aria-label="Main">
             <a href="#showcase">{m.navShowcase}</a>
@@ -58,10 +53,7 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
         </div>
       </header>
 
-      {/* 上次观看置顶：用户要求放在电影区块上方（原在 HomeHero 之后会落到剧集下方） */}
-      <ContinueWatching m={m} />
-
-      <HomeHero m={m} locale={locale} />
+      <HomeHero m={m} locale={locale} heroExtra={<ContinueWatching m={m} />} />
 
       <section className="section" id="cineai">
         <h2>{m.caiTitle}</h2>
@@ -165,6 +157,7 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
       <footer>
         <span>© 2026 CineBar</span>
         <a href={releasesURL}>{m.releases}</a>
+        <p className="footer-disclaimer">{m.footerDisclaimer}</p>
       </footer>
     </main>
   );

@@ -3371,3 +3371,12 @@ footer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* 底部免责声明（2026-08-18 新增） */
+.footer-disclaimer {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  width: 100%;
+}

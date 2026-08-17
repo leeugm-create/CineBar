@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
+import type { ReactNode } from "react";
 
 type TrendingMovie = {
   title: string;
@@ -17,7 +18,7 @@ type TrendingMovie = {
 const releaseURL =
   "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-130-universal.zip";
 
-export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
+export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale: Locale; heroExtra?: ReactNode }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
   const [shows, setShows] = useState<TrendingMovie[]>([]);
 
@@ -60,6 +61,9 @@ export default function HomeHero({ m, locale }: { m: Messages; locale: Locale })
           <p className="hero-compat">{m.compat}</p>
         </div>
       </section>
+
+      {/* 上次观看：主标下方、今日热门电影上方（用户要求的位置） */}
+      {heroExtra}
 
       <TrendingRow
         title={m.trendingMovies}
