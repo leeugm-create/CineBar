@@ -11,6 +11,7 @@ type IPTVChannel = {
   group: string;
   responseTime: string;
   reachable?: boolean;
+  webUnplayable?: boolean;
 };
 
 type IPTVGroup = {
@@ -51,19 +52,25 @@ function LivePlayer({ channel, m }: { channel: IPTVChannel; m: Messages }) {
         setFailed(true);
       }
     }, 9000);
-    const isHLS = channel.url.toLowerCase().includes(".m3u8");
+    // 直播源经 worker /api/iptv/stream 代理后统一同源（含 CORS 与 m3u8 分片重写）。
+    // 不再用 URL 后缀判断 HLS：央视等源是数字路径、经 302 指向咪咕 m3u8（2026-08-18 网页端央视全挂根因）。
     const source = proxiedStream(channel.url);
-    if (isHLS && Hls.isSupported()) {
+    if (Hls.isSupported()) {
       hls = new Hls({ enableWorker: true, lowLatencyMode: true, maxBufferLength: 30 });
       hls.loadSource(source);
       hls.attachMedia(video);
       hls.on(Hls.Events.ERROR, (_e, data) => {
-        // fatal（清单/分片严重错误）立即判失败；轻微网络错误不立刻失败，
-        // 交给超时兜底，避免直播流瞬间抖动就误判（但也不无限转圈）。
         if (data.fatal) {
           settled = true;
           window.clearTimeout(timeout);
-          setFailed(true);
+          if (data.details === "manifestLoadError") {
+            // 不是 m3u8（可能是裸流）：降级原生播放尝试（Safari 可播 m3u8，Chrome 会触发 onerror 走失败态）。
+            video.src = source;
+            video.play().catch(() => setFailed(true));
+            setLoaded(true);
+          } else {
+            setFailed(true);
+          }
         }
       });
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -72,7 +79,7 @@ function LivePlayer({ channel, m }: { channel: IPTVChannel; m: Messages }) {
         video.play().catch(() => setFailed(true));
         setLoaded(true);
       });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl") || !isHLS) {
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = source;
       video.play().catch(() => setFailed(true));
       setLoaded(true);
@@ -137,9 +144,10 @@ export default function TVClient({ m }: { m: Messages }) {
         if (!alive) return;
         setGroups(body.groups ?? []);
         if (body.groups?.length) {
-          // 对标 zip0：进入即自动播放第一个频道。
+          // 对标 zip0：进入即自动播放第一个频道（跳过网页端不可播台，如央视 119.233.255.62 系）。
           setActiveGroup(body.groups[0].name);
-          setCurrent(body.groups[0].channels[0] ?? null);
+          const firstPlayable = body.groups[0].channels.find((c) => !c.webUnplayable) ?? body.groups[0].channels[0] ?? null;
+          setCurrent(firstPlayable);
         }
       })
       .catch(() => {
@@ -182,7 +190,7 @@ export default function TVClient({ m }: { m: Messages }) {
   function switchGroup(group: IPTVGroup) {
     setActiveGroup(group.name);
     // 对标 zip0：切换分组后自动播放该组第一个可播频道（避免直接黑屏）。
-    const first = group.channels.find((c) => c.reachable !== false) ?? group.channels[0];
+    const first = group.channels.find((c) => c.reachable !== false && !c.webUnplayable) ?? group.channels[0];
     if (first) setCurrent(first);
   }
 
@@ -247,7 +255,7 @@ export default function TVClient({ m }: { m: Messages }) {
                     type="button"
                     key={`${c.name}-${c.url}`}
                     className={`tv-station-card${current?.url === c.url ? " is-playing" : ""}${
-                      c.reachable === false ? " is-offline" : ""
+                      c.reachable === false || c.webUnplayable ? " is-offline" : ""
                     }`}
                     onClick={() => choose(c)}
                   >
@@ -266,6 +274,8 @@ export default function TVClient({ m }: { m: Messages }) {
                       )}
                       {c.reachable === false ? (
                         <span className="tv-station-offline-badge">{m.tvSignalUnavailable}</span>
+                      ) : c.webUnplayable ? (
+                        <span className="tv-station-offline-badge">请用 Mac 客户端</span>
                       ) : null}
                     </span>
                     <span className="tv-station-info">

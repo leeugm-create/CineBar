@@ -1247,6 +1247,8 @@ type IPTVChannel = {
   responseTime: string;
   /** 从 Cloudflare 网络能否访问（网页端据此只展示可播台；App 直连国内不受限）。 */
   reachable?: boolean;
+  /** 网页端不可播（源站 Cloudflare 网络不可达或裸流浏览器不支持），App 直连不受影响。 */
+  webUnplayable?: boolean;
 };
 
 const IPTV_CACHE_KEY = 22; // 网页（2026-08-18 二次升 key：旧 key 20 缓存含 Cloudflare 误判的 reachable=false，且部署 token 无 D1 权限无法清理）；2~18、20 已弃用
@@ -1663,6 +1665,14 @@ async function handleIPTV(request: Request, env: Env, ctx: ExecutionContext): Pr
     const origin = `${reqURL.protocol}//${reqURL.host}`;
     channels = channels.map((ch) =>
       intlGroups.has(ch.group) ? { ...ch, url: `${origin}/api/iptv/stream?url=${encodeURIComponent(ch.url)}` } : ch
+    );
+  }
+  // 网页模式：标记 Cloudflare 网络不可达的源（实测 119.233.255.62 央视/卫视 34 台），
+  // 网页端播放走 worker 代理（Cloudflare 网络）必然 502；App 端直连不受限（2026-08-18 修复）。
+  if (!isApp) {
+    const WEB_UNPLAYABLE_HOSTS = ["119.233.255.62"];
+    channels = channels.map((ch) =>
+      WEB_UNPLAYABLE_HOSTS.some((h) => ch.url.includes(h)) ? { ...ch, webUnplayable: true } : ch
     );
   }
   // 分组名归一：源里同一分组叫法不统一（央视台/央视频道、其他/其他频道），统一展示；
