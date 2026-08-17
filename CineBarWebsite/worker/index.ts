@@ -17,6 +17,9 @@ interface Env {
       };
     };
   };
+  /** 国内直播中转（CineBarRelay + Cloudflare Tunnel）：网页端被地理封锁的国内源
+   *  经本机中转拉取。形如 https://xxxx.trycloudflare.com（不含结尾斜杠）。 */
+  IPTV_RELAY_URL?: string;
 }
 
 interface ExecutionContext {
@@ -465,6 +468,191 @@ async function handleCMSPlay(request: Request, env: Env): Promise<Response> {
   );
 }
 
+/** 把资源站的 type_name 归类到统一大类：movie/tv/drama/anime/other。 */
+function cmsClassifyCategory(raw: string): string {
+  const t = raw || "";
+  if (/短剧|迷你剧/.test(t)) return "drama";
+  if (/动漫|动画/.test(t)) return "anime";
+  if (/电影|片/.test(t)) return "movie";
+  if (/剧|综艺|真人秀|纪录/.test(t)) return "tv";
+  return "other";
+}
+
+/** 从单个 CMS 源拉 ac=list 某一页，归一成轻量条目（不含播放地址，展示用）。 */
+async function cmsListPage(
+  src: CMSSource,
+  pg: number,
+  signal?: AbortSignal
+): Promise<{ id: string; title: string; poster: string | null; remarks: string; category: string; categoryRaw: string }[]> {
+  const params = new URLSearchParams({ ac: "list", pg: String(pg) });
+  try {
+    const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
+      headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
+      signal,
+    });
+    if (!resp.ok) return [];
+    const data = (await resp.json()) as {
+      code?: number;
+      list?: Record<string, unknown>[];
+    };
+    if (data.code !== 1 || !Array.isArray(data.list)) return [];
+    return data.list.map((v) => {
+      const categoryRaw = String(v.type_name ?? "");
+      return {
+        id: String(v.vod_id ?? ""),
+        title: String(v.vod_name ?? ""),
+        poster: v.vod_pic ? String(v.vod_pic) : null,
+        remarks: String(v.vod_remarks ?? ""),
+        category: cmsClassifyCategory(categoryRaw),
+        categoryRaw,
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** 聚合指定分类的列表：从各源拉指定页，去重、过滤空标题。 */
+async function cmsListByCategory(
+  category: string,
+  pg: number
+): Promise<{ items: CMSTitle[]; total: number }> {
+  const signal = AbortSignal.timeout(15000);
+  const pages = await Promise.allSettled(
+    CMS_SOURCES.map((src) => cmsListPage(src, pg, signal))
+  );
+  const merged: {
+    id: string; title: string; poster: string | null; remarks: string;
+    category: string; categoryRaw: string; source: string; sourceName: string;
+  }[] = [];
+  CMS_SOURCES.forEach((src, i) => {
+    const r = pages[i];
+    if (r.status !== "fulfilled") return;
+    for (const item of r.value) {
+      if (!item.id || !item.title.trim()) continue;
+      merged.push({ ...item, source: src.id, sourceName: src.name });
+    }
+  });
+  // 按 id 去重（保留首个出现）
+  const seen = new Map<string, typeof merged[number]>();
+  for (const item of merged) if (!seen.has(item.id)) seen.set(item.id, item);
+  const uniq = Array.from(seen.values());
+  // 按分类过滤
+  const filtered = category === "all" ? uniq : uniq.filter((x) => x.category === category);
+  const items: CMSTitle[] = filtered.map((x) => ({
+    source: x.source,
+    sourceName: x.sourceName,
+    id: x.id,
+    title: x.title,
+    year: "",
+    poster: x.poster,
+    category: x.categoryRaw,
+    playURL: "",
+    episodeCount: 0,
+  }));
+  return { items, total: items.length };
+}
+
+/** GET /api/cms/detail?id= 返回单个条目的完整信息（含播放地址），供点击进详情/播放。 */
+async function handleCMSDetail(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const id = normalizeText(url.searchParams.get("id"));
+  if (!id || id.length > 40) {
+    return new Response(JSON.stringify({ error: "invalid id" }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  // 从各源按 ids 查详情，取第一个返回播放地址的。
+  const results = await Promise.allSettled(
+    CMS_SOURCES.map(async (src) => {
+      const params = new URLSearchParams({ ac: "detail", ids: id });
+      const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
+        headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
+      });
+      if (!resp.ok) return null;
+      const data = (await resp.json()) as { code?: number; list?: Record<string, unknown>[] };
+      if (data.code !== 1 || !Array.isArray(data.list) || !data.list.length) return null;
+      const v = data.list[0];
+      const playURL = String(v.vod_play_url ?? "");
+      if (!playURL) return null;
+      return {
+        source: src.id,
+        sourceName: src.name,
+        id,
+        title: String(v.vod_name ?? ""),
+        year: String(v.vod_year ?? ""),
+        poster: v.vod_pic ? String(v.vod_pic) : null,
+        category: String(v.type_name ?? ""),
+        playURL,
+        episodeCount: playURL ? playURL.split("#").length : 0,
+        streamURL: cmsResolveStreamURL(playURL, 1),
+      };
+    })
+  );
+  for (const r of results) {
+    if (r.status === "fulfilled" && r.value) {
+      return new Response(JSON.stringify(r.value), {
+        status: 200,
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" },
+      });
+    }
+  }
+  return new Response(JSON.stringify({ error: "not found" }), {
+    status: 404,
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+}
+
+/** GET /api/cms/list?category=&pg= 返回指定分类的聚合列表（展示用，无播放地址）。 */
+async function handleCMSList(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const category = normalizeText(url.searchParams.get("category")) || "all";
+  const pg = Math.max(1, Number(url.searchParams.get("pg")) || 1);
+  if (!/^(all|movie|tv|drama|anime)$/.test(category)) {
+    return new Response(JSON.stringify({ error: "invalid category" }), {
+      status: 400,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  const { items, total } = await cmsListByCategory(category, pg);
+  return new Response(
+    JSON.stringify({ category, pg, total, items }),
+    {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" },
+    }
+  );
+}
+
+/** GET /api/cms/poster?url=…  资源站海报代理：绕开防盗链/混合内容，加 CORS。 */
+async function handleCMSPoster(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const target = url.searchParams.get("url");
+  if (!target) return new Response("missing url", { status: 400 });
+  const allowed = ["https://", "http://"];
+  if (!allowed.some((p) => target.startsWith(p))) {
+    return new Response("bad url", { status: 400 });
+  }
+  try {
+    const resp = await fetch(target, {
+      headers: { "user-agent": "Mozilla/5.0", accept: "image/*", referer: new URL(target).origin },
+    });
+    if (!resp.ok) return new Response("upstream failed", { status: 502 });
+    const body = await resp.arrayBuffer();
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "content-type": resp.headers.get("content-type") || "image/jpeg",
+        "cache-control": "public, max-age=86400",
+        "access-control-allow-origin": "*",
+      },
+    });
+  } catch {
+    return new Response("upstream unreachable", { status: 502 });
+  }
+}
+
 
 /** GET /api/trending 返回 moovie 每周热门电影与电视榜。
  *  type=all 时一次返回两榜（首页用）；type=movie 或 tv 时只返回单个榜。
@@ -505,14 +693,19 @@ async function writeTrendingCache(env: Env, movies: TrendingMovie[], shows: Tren
   }
 }
 
-/** ===== IPTV 电视直播（对标 zip0 的 /tv 板块） =====
- *  数据源：best-fan/iptv-sources（GitHub 开源，每日自动构建国内直播源）。
- *  GET /api/iptv 返回按分组组织的频道列表（央视/卫视/地方/其他）。
- *  结果缓存 6 小时（复用 trending_cache 表，id=2）。 */
+/** ===== IPTV 电视直播（对标 zip0 的 /tv 板块，含国际台分组） =====
+ *  国内源：best-fan/iptv-sources（GitHub 开源，每日自动构建国内直播源）。
+ *  国际源：iptv-org（全球 187 国、14000+ 频道，按国家分组），运行时抓取并按白名单过滤知名国际台，
+ *          URL 随源站每日更新，不会过期失效。
+ *  GET /api/iptv 返回按分组组织的频道列表（央视/卫视/地方/其他 + 各国国际台）。 */
 
 const IPTV_SOURCES = [
   { id: "cn", name: "国内", url: "https://raw.githubusercontent.com/best-fan/iptv-sources/main/cn_all.m3u8" },
   { id: "cn-ghproxy", name: "国内(镜像)", url: "https://ghproxy.net/https://raw.githubusercontent.com/best-fan/iptv-sources/main/cn_all.m3u8" },
+];
+
+const IPTV_INTL_SOURCES = [
+  { id: "intl", name: "国际", url: "https://iptv-org.github.io/iptv/index.country.m3u" },
 ];
 
 type IPTVChannel = {
@@ -521,35 +714,309 @@ type IPTVChannel = {
   url: string;
   group: string;
   responseTime: string;
+  /** 从 Cloudflare 网络能否访问（网页端据此只展示可播台；App 直连国内不受限）。 */
+  reachable?: boolean;
 };
 
-const IPTV_CACHE_KEY = 2;
-const IPTV_CACHE_TTL_SECONDS = 6 * 60 * 60;
+const IPTV_CACHE_KEY = 18; // 网页（变体级缓存 + 按主机可达性 + 国内中转 + 国际台探测）；2~17 已弃用
+const IPTV_CACHE_KEY_APP = 19; // App（国内最快源 + 国际台代理）
+// best-fan 源每日自动重建，12 小时抓取一次即可跟上换源节奏；
+// 抓取失败时回退旧缓存（见 handleIPTV），避免源站抖动导致列表清空。
+const IPTV_CACHE_TTL_SECONDS = 12 * 60 * 60;
 
-async function readIPTVCache(env: Env): Promise<IPTVChannel[] | null> {
+// 国际台白名单（纯子串 + 少量  正则），过滤 iptv-org 的知名国际台
+const INTL_PLAIN: Record<string, string[]> = {
+  'United States': ['fox news', 'msnbc', 'cnbc', 'bloomberg', 'abc news', 'cbs news', 'nbc news', 'pbs', 'c-span', 'newsmax', 'the weather channel', 'newsnation', 'cheddar', 'usa today'],
+  'United Kingdom': ['bbc news', 'sky news', 'itv', 'channel 4', 'bbc one', 'bbc two', 'gb news'],
+  'Japan': ['nhk world', 'nhk general', 'nhk news', 'tokyo mx', 'tbs news', 'fuji', 'tv asahi', 'ntv'],
+  'South Korea': ['arirang', 'kbs world', 'ytn', 'mbc', 'sbs news', 'jtbc', 'tv chosun', 'channel a', 'kbs news'],
+  'Hong Kong': ['tvb', 'now news', 'hoy', 'viutv', 'rthk', 'i-cable'],
+  'Taiwan': ['tvbs', 'cts', 'ttv', 'ctv', 'set', 'ftv', 'next tv', 'ebc', 'da ai', 'formosa', 'hakka'],
+  'France': ['france 24', 'bfm', 'tf1', 'france 2', 'france 3', 'm6', 'arte', 'lci', 'cnews', 'france info'],
+  'Germany': ['dw english', 'dw deutsch', 'wdr', 'ndr', 'br fernsehen', 'n-tv', 'rtl', 'prosieben', 'arte', 'phoenix'],
+  'Australia': ['abc news', 'abc australia', 'sbs', 'channel 9', 'channel 7', 'channel 10', '7 news', '9 news', 'sky news australia'],
+  'Canada': ['cbc news', 'ctv news', 'global news', 'cp24', 'citynews', 'bnn bloomberg'],
+  'Russia': ['rt international', 'rt news', 'russia today', 'rt documentary'],
+  'India': ['ndtv 24x7', 'times now', 'cnn-news18', 'republic', 'wion', 'india today', 'aaj tak', 'dd news'],
+  'Singapore': ['channel newsasia', 'cna', 'mediacorp', 'channel 5', 'channel 8'],
+  'Qatar': ['al jazeera english', 'al jazeera arabic', 'al jazeera'],
+  'Turkey': ['trt world', 'trt 1', 'trt haber', 'cnn turk', 'haberturk'],
+  'Switzerland': ['srf', 'rts'],
+  'Netherlands': ['nos', 'bnr', 'npo'],
+  'Italy': ['rai', 'sky tg24', 'tgcom', 'canale 5', 'rete 4', 'italia 1'],
+  'Spain': ['rtve', 'la 1', 'antena 3', 'telecinco', 'la sexta', 'cuatro', '24h'],
+  'Mexico': ['televisa', 'azteca', 'imagen'],
+  'Argentina': ['telefe', 'el trece', 'c5n', 'a24', 'cronica'],
+  'Brazil': ['globo', 'record', 'band', 'sbt', 'cnn brasil', 'jovem pan'],
+  'Thailand': ['thai pbs', 'channel 3', 'mcot', 'nbt'],
+  'Vietnam': ['vtv1', 'vtv4', 'htv', 'vtc'],
+  'Philippines': ['abs-cbn', 'gma', 'cnn philippines', 'anc'],
+  'Indonesia': ['kompas tv', 'metro tv', 'tvri', 'cnn indonesia', 'rcti'],
+  'Malaysia': ['rtm', 'astro', 'tv3'],
+  'Saudi Arabia': ['al arabiya', 'al ekhbariya', 'saudi', 'mbc'],
+  'Israel': ['i24news', 'kan', 'channel 13', 'channel 12'],
+  'Ukraine': ['ukraine 24', 'inter', '1+1', 'ictv'],
+  'Poland': ['tvn24', 'polsat', 'tvp'],
+  'Norway': ['nrk', 'tv2'],
+  'Sweden': ['svt', 'tv4'],
+  'Denmark': ['dr1', 'tv2'],
+  'Austria': ['orf'],
+  'Belgium': ['rtbf', 'vrt'],
+  'Egypt': ['al jazeera mubasher', 'extra news', 'nile'],
+  'United Arab Emirates': ['al arabiya', 'dubai', 'sky news arabia', 'abu dhabi'],
+};
+
+const INTL_RX: Record<string, string[]> = {
+  'United States': ['\\bCNN\\b'],
+  'United Kingdom': [],
+  'Japan': [],
+  'South Korea': [],
+  'Hong Kong': [],
+  'Taiwan': [],
+  'France': [],
+  'Germany': ['\\bZDF\\b', '\\bARD\\b'],
+  'Australia': [],
+  'Canada': [],
+  'Russia': [],
+  'India': [],
+  'Singapore': [],
+  'Qatar': [],
+  'Turkey': [],
+  'Switzerland': [],
+  'Netherlands': [],
+  'Italy': [],
+  'Spain': [],
+  'Mexico': [],
+  'Argentina': [],
+  'Brazil': [],
+  'Thailand': [],
+  'Vietnam': [],
+  'Philippines': [],
+  'Indonesia': [],
+  'Malaysia': [],
+  'Saudi Arabia': [],
+  'Israel': [],
+  'Ukraine': [],
+  'Poland': [],
+  'Norway': [],
+  'Sweden': [],
+  'Denmark': [],
+  'Austria': [],
+  'Belgium': [],
+  'Egypt': [],
+  'United Arab Emirates': [],
+};
+
+const INTL_COUNTRY_NAMES: Record<string, string> = {
+  'United States': '美国',
+  'United Kingdom': '英国',
+  'Japan': '日本',
+  'South Korea': '韩国',
+  'Hong Kong': '香港',
+  'Taiwan': '台湾',
+  'France': '法国',
+  'Germany': '德国',
+  'Australia': '澳大利亚',
+  'Canada': '加拿大',
+  'Russia': '俄罗斯',
+  'India': '印度',
+  'Singapore': '新加坡',
+  'Qatar': '卡塔尔',
+  'Turkey': '土耳其',
+  'Switzerland': '瑞士',
+  'Netherlands': '荷兰',
+  'Italy': '意大利',
+  'Spain': '西班牙',
+  'Mexico': '墨西哥',
+  'Argentina': '阿根廷',
+  'Brazil': '巴西',
+  'Thailand': '泰国',
+  'Vietnam': '越南',
+  'Philippines': '菲律宾',
+  'Indonesia': '印度尼西亚',
+  'Malaysia': '马来西亚',
+  'Saudi Arabia': '沙特阿拉伯',
+  'Israel': '以色列',
+  'Ukraine': '乌克兰',
+  'Poland': '波兰',
+  'Norway': '挪威',
+  'Sweden': '瑞典',
+  'Denmark': '丹麦',
+  'Austria': '奥地利',
+  'Belgium': '比利时',
+  'Egypt': '埃及',
+  'United Arab Emirates': '阿联酋',
+};
+
+/** 判断是否为白名单内的国际台；是则返回中文分组名（如"美国"），否则 null。
+ *  纯子串匹配为主（便宜），仅  边界的模式用正则。 */
+function intlGroupFor(channel: IPTVChannel): string | null {
+  const plain = INTL_PLAIN[channel.group];
+  const rx = INTL_RX[channel.group];
+  if (!plain && !rx) return null;
+  const lower = channel.name.toLowerCase();
+  if (plain) {
+    for (const p of plain) {
+      if (lower.includes(p)) return INTL_COUNTRY_NAMES[channel.group] ?? channel.group;
+    }
+  }
+  if (rx) {
+    for (const r of rx) {
+      if (new RegExp(r, "i").test(channel.name)) return INTL_COUNTRY_NAMES[channel.group] ?? channel.group;
+    }
+  }
+  return null;
+}
+
+async function readIPTVCache(
+  env: Env,
+  key = IPTV_CACHE_KEY,
+  allowStale = false
+): Promise<{ channels: IPTVChannel[]; updatedAt: number } | null> {
   try {
     const res = await env.DB.prepare(
       "SELECT data, updated_at FROM trending_cache WHERE id = ?"
-    ).bind(IPTV_CACHE_KEY).first<{ data: string; updated_at: number }>();
+    ).bind(key).first<{ data: string; updated_at: number }>();
     if (!res?.data) return null;
     const now = Math.floor(Date.now() / 1000);
-    if (now - Number(res.updated_at) > IPTV_CACHE_TTL_SECONDS) return null;
+    if (!allowStale && now - Number(res.updated_at) > IPTV_CACHE_TTL_SECONDS) return null;
     const parsed = JSON.parse(res.data);
-    return Array.isArray(parsed) ? (parsed as IPTVChannel[]) : null;
+    if (!Array.isArray(parsed)) return null;
+    return { channels: parsed as IPTVChannel[], updatedAt: Number(res.updated_at) };
   } catch {
     return null;
   }
 }
 
-async function writeIPTVCache(env: Env, channels: IPTVChannel[]): Promise<void> {
+async function writeIPTVCache(env: Env, channels: IPTVChannel[], key = IPTV_CACHE_KEY): Promise<void> {
   try {
     await env.DB.prepare(
       "INSERT INTO trending_cache (id, data, updated_at) VALUES (?, ?, ?) " +
       "ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at"
-    ).bind(IPTV_CACHE_KEY, JSON.stringify(channels), Math.floor(Date.now() / 1000)).run();
+    ).bind(key, JSON.stringify(channels), Math.floor(Date.now() / 1000)).run();
   } catch {
     // 缓存写入失败不阻塞响应
   }
+}
+
+/** 台名清洗：去横杠/空格/下划线后小写，用于合并同一台的不同写法（CCTV-1 与 CCTV1）。 */
+function cleanChannelName(name: string): string {
+  return name.replace(/[\s\-_]+/g, "").toLowerCase();
+}
+
+/** 频道去重：先按 URL，再按清洗后的台名合并（同一台保留一个变体）。
+ *  preferReachable=true（网页）：优先保留探测可达的变体（绕过地理封锁），其次 https，最后第一个；
+ *  preferReachable=false（App）：保留第一个源——国内响应最快的源，App 直连可用。 */
+function dedupeIPTVChannels(channels: IPTVChannel[], preferReachable: boolean): IPTVChannel[] {
+  const seenURL = new Set<string>();
+  const byName = new Map<string, IPTVChannel[]>();
+  for (const ch of channels) {
+    if (seenURL.has(ch.url)) continue;
+    seenURL.add(ch.url);
+    const key = cleanChannelName(ch.name);
+    if (!byName.has(key)) byName.set(key, []);
+    byName.get(key)!.push(ch);
+  }
+  const out: IPTVChannel[] = [];
+  for (const list of byName.values()) {
+    if (preferReachable) {
+      const reachable = list.find((c) => c.reachable === true);
+      const https = list.find((c) => c.url.startsWith("https://"));
+      out.push(reachable ?? https ?? list[0]);
+    } else {
+      out.push(list[0]);
+    }
+  }
+  return out;
+}
+
+/** 探测单个频道从 Cloudflare 网络是否可达（拉取播放列表头即可，8s 超时——国内源经 Cloudflare 国际网络首字节常需 1~3s）。 */
+async function probeIPTVChannel(channel: IPTVChannel): Promise<IPTVChannel> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const resp = await fetch(channel.url, {
+      headers: { "user-agent": "Mozilla/5.0", accept: "*/*" },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const ok = resp.ok;
+    await resp.body?.cancel();
+    return { ...channel, reachable: ok };
+  } catch {
+    clearTimeout(timer);
+    return { ...channel, reachable: false };
+  }
+}
+
+/** 每轮最多探测的主机数。免费档单次调用 50 次外部子请求上限（刷新本身还要抓 3 个源），
+ *  留余量取 40；剩余主机由后续请求的 backfill 按"未标记频道"分批补探测，2~3 轮收敛。 */
+const IPTV_PROBE_HOST_CAP = 40;
+
+/** 按主机探测可达性（16 并发 × 8s 超时）。地理封锁是主机级（同 IP:port 的所有流同生死），
+ *  每主机取第一个 URL 探测（够判定主机级封锁）。 */
+async function probeIPTVHosts(urls: string[], relay?: string): Promise<Map<string, boolean>> {
+  const byHost = new Map<string, string>();
+  for (const u of urls) {
+    try {
+      const host = new URL(u).host;
+      if (!byHost.has(host)) byHost.set(host, u);
+    } catch {
+      // 非法 URL 忽略
+    }
+  }
+  const result = new Map<string, boolean>();
+  const entries = [...byHost.entries()].slice(0, IPTV_PROBE_HOST_CAP);
+  for (let i = 0; i < entries.length; i += 16) {
+    const batch = entries.slice(i, i + 16);
+    const res = await Promise.all(
+      batch.map(async ([host, url]) => {
+        // 经中转探测：把探测目标换成 relay 的 /proxy 入口（中转在国内网络，不受地理封锁影响）。
+        const probeURL = relay ? `${relay}/proxy?url=${encodeURIComponent(url)}` : url;
+        const probe = await probeIPTVChannel({ name: host, url: probeURL, logo: null, group: "", responseTime: "" });
+        return [host, probe.reachable === true] as const;
+      })
+    );
+    for (const [h, ok] of res) result.set(h, ok);
+  }
+  return result;
+}
+
+/** 按主机判定给频道打 reachable 标记（URL 解析失败则保持未标记）。 */
+function markHostReachability(channels: IPTVChannel[], hostMap: Map<string, boolean>): IPTVChannel[] {
+  return channels.map((ch) => {
+    try {
+      const r = hostMap.get(new URL(ch.url).host);
+      if (r !== undefined) return { ...ch, reachable: r };
+    } catch {
+      // 忽略非法 URL
+    }
+    return ch;
+  });
+}
+
+/** 网页模式兜底：分批补探测主机并写回缓存（受 50 外部子请求上限约束，多轮收敛）。
+ *  国内台：配置中转时经中转重探（中转在国内网络，能访问被地理封锁的源）。
+ *  国际台：只直连探测（中转在国内网络，反而够不到国外源）；标记后网页端灰显不可播的台。 */
+async function backfillIPTVReachability(env: Env, cacheKey: number): Promise<void> {
+  const cached = await readIPTVCache(env, cacheKey, true);
+  if (!cached) return;
+  const intlSet = new Set(Object.values(INTL_COUNTRY_NAMES));
+  const domestic = cached.channels.filter((ch) => !intlSet.has(ch.group));
+  const intl = cached.channels.filter((ch) => intlSet.has(ch.group));
+  // 每轮国内 20 + 国际 20 = 40 次子请求，两批合计不超 50 上限；剩余下一轮继续。
+  // 国内台：配置了中转时重探"非直连可达"（直连被拒的经中转救活）；无中转时只探未标记的（避免反复重探已判定失败的）。
+  // 国际台：只探未标记的（直连失败即失败，没有中转可救）。
+  const dNeeds = (env.IPTV_RELAY_URL
+    ? domestic.filter((ch) => ch.reachable !== true)
+    : domestic.filter((ch) => ch.reachable === undefined)
+  ).slice(0, 20);
+  const iNeeds = intl.filter((ch) => ch.reachable === undefined).slice(0, 20);
+  if (dNeeds.length === 0 && iNeeds.length === 0) return;
+  const dMap = await probeIPTVHosts(dNeeds.map((ch) => ch.url), env.IPTV_RELAY_URL);
+  const iMap = await probeIPTVHosts(iNeeds.map((ch) => ch.url));
+  const marked = [...markHostReachability(domestic, dMap), ...markHostReachability(intl, iMap)];
+  await writeIPTVCache(env, marked, cacheKey);
 }
 
 /** 解析 m3u8 播放列表文本 → 频道数组（#EXTINF 行 + 下一行 URL 配对）。 */
@@ -584,63 +1051,259 @@ function parseIPVPlaylist(text: string): IPTVChannel[] {
   return channels;
 }
 
+/** 重新抓取源站并写缓存（handleIPTV 首次请求与 stale 回退共用）。返回抓取到的频道（可能为空）。 */
+async function refreshIPTV(env: Env, ctx: ExecutionContext, cacheKey: number, preferReachable: boolean): Promise<IPTVChannel[]> {
+  // 国内源：保留全部变体（每台多个源，网页端去重时可选可达变体绕过地理封锁）。
+  const seenURL = new Set<string>();
+  const domestic: IPTVChannel[] = [];
+  for (const src of IPTV_SOURCES) {
+    try {
+      const resp = await fetch(src.url, {
+        headers: { "user-agent": "Mozilla/5.0" },
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        for (const ch of parseIPVPlaylist(text)) {
+          if (seenURL.has(ch.url)) continue;
+          seenURL.add(ch.url);
+          domestic.push(ch);
+        }
+      }
+    } catch {
+      // 单源失败不阻塞
+    }
+  }
+  // 国际台：抓 iptv-org 全球列表，按国家白名单过滤知名台，分组名归一为中文国家名。
+  // 只保留 http(s) 流（worker fetch 不支持 rtmp 等协议）。
+  const intl: IPTVChannel[] = [];
+  for (const src of IPTV_INTL_SOURCES) {
+    try {
+      const resp = await fetch(src.url, {
+        headers: { "user-agent": "Mozilla/5.0" },
+      });
+      if (resp.ok) {
+        const text = await resp.text();
+        for (const ch of parseIPVPlaylist(text)) {
+          const g = intlGroupFor(ch);
+          if (g && /^https?:\/\//i.test(ch.url)) {
+            ch.group = g;
+            intl.push(ch);
+          }
+        }
+      }
+    } catch {
+      // 单源失败不阻塞
+    }
+  }
+  const intlDeduped = dedupeIPTVChannels(intl, preferReachable);
+  const allVariants = [...domestic, ...intlDeduped];
+  if (allVariants.length > 0) {
+    await writeIPTVCache(env, allVariants, cacheKey);
+    // 网页模式（preferReachable=true）：后台按主机探测国内台可达性并写回缓存，下次请求生效。
+    // 国际台不探测（300+ 且部分地理封锁，30s 预算不够；保持"未探测=可点播"）。
+    if (preferReachable) {
+      ctx.waitUntil(
+        probeIPTVHosts(domestic.map((ch) => ch.url)).then((hostMap) =>
+          writeIPTVCache(env, [...markHostReachability(domestic, hostMap), ...intlDeduped], cacheKey)
+        )
+      );
+    }
+  }
+  // 响应按台名去重（网页模式：有可达标记时优先可达变体；首次请求探测未完成则 https/首个）。
+  return dedupeIPTVChannels(allVariants, preferReachable);
+}
+
 /** GET /api/iptv 返回分组频道列表。 */
-async function handleIPTV(request: Request, env: Env): Promise<Response> {
-  let channels = await readIPTVCache(env);
-  // 历史缓存可能由旧版本写入（未去重），读取时也做一遍 URL 去重，保证结果稳定。
-  if (channels) {
-    const seenCache = new Set<string>();
-    channels = channels.filter((ch) => {
-      if (seenCache.has(ch.url)) return false;
-      seenCache.add(ch.url);
-      return true;
-    });
+async function handleIPTV(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const reqURL = new URL(request.url);
+  // App 模式（?app=1）：保留国内最快源，App 直连播放；网页模式：优先可达变体 + https + 可达性标记。
+  const isApp = reqURL.searchParams.get("app") === "1";
+  const cacheKey = isApp ? IPTV_CACHE_KEY_APP : IPTV_CACHE_KEY;
+  const preferReachable = !isApp;
+  let channels: IPTVChannel[] | null = null;
+  let updatedAt = Math.floor(Date.now() / 1000);
+  const fresh = await readIPTVCache(env, cacheKey);
+  if (fresh) {
+    channels = dedupeIPTVChannels(fresh.channels, preferReachable);
+    updatedAt = fresh.updatedAt;
+    // 网页缓存未全部标记（探测按 50 外部子请求上限分批进行）→ 后台补探测下一批主机，不阻塞响应。
+    if (!isApp && !channels.every((c) => c.reachable !== undefined)) {
+      ctx.waitUntil(backfillIPTVReachability(env, cacheKey));
+    }
+  } else {
+    // 缓存过期或缺失：先尝试过期缓存（stale）响应，避免源站抖动导致列表清空；后台刷新。
+    const stale = await readIPTVCache(env, cacheKey, true);
+    if (stale) {
+      channels = dedupeIPTVChannels(stale.channels, preferReachable);
+      updatedAt = stale.updatedAt;
+      ctx.waitUntil(refreshIPTV(env, ctx, cacheKey, preferReachable));
+    }
   }
   if (!channels) {
-    const all: IPTVChannel[] = [];
-    for (const src of IPTV_SOURCES) {
-      try {
-        const resp = await fetch(src.url, {
-          headers: { "user-agent": "Mozilla/5.0" },
-        });
-        if (resp.ok) {
-          const text = await resp.text();
-          all.push(...parseIPVPlaylist(text));
-        }
-      } catch {
-        // 单源失败不阻塞
-      }
-    }
-    channels = all;
-    // 多源（直连+镜像）可能返回同一份列表，按 URL 去重，避免频道翻倍。
-    const seen = new Set<string>();
-    channels = channels.filter((ch) => {
-      if (seen.has(ch.url)) return false;
-      seen.add(ch.url);
-      return true;
-    });
-    if (channels.length > 0) {
-      await writeIPTVCache(env, channels);
-    }
+    channels = await refreshIPTV(env, ctx, cacheKey, preferReachable);
+    updatedAt = Math.floor(Date.now() / 1000);
   }
+  if (channels.length === 0) {
+    return new Response(JSON.stringify({ groups: [], total: 0, updatedAt: updatedAt * 1000 }), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" },
+    });
+  }
+  // App 模式：国际台国内网络直连不通，URL 改走 worker 流代理（网页端由客户端统一包代理，这里不动）。
+  if (isApp) {
+    const intlGroups = new Set(Object.values(INTL_COUNTRY_NAMES));
+    const origin = `${reqURL.protocol}//${reqURL.host}`;
+    channels = channels.map((ch) =>
+      intlGroups.has(ch.group) ? { ...ch, url: `${origin}/api/iptv/stream?url=${encodeURIComponent(ch.url)}` } : ch
+    );
+  }
+  // 分组名归一：源里同一分组叫法不统一（央视台/央视频道、其他/其他频道），统一展示；
+  // 台名含 CCTV/央视 的一律归入央视频道（源里 CCTV-5+ 等可能被标到其他分组）。
+  const normalizeGroup = (raw: string, name: string): string => {
+    if (/cctv|央视/i.test(name)) return "央视频道";
+    if (raw === "央视台") return "央视频道";
+    if (raw === "其他频道") return "其他";
+    return raw;
+  };
   // 按分组聚合并保留原始顺序。
   const groups: { name: string; channels: IPTVChannel[] }[] = [];
   const seen = new Map<string, number>();
   for (const ch of channels) {
-    const g = ch.group || "其他";
+    const g = normalizeGroup(ch.group || "其他", ch.name);
+    const channel = { ...ch, group: g };
     if (!seen.has(g)) {
       seen.set(g, groups.length);
       groups.push({ name: g, channels: [] });
     }
-    groups[seen.get(g)!].channels.push(ch);
+    groups[seen.get(g)!].channels.push(channel);
   }
+  // 组内按可达性排序（可播在前）。分组顺序：国内组保持源顺序在前，国际组按频道数降序（大组靠前）。
+  if (!isApp) {
+    for (const g of groups) {
+      g.channels.sort((a, b) => (b.reachable === true ? 1 : 0) - (a.reachable === true ? 1 : 0));
+    }
+  }
+  const intlNameSet = new Set(Object.values(INTL_COUNTRY_NAMES));
+  groups.sort((a, b) => {
+    const ai = intlNameSet.has(a.name) ? 1 : 0;
+    const bi = intlNameSet.has(b.name) ? 1 : 0;
+    if (ai !== bi) return ai - bi; // 国内组在前
+    if (ai === 1) return b.channels.length - a.channels.length; // 国际组按频道数降序（稳定排序保持同数原序）
+    return 0;
+  });
   return new Response(
-    JSON.stringify({ groups, total: channels.length, updatedAt: Date.now() }),
+    JSON.stringify({ groups, total: channels.length, updatedAt: updatedAt * 1000 }),
     {
       status: 200,
       headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" },
     }
   );
+}
+
+/** 拉取直播流上游：直连优先；失败/被拒且配置了国内中转时经中转拉取（绕过地理封锁）。
+ *  relay 为 CineBarRelay 的 /proxy 入口（如 https://xxx.trycloudflare.com）。 */
+async function fetchIPTVUpstream(target: string, relay?: string): Promise<Response> {
+  const headers = { "user-agent": "Mozilla/5.0", accept: "*/*" };
+  let resp: Response;
+  try {
+    resp = await fetch(target, { headers });
+  } catch {
+    resp = new Response("upstream unreachable", { status: 502 });
+  }
+  if (!resp.ok && relay) {
+    // 直连 403/失败 → 走国内中转（中转机在国内网络，可访问被地理封锁的源）
+    resp = await fetch(`${relay}/proxy?url=${encodeURIComponent(target)}`, { headers }).catch(
+      () => new Response("relay unreachable", { status: 502 })
+    );
+  }
+  return resp;
+}
+
+/** 把播放列表/分片里的 URI 重写为经本 worker 代理的绝对地址（解决 http 源在 https 页面的混合内容 + CORS）。 */
+function rewritePlaylistURIs(text: string, baseURL: URL, origin: string): string {
+  const proxy = (ref: string): string => {
+    let absolute: string;
+    try {
+      absolute = new URL(ref, baseURL).toString();
+    } catch {
+      return ref;
+    }
+    return `${origin}/api/iptv/stream?url=${encodeURIComponent(absolute)}`;
+  };
+  return text
+    .split(/\r?\n/)
+    .map((line) => {
+      const trimmed = line.trim();
+      // #EXT-X-KEY:METHOD=AES-128,URI="..."
+      let m = trimmed.match(/^(#EXT-X-KEY:.*URI=")([^"]+)(".*)$/);
+      if (m) return m[1] + proxy(m[2]) + m[3];
+      // #EXT-X-MAP:URI="..."
+      m = trimmed.match(/^(#EXT-X-MAP:.*URI=")([^"]+)(".*)$/);
+      if (m) return m[1] + proxy(m[2]) + m[3];
+      // 分片/子清单行（非注释、非空）
+      if (trimmed && !trimmed.startsWith("#")) return proxy(trimmed);
+      return line;
+    })
+    .join("\n");
+}
+
+/** GET /api/iptv/stream?url=…  HLS 直播代理：服务端拉取 http 源，重写分片地址为同源代理，解决混合内容与 CORS。
+ *  直连失败时自动回退到国内中转（IPTV_RELAY_URL），让被地理封锁的国内台也能播。 */
+async function handleIPTVStream(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+  const target = url.searchParams.get("url");
+  if (!target) {
+    return new Response("missing url", { status: 400 });
+  }
+  const upstream = await fetchIPTVUpstream(target, env.IPTV_RELAY_URL);
+  if (!upstream.ok) {
+    return new Response(`upstream ${upstream.status}`, { status: 502 });
+  }
+  const contentType = upstream.headers.get("content-type") || "application/octet-stream";
+  const text = await upstream.text();
+  const origin = `${url.protocol}//${url.host}`;
+  const body = text.startsWith("#EXTM3U") || contentType.includes("mpegurl")
+    ? rewritePlaylistURIs(text, new URL(target), origin)
+    : text;
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": contentType,
+      "access-control-allow-origin": "*",
+      "cache-control": "no-store",
+    },
+  });
+}
+
+/** GET /api/iptv/logo?url=…  台标代理：绕开 gitee 防盗链（带 Referer 会 403），并加 CORS。 */
+async function handleIPTVLogo(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const target = url.searchParams.get("url");
+  if (!target) {
+    return new Response("missing url", { status: 400 });
+  }
+  let upstream: Response;
+  try {
+    // 不转发任何 Referer，避免 gitee 等源站防盗链拦截。
+    upstream = await fetch(target, {
+      headers: { "user-agent": "Mozilla/5.0", accept: "image/*" },
+    });
+  } catch {
+    return new Response("upstream unreachable", { status: 502 });
+  }
+  if (!upstream.ok) {
+    return new Response(`upstream ${upstream.status}`, { status: 502 });
+  }
+  const contentType = upstream.headers.get("content-type") || "image/png";
+  const buf = await upstream.arrayBuffer();
+  return new Response(buf, {
+    status: 200,
+    headers: {
+      "content-type": contentType,
+      "access-control-allow-origin": "*",
+      "cache-control": "public, max-age=86400",
+    },
+  });
 }
 
 async function handleTrending(request: Request, env: Env): Promise<Response> {
@@ -1919,8 +2582,33 @@ const worker = {
       return addSecurityHeaders(response, url);
     }
 
+    if (url.pathname === "/api/cms/list" && request.method === "GET") {
+      const response = await handleCMSList(request);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/cms/detail" && request.method === "GET") {
+      const response = await handleCMSDetail(request);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/cms/poster" && request.method === "GET") {
+      const response = await handleCMSPoster(request);
+      return addSecurityHeaders(response, url);
+    }
+
     if (url.pathname === "/api/iptv" && request.method === "GET") {
-      const response = await handleIPTV(request, env);
+      const response = await handleIPTV(request, env, ctx);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/iptv/stream" && request.method === "GET") {
+      const response = await handleIPTVStream(request, env);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/iptv/logo" && request.method === "GET") {
+      const response = await handleIPTVLogo(request);
       return addSecurityHeaders(response, url);
     }
 
