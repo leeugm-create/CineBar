@@ -33,8 +33,9 @@ function dayKey(now = Date.now()) {
 }
 
 // 精确缓存 key：对消息做规范化哈希（去 device/时间戳等易变字段）。
-async function exactKey(messages) {
-  const payload = JSON.stringify({ messages });
+// 必须连同 tools 一起哈希，否则带工具定义与不带工具定义的请求会撞同一个缓存 key。
+async function exactKey(messages, tools) {
+  const payload = JSON.stringify({ messages, tools: tools ?? null });
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -75,14 +76,26 @@ async function handle(request, env) {
     if (!device || messages === null || messages.length === 0) {
       return json({ error: "device and messages are required" }, 400);
     }
-    // 防注入：只允许 {role, content}；content 转字符串
+    // 防注入：只允许 {role, content, tool_calls}；content 转字符串
     const clean = messages
       .filter((m) => m && typeof m === "object")
-      .map((m) => ({
-        role: String(m.role ?? "user"),
-        content: String(m.content ?? ""),
-      }))
-      .filter((m) => m.content.length > 0);
+      .map((m) => {
+        const role = String(m.role ?? "user");
+        const o = { role };
+        if (role === "assistant" && Array.isArray(m.tool_calls)) {
+          // 助手消息的工具调用原样透传
+          o.tool_calls = m.tool_calls;
+        }
+        if (role === "tool") {
+          // 工具结果消息：需要 tool_call_id + content
+          o.tool_call_id = String(m.tool_call_id ?? "");
+          o.content = String(m.content ?? "");
+        } else {
+          o.content = String(m.content ?? "");
+        }
+        return o;
+      })
+      .filter((m) => (m.content && m.content.length > 0) || (m.role === "assistant" && Array.isArray(m.tool_calls)));
     if (clean.length === 0) {
       return json({ error: "empty messages" }, 400);
     }
@@ -96,7 +109,8 @@ async function handle(request, env) {
     if (!db) return json({ error: "db unavailable" }, 503);
 
     // ---------- 第一层：精确缓存（跨用户共享） ----------
-    const cacheKey = await exactKey(clean);
+    const tools = Array.isArray(body?.tools) ? body.tools : null;
+    const cacheKey = await exactKey(clean, tools);
     const cached = await db.prepare(
       "SELECT body FROM rsp_cache WHERE hash = ?"
     ).bind(cacheKey).first();
@@ -133,6 +147,7 @@ async function handle(request, env) {
         body: JSON.stringify({
           model: body?.model ?? "deepseek-chat",
           messages: clean,
+          ...(tools ? { tools } : {}),
           max_tokens: MAX_OUTPUT_TOKENS,
         }),
       });

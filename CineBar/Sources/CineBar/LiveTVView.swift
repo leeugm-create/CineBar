@@ -140,7 +140,8 @@ struct LiveTVView: View {
                         case .failed:
                             playbackStatus = .failed("")
                         }
-                    }
+                    },
+                    isLive: true
                 )
             } else {
                 VStack(spacing: 8) {
@@ -216,7 +217,8 @@ struct LiveTVView: View {
                         url: url,
                         title: channel.name,
                         danmaku: [],
-                        mode: .floating
+                        mode: .floating,
+                        isLive: true
                     )
                 } label: {
                     Label("浮窗", systemImage: "pip.enter")
@@ -275,7 +277,9 @@ struct LiveTVView: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: 8)
                         .fill(Color.primary.opacity(0.06))
-                    if let logo = channel.logo, let url = URL(string: logo) {
+                    if let logo = channel.logo,
+                       let encoded = logo.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+                       let url = URL(string: "https://cinebar.cc/api/iptv/logo?url=\(encoded)") {
                         AsyncImage(url: url) { image in
                             image.resizable().scaledToFit()
                         } placeholder: {

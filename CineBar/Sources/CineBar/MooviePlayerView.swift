@@ -26,6 +26,9 @@ struct MooviePlayerView: View {
     var registerInline: Bool = false
     /// 播放状态回调（加载中/可播放/失败），直播流 UI 用它显示遮罩。默认 nil 不回调。
     var onStatus: ((MooviePlaybackStatus) -> Void)? = nil
+    /// 是否为直播流（HLS live）。直播流用纯 AVPlayerLayer 渲染，避免 AVPlayerView
+    /// 对无时长直播流的 SwiftUI 绑定崩溃（Build 125 崩溃报告）。
+    var isLive: Bool = false
 
     var body: some View {
         ZStack {
@@ -37,7 +40,8 @@ struct MooviePlayerView: View {
                 registerPlayer: registerPlayer,
                 registerInline: registerInline,
                 onTick: { currentTime = $0 },
-                onStatus: onStatus
+                onStatus: onStatus,
+                isLive: isLive
             )
             if danmakuVisible, !danmaku.isEmpty {
                 DanmakuOverlay(items: danmaku, currentTime: currentTime)
@@ -56,10 +60,13 @@ struct MoovieVideoView: NSViewRepresentable {
     var registerInline: Bool = false
     let onTick: (Double) -> Void
     var onStatus: ((MooviePlaybackStatus) -> Void)? = nil
+    var isLive: Bool = false
 
     final class VideoNSView: NSView {
         let playerView = AVPlayerView()
         let player = AVPlayer()
+        /// 直播流用 AVPlayerLayer（无 AVKit SwiftUI 控件，规避直播崩溃）。
+        private var playerLayer: AVPlayerLayer?
         private var loadedURL: URL?
         private var observer: Any?
         private var itemStatusObserver: NSKeyValueObservation?
@@ -71,21 +78,33 @@ struct MoovieVideoView: NSViewRepresentable {
         /// 直播流等待起播超过该时长视为信号失败（针对 HLS live 卡死但 item 状态仍是 ready 的情况）。
         private static let stallTimeout: TimeInterval = 12
 
-        override init(frame frameRect: NSRect) {
+        init(frame frameRect: NSRect, isLive: Bool) {
             super.init(frame: frameRect)
-            playerView.translatesAutoresizingMaskIntoConstraints = false
-            playerView.player = player
-            playerView.controlsStyle = .inline
-            playerView.videoGravity = .resizeAspect
-            playerView.showsFullScreenToggleButton = true
-            playerView.allowsPictureInPicturePlayback = true
-            addSubview(playerView)
-            NSLayoutConstraint.activate([
-                playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-                playerView.topAnchor.constraint(equalTo: topAnchor),
-                playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
-            ])
+            if isLive {
+                // 直播：纯 AVPlayerLayer 渲染，不挂 AVPlayerView 控件。
+                wantsLayer = true
+                let liveLayer = AVPlayerLayer(player: player)
+                liveLayer.videoGravity = .resizeAspect
+                liveLayer.backgroundColor = NSColor.black.cgColor
+                liveLayer.frame = bounds
+                liveLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+                layer?.addSublayer(liveLayer)
+                playerLayer = liveLayer
+            } else {
+                playerView.translatesAutoresizingMaskIntoConstraints = false
+                playerView.player = player
+                playerView.controlsStyle = .inline
+                playerView.videoGravity = .resizeAspect
+                playerView.showsFullScreenToggleButton = true
+                playerView.allowsPictureInPicturePlayback = true
+                addSubview(playerView)
+                NSLayoutConstraint.activate([
+                    playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                    playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                    playerView.topAnchor.constraint(equalTo: topAnchor),
+                    playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
+                ])
+            }
             let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
             observer = player.addPeriodicTimeObserver(
                 forInterval: interval,
@@ -196,7 +215,7 @@ struct MoovieVideoView: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> VideoNSView {
-        let view = VideoNSView()
+        let view = VideoNSView(frame: .zero, isLive: isLive)
         view.setOnTick(onTick)
         view.setOnStatus(onStatus)
         view.play(url, rate: rate, paused: paused)
@@ -432,7 +451,8 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
         url: URL,
         title: String,
         danmaku: [DanmakuItem],
-        mode: MooviePlaybackMode
+        mode: MooviePlaybackMode,
+        isLive: Bool = false
     ) {
         close()
         NotificationCenter.default.post(
@@ -506,7 +526,8 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
                 url: url,
                 title: title,
                 danmaku: danmaku,
-                mode: mode
+                mode: mode,
+                isLive: isLive
             )
         )
         playerWindow = window
@@ -568,6 +589,7 @@ struct MooviePlayerWindowView: View {
     let title: String
     let danmaku: [DanmakuItem]
     let mode: MooviePlaybackMode
+    var isLive: Bool = false
 
     @State private var currentTime: Double = 0
     @State private var playbackRate: Double = 1
@@ -582,7 +604,8 @@ struct MooviePlayerWindowView: View {
                 currentTime: $currentTime,
                 playbackRate: $playbackRate,
                 danmakuVisible: $danmakuVisible,
-                registerPlayer: true
+                registerPlayer: true,
+                isLive: isLive
             )
 
             HStack(spacing: 10) {

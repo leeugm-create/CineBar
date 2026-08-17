@@ -40,7 +40,8 @@ enum CineBarIPTVClient {
     }
 
     /// worker 中转端点（服务端已有 ghproxy 镜像兜底 + D1 缓存，App 端无需再处理源失效）。
-    private static let endpoint = URL(string: "https://cinebar.cc/api/iptv")!
+    /// ?app=1 模式：保留国内最快源（App 直连国内网络可播）；网页模式会优先 https 可播源。
+    private static let endpoint = URL(string: "https://cinebar.cc/api/iptv?app=1")!
     private static let timeout: TimeInterval = 20
 
     /// 拉取分组频道列表。失败时抛出 URLError，调用方负责展示错误与重试。

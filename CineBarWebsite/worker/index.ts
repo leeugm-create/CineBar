@@ -193,7 +193,7 @@ async function moovieSearch(
 ): Promise<{ playPath: string; sourceName: string; doubanID: string }[]> {
   const query = normalizeText(title);
   if (!query) return [];
-  const params = new URLSearchParams({ kw: query });
+  const params = new URLSearchParams({ q: query });
   if (year) params.set("year", year);
   const html = await moovieFetch(`/api/htmx/search?${params}`);
   if (!html) return [];
@@ -339,14 +339,15 @@ function parseTrendingMovies(html: string): TrendingMovie[] {
   return items;
 }
 
- type TrendingMovie = {
-   title: string;
-   doubanID: string;
-   rating: number;
-   poster: string;
-   tmdbId?: number;
-   type?: "movie" | "tv";
- };
+  type TrendingMovie = {
+    title: string;
+    doubanID: string;
+    rating: number;
+    poster: string;
+    tmdbId?: number;
+    type?: "movie" | "tv";
+    tmdbPoster?: string;
+  };
 
 /** ===== 苹果CMS 资源站聚合（补充 Moovie 覆盖短板：短剧/动漫/多版本） =====
  *  与 zip0.com 背后同类的 MacCMS 资源站直接对接，无需经过 zip0。
@@ -471,11 +472,18 @@ async function resolveCMSPlayPage(pageURL: string): Promise<string | null> {
   }
 }
 
-/** 解析 CineCMS 的播放地址：m3u8 直链原样返回；播放页则抓页面解析出真实 m3u8。 */
+/** 解析 CineCMS 的播放地址：m3u8 直链原样返回；播放页则抓页面解析出真实 m3u8。
+ *  播放页源（量子/急速/非凡）的页面由 Cloudflare 抓取不稳定，重试最多 5 次提高成功率。 */
 async function resolveCMSPlayable(rawURL: string): Promise<string | null> {
   if (!rawURL) return null;
   if (/\.m3u8(\?|$)/i.test(rawURL)) return rawURL;
-  return resolveCMSPlayPage(rawURL);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const url = await resolveCMSPlayPage(rawURL);
+    if (url) return url;
+    // 短暂退避后重试（Cloudflare 拉这些国内播放页抖动，稍等再试命中率更高）
+    await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+  }
+  return null;
 }
 
 /** GET /api/cms/search?q=&episode= 返回苹果CMS 聚合搜索结果（含直链）。 */
@@ -554,14 +562,18 @@ async function cmsListPage(
   }
 }
 
-/** 聚合指定分类的列表：从各源拉多页，去重、过滤空标题。 */
+/** 聚合指定分类的列表：从可播源拉多页，去重、过滤空标题。
+ *  实测（2026-08-17 用户浏览器 hls.js）：量子、最大 ✓能播；暴风 manifestLoadError ✗不能播。
+ *  故影视库只用「量子 + 最大」，排除暴风（播放走浏览器直连 m3u8）。 */
 async function cmsListByCategory(
   category: string,
   pg: number
 ): Promise<{ items: CMSTitle[]; total: number }> {
+  // 可播源：量子(lzi) + 最大(zuid)
+  const stable = CMS_SOURCES.filter((s) => s.id === "lzi" || s.id === "zuid");
+  if (stable.length === 0) return { items: [], total: 0 };
   const signal = AbortSignal.timeout(20000);
-  // 每源拉 3 页（起始 pg 起），扩充片源覆盖；页数过多会拖慢，3 页是平衡点。
-  const pageTasks = CMS_SOURCES.flatMap((src) =>
+  const pageTasks = stable.flatMap((src) =>
     [pg, pg + 1, pg + 2].map((p) => cmsListPage(src, p, signal))
   );
   const pages = await Promise.allSettled(pageTasks);
@@ -569,7 +581,7 @@ async function cmsListByCategory(
     id: string; title: string; poster: string | null; remarks: string;
     category: string; categoryRaw: string; source: string; sourceName: string;
   }[] = [];
-  CMS_SOURCES.forEach((src, i) => {
+  stable.forEach((src, i) => {
     for (let k = 0; k < 3; k++) {
       const r = pages[i * 3 + k];
       if (r.status !== "fulfilled") continue;
@@ -579,13 +591,16 @@ async function cmsListByCategory(
       }
     }
   });
-  // 按 id 去重（保留首个出现）
+  // 按 source|id 去重（不同源的同 id 是不同片，不能按裸 id 去重）
   const seen = new Map<string, typeof merged[number]>();
-  for (const item of merged) if (!seen.has(item.id)) seen.set(item.id, item);
+  for (const item of merged) {
+    const key = `${item.source}|${item.id}`;
+    if (!seen.has(key)) seen.set(key, item);
+  }
   const uniq = Array.from(seen.values());
   // 按分类过滤
   const filtered = category === "all" ? uniq : uniq.filter((x) => x.category === category);
-  const items: CMSTitle[] = filtered.map((x) => ({
+  let items: CMSTitle[] = filtered.map((x) => ({
     source: x.source,
     sourceName: x.sourceName,
     id: x.id,
@@ -596,56 +611,119 @@ async function cmsListByCategory(
     playURL: "",
     episodeCount: 0,
   }));
+  // 补海报：ac=list 不带海报，前 12 部用 ac=detail 补（首页展示量，并行控速）。
+  const posterMissing = items.slice(0, 12).filter((i) => !i.poster);
+  if (posterMissing.length > 0) {
+    const details = await Promise.allSettled(
+      posterMissing.map(async (item) => {
+        const src = CMS_SOURCES.find((s) => s.id === item.source);
+        if (!src) return null;
+        try {
+          const params = new URLSearchParams({ ac: "detail", ids: item.id });
+          const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
+            headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
+            signal: AbortSignal.timeout(8000),
+          });
+          if (!resp.ok) return null;
+          const data = (await resp.json()) as { list?: Record<string, unknown>[] };
+          const pic = data.list?.[0]?.vod_pic;
+          return { id: item.id, poster: pic ? String(pic) : null };
+        } catch {
+          return null;
+        }
+      })
+    );
+    const posterMap = new Map<string, string>();
+    for (const r of details) {
+      if (r.status === "fulfilled" && r.value?.poster) posterMap.set(r.value.id, r.value.poster);
+    }
+    items = items.map((i) => (posterMap.has(i.id) ? { ...i, poster: posterMap.get(i.id) ?? i.poster } : i));
+  }
   return { items, total: items.length };
 }
 
-/** GET /api/cms/detail?id= 返回单个条目的完整信息（含播放地址），供点击进详情/播放。 */
+/** GET /api/cms/detail?id=&source= 返回单个条目的完整信息（含播放地址），供点击进详情/播放。
+ *  source 指定来源（量子/暴风/…），因为不同源的 vod_id 不唯一，必须按 source 精确查，避免张冠李戴。 */
 async function handleCMSDetail(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const id = normalizeText(url.searchParams.get("id"));
+  const source = normalizeText(url.searchParams.get("source"));
   if (!id || id.length > 40) {
     return new Response(JSON.stringify({ error: "invalid id" }), {
       status: 400,
       headers: { "content-type": "application/json; charset=utf-8" },
     });
   }
-  // 从各源按 ids 查详情，取第一个返回播放地址的。
+  // 指定 source 则只查该源；未指定时按 CMS_SOURCES 顺序查，取第一个有流且非空的。
+  const ordered = source
+    ? CMS_SOURCES.filter((s) => s.id === source)
+    : CMS_SOURCES;
+
   const results = await Promise.allSettled(
-    CMS_SOURCES.map(async (src) => {
-      const params = new URLSearchParams({ ac: "detail", ids: id });
-      const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
-        headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
-      });
-      if (!resp.ok) return null;
-      const data = (await resp.json()) as { code?: number; list?: Record<string, unknown>[] };
-      if (data.code !== 1 || !Array.isArray(data.list) || !data.list.length) return null;
-      const v = data.list[0];
-      const playURL = String(v.vod_play_url ?? "");
-      if (!playURL) return null;
-      // 第 1 集直链：m3u8 直接可用；播放页则抓页面解析出真实 m3u8。
-      const rawFirst = cmsResolveStreamURL(playURL, 1);
-      const streamURL = rawFirst ? await resolveCMSPlayable(rawFirst) : null;
-      return {
-        source: src.id,
-        sourceName: src.name,
-        id,
-        title: String(v.vod_name ?? ""),
-        year: String(v.vod_year ?? ""),
-        poster: v.vod_pic ? String(v.vod_pic) : null,
-        category: String(v.type_name ?? ""),
-        playURL,
-        episodeCount: playURL ? playURL.split("#").length : 0,
-        streamURL,
-      };
+    ordered.map(async (src) => {
+      try {
+        const params = new URLSearchParams({ ac: "detail", ids: id });
+        const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
+          headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!resp.ok) return null;
+        const data = (await resp.json()) as { code?: number; list?: Record<string, unknown>[] };
+        if (data.code !== 1 || !Array.isArray(data.list) || !data.list.length) return null;
+        const v = data.list[0];
+        const playURL = String(v.vod_play_url ?? "");
+        if (!playURL) return null;
+        const rawFirst = cmsResolveStreamURL(playURL, 1);
+        const streamURL = rawFirst ? await resolveCMSPlayable(rawFirst) : null;
+        return {
+          source: src.id,
+          sourceName: src.name,
+          id,
+          title: String(v.vod_name ?? ""),
+          year: String(v.vod_year ?? ""),
+          poster: v.vod_pic ? String(v.vod_pic) : null,
+          category: String(v.type_name ?? ""),
+          playURL,
+          episodeCount: playURL ? playURL.split("#").length : 0,
+          streamURL,
+        };
+      } catch {
+        return null;
+      }
     })
   );
+  // 指定 source 时：直接返回该源结果（哪怕 streamURL 为 null，前端会提示）。
+  if (source) {
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value) {
+        return new Response(JSON.stringify(r.value), {
+          status: 200,
+          headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+        });
+      }
+    }
+    return new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  // 未指定 source：优先返回 streamURL 非空的结果。
+  let fallback: (typeof results)[number] | null = null;
   for (const r of results) {
-    if (r.status === "fulfilled" && r.value) {
+    if (r.status !== "fulfilled" || !r.value) continue;
+    if (r.value.streamURL) {
       return new Response(JSON.stringify(r.value), {
         status: 200,
-        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" },
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
       });
     }
+    if (!fallback) fallback = r;
+  }
+  if (fallback && fallback.status === "fulfilled" && fallback.value) {
+    return new Response(JSON.stringify(fallback.value), {
+      status: 200,
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    });
   }
   return new Response(JSON.stringify({ error: "not found" }), {
     status: 404,
@@ -669,7 +747,7 @@ async function handleCMSList(request: Request): Promise<Response> {
     JSON.stringify({ category, pg, total, items }),
     {
       status: 200,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=300" },
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
     }
   );
 }
@@ -696,12 +774,14 @@ async function handleCMSStream(request: Request): Promise<Response> {
     JSON.stringify({ streamURL: resolved }),
     {
       status: 200,
-      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=600" },
+      headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
     }
   );
 }
 
-/** GET /api/cms/poster?url=…  资源站海报代理：绕开防盗链/混合内容，加 CORS。 */async function handleCMSPoster(request: Request): Promise<Response> {
+/** GET /api/cms/poster?url=…  资源站海报代理：绕开防盗链/混合内容，加 CORS。
+ *  豆瓣图（doubanio）防盗链要求特定 Referer，先试 movie.douban.com，失败再试无 Referer。 */
+async function handleCMSPoster(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const target = url.searchParams.get("url");
   if (!target) return new Response("missing url", { status: 400 });
@@ -709,44 +789,53 @@ async function handleCMSStream(request: Request): Promise<Response> {
   if (!allowed.some((p) => target.startsWith(p))) {
     return new Response("bad url", { status: 400 });
   }
-  try {
-    const resp = await fetch(target, {
-      headers: { "user-agent": "Mozilla/5.0", accept: "image/*", referer: new URL(target).origin },
-    });
-    if (!resp.ok) return new Response("upstream failed", { status: 502 });
-    const body = await resp.arrayBuffer();
-    return new Response(body, {
-      status: 200,
-      headers: {
-        "content-type": resp.headers.get("content-type") || "image/jpeg",
-        "cache-control": "public, max-age=86400",
-        "access-control-allow-origin": "*",
-      },
-    });
-  } catch {
-    return new Response("upstream unreachable", { status: 502 });
+  const ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120 Safari/537.36";
+  const isDouban = /doubanio\.com/.test(target);
+  // 豆瓣图先带 movie.douban.com Referer；失败再试不带 Referer。
+  const attempts = isDouban
+    ? [
+        { "user-agent": ua, "referer": "https://movie.douban.com/" },
+        { "user-agent": ua },
+      ]
+    : [{ "user-agent": ua, "referer": new URL(target).origin }];
+  for (const headers of attempts) {
+    try {
+      const resp = await fetch(target, { headers: { ...headers, accept: "image/*" } });
+      if (!resp.ok) continue;
+      const body = await resp.arrayBuffer();
+      return new Response(body, {
+        status: 200,
+        headers: {
+          "content-type": resp.headers.get("content-type") || "image/jpeg",
+          "cache-control": "public, max-age=86400",
+          "access-control-allow-origin": "*",
+        },
+      });
+    } catch { /* 换下一个尝试 */ }
   }
+  return new Response("upstream failed", { status: 502 });
 }
 
 
 /** GET /api/trending 返回 moovie 每周热门电影与电视榜。
  *  type=all 时一次返回两榜（首页用）；type=movie 或 tv 时只返回单个榜。
  *  数据缓存在 D1，7 天有效，避免每次访问都抓取 moovie。 */
-const TRENDING_CACHE_KEY = 1;
-const TRENDING_CACHE_TTL_SECONDS = 7 * 24 * 60 * 60;
+const TRENDING_CACHE_KEY = 3; // bump 以强制刷新缓存（今日热门剧改 CineCMS 兜底）
+const TRENDING_CACHE_TTL_SECONDS = 24 * 60 * 60; // 每日更新（此前 7 天）
 
-async function readTrendingCache(env: Env): Promise<{ movies: TrendingMovie[]; shows: TrendingMovie[] } | null> {
+async function readTrendingCache(env: Env): Promise<{ movies: TrendingMovie[]; shows: TrendingMovie[]; fresh: boolean } | null> {
   try {
     const res = await env.DB.prepare(
       "SELECT data, updated_at FROM trending_cache WHERE id = ?"
     ).bind(TRENDING_CACHE_KEY).first<{ data: string; updated_at: number }>();
     if (!res?.data) return null;
     const now = Math.floor(Date.now() / 1000);
-    if (now - Number(res.updated_at) > TRENDING_CACHE_TTL_SECONDS) return null;
+    const fresh = now - Number(res.updated_at) <= TRENDING_CACHE_TTL_SECONDS;
     const parsed = JSON.parse(res.data);
     return {
       movies: Array.isArray(parsed.movies) ? parsed.movies : [],
       shows: Array.isArray(parsed.shows) ? parsed.shows : [],
+      fresh,
     };
   } catch {
     return null;
@@ -1381,7 +1470,7 @@ async function handleIPTVLogo(request: Request): Promise<Response> {
   });
 }
 
-async function handleTrending(request: Request, env: Env): Promise<Response> {
+async function handleTrending(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const type = normalizeText(url.searchParams.get("type")) || "all";
   const wantMovie = type === "all" || type === "movie";
@@ -1390,39 +1479,70 @@ async function handleTrending(request: Request, env: Env): Promise<Response> {
   const cached = await readTrendingCache(env);
   const payload: Record<string, TrendingMovie[]> = {};
 
+  // stale-while-revalidate：有缓存（即使过期）立即返回，过期则后台刷新，避免用户等 25 秒。
   if (cached && (cached.movies.length > 0 || cached.shows.length > 0)) {
     if (wantMovie) payload.movies = cached.movies;
     if (wantTV) payload.shows = cached.shows;
+    if (!cached.fresh) {
+      ctx.waitUntil(refreshTrendingCache(env, wantMovie, wantTV));
+    }
     return new Response(
       JSON.stringify(payload),
       { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } }
     );
   }
 
-  const [movieHtml, tvHtml] = await Promise.all([
-    moovieFetch("/discover/movie"),
-    moovieFetch("/discover/tv"),
-  ]);
-
-  const movies = movieHtml ? parseTrendingMovies(movieHtml) : [];
-  const shows = tvHtml ? parseTrendingMovies(tvHtml) : [];
-
-  if (!movieHtml && !tvHtml) {
+  // 无缓存：同步刷新（首次访问会稍慢，后续走 stale 秒回）。
+  const result = await refreshTrendingCache(env, wantMovie, wantTV);
+  if (!result) {
     return new Response(
       JSON.stringify({ error: "trending unavailable" }),
       { status: 502, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } }
     );
   }
+  if (wantMovie) payload.movies = result.movies;
+  if (wantTV) payload.shows = result.shows;
+  return new Response(
+    JSON.stringify(payload),
+    { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } }
+  );
+}
 
-  // 为每部片补齐 tmdbId/type，供前端跳自家详情页。
-  // 先用 Moovie 搜索拿该片年份（区分同名不同年份），再据此精确匹配 TMDB。
-  // 只补前 10 部（覆盖首页展示）用并行，控请求量与限流。
+/** 拉取 Moovie discover 热门 + 补 tmdbId + 写缓存。返回 null 表示 Moovie 不可达。 */async function refreshTrendingCache(
+  env: Env,
+  wantMovie: boolean,
+  wantTV: boolean
+): Promise<{ movies: TrendingMovie[]; shows: TrendingMovie[] } | null> {
+  const [movieHtml, tvHtml] = await Promise.all([
+    wantMovie ? moovieFetch("/discover/movie") : Promise.resolve(null),
+    wantTV ? moovieFetch("/discover/tv") : Promise.resolve(null),
+  ]);
+  if (wantMovie && !movieHtml) return null;
+  if (wantTV && !tvHtml) return null;
+
+  const movies = movieHtml ? parseTrendingMovies(movieHtml) : [];
+  let shows = tvHtml ? parseTrendingMovies(tvHtml) : [];
+
+  // Moovie /discover/tv 改版后常返回空（shows=0），用 CineCMS 电视剧列表兜底（有海报，可点进 /watch）。
+  if (shows.length === 0) {
+    try {
+      const list = await cmsListByCategory("tv", 1);
+      shows = list.items.slice(0, 10).map((x) => ({
+        title: x.title,
+        doubanID: `${x.source}|${x.id}`,
+        rating: 0,
+        poster: x.poster ?? "",
+        type: "tv" as const,
+      }));
+    } catch { shows = []; }
+  }
+
+  // 为每部片补齐 tmdbId/type（前 10 部，并行控请求量）。
   async function enrich(list: TrendingMovie[]) {
     await Promise.all(list.slice(0, 10).map(async (item) => {
-      // 1) Moovie 搜索该片名，找 doubanID 匹配的卡片，取其年份
       let moovieYear = "";
       try {
-        const params = new URLSearchParams({ kw: item.title });
+        const params = new URLSearchParams({ q: item.title });
         const resp = await moovieFetch(`/api/htmx/search?${params}`);
         if (resp) {
           const cardPattern = /href="(\/play\/[^"]*douban_id=(\d+)[^"]*)"/g;
@@ -1437,23 +1557,117 @@ async function handleTrending(request: Request, env: Env): Promise<Response> {
           }
         }
       } catch { moovieYear = ""; }
-      // 2) TMDB 匹配（带年份优先）
       const info = await cineaiTMDBInfo(item.title, env, moovieYear);
       if (info.length > 0 && info[0].tmdbId) {
         item.tmdbId = info[0].tmdbId;
         item.type = info[0].mediaType;
+        // 补 TMDB 海报（更稳定，Moovie 豆瓣图代理偶尔失败）。
+        const key = env?.TMDB_API_KEY;
+        if (key) {
+          try {
+            const kind = item.type === "tv" ? "tv" : "movie";
+            const res = await fetch(
+              `https://api.themoviedb.org/3/${kind}/${item.tmdbId}?api_key=${key}&language=zh-CN`,
+              { headers: { "user-agent": "Mozilla/5.0" } }
+            );
+            if (res.ok) {
+              const dd = (await res.json()) as { poster_path?: string | null };
+              if (dd.poster_path) item.tmdbPoster = `https://image.tmdb.org/t/p/w342${dd.poster_path}`;
+            }
+          } catch { /* 忽略 */ }
+        }
       }
     }));
   }
   await Promise.all([enrich(movies), enrich(shows)]);
 
   await writeTrendingCache(env, movies, shows);
-  if (wantMovie) payload.movies = movies;
-  if (wantTV) payload.shows = shows;
-  return new Response(
-    JSON.stringify(payload),
-    { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } }
-  );
+  return { movies, shows };
+}
+
+/** GET /api/nowplaying-cn 返回国内院线正在热映的电影（豆瓣 cinema/nowplaying，更贴近国内上映）。 */
+async function handleNowPlayingCN(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const origin = `${url.protocol}//${url.host}`;
+  try {
+    const resp = await fetch("https://movie.douban.com/cinema/nowplaying/beijing/", {
+      headers: { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36" },
+      redirect: "follow",
+    });
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: "upstream" }), { status: 502, headers: { "content-type": "application/json; charset=utf-8" } });
+    }
+    const html = await resp.text();
+    const items = parseDoubanNowPlaying(html, origin);
+    return new Response(
+      JSON.stringify({ items }),
+      { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } }
+    );
+  } catch {
+    return new Response(JSON.stringify({ error: "failed" }), { status: 500, headers: { "content-type": "application/json; charset=utf-8" } });
+  }
+}
+
+/** 解析豆瓣 cinema/nowplaying 条目：标题、评分、上映年份、海报（经本站代理绕防盗链）。 */
+function parseDoubanNowPlaying(html: string, origin: string): { title: string; year: string; rating: number | null; poster: string | null }[] {
+  const items: { title: string; year: string; rating: number | null; poster: string | null }[] = [];
+  const lis = html.match(/<li\b[^>]*data-subject="\d+"[^>]*>.*?<\/li>/gs) ?? [];
+  for (const li of lis) {
+    const title = (li.match(/data-title="([^"]*)"/) ?? [])[1] ?? "";
+    const score = (li.match(/data-score="([^"]*)"/) ?? [])[1] ?? "";
+    const release = (li.match(/data-release="([^"]*)"/) ?? [])[1] ?? "";
+    const posterMatch = li.match(/<img[^>]*src="([^"]*\.(?:jpg|png))"/);
+    const year = release.slice(0, 4);
+    if (!title) continue;
+    items.push({
+      title: title.trim(),
+      year,
+      rating: score && Number(score) > 0 ? Number(score) : null,
+      poster: posterMatch ? `${origin}/api/cms/poster?url=${encodeURIComponent(posterMatch[1])}` : null,
+    });
+    if (items.length >= 12) break;
+  }
+  return items;
+}
+
+/** GET /api/nowplaying 返回正在院线热映的电影（TMDB movie/now_playing，取前 10，含海报/年份/评分）。 */
+async function handleNowPlaying(request: Request, env: Env): Promise<Response> {
+  const key = env?.TMDB_API_KEY;
+  if (!key) {
+    return new Response(JSON.stringify({ error: "no key" }), {
+      status: 503,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
+  try {
+    const params = new URLSearchParams({ language: "zh-CN", page: "1", region: "CN", api_key: key });
+    const resp = await fetch(`https://api.themoviedb.org/3/movie/now_playing?${params}`, {
+      headers: { "user-agent": "Mozilla/5.0" },
+    });
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: "upstream" }), {
+        status: 502,
+        headers: { "content-type": "application/json; charset=utf-8" },
+      });
+    }
+    const data = (await resp.json()) as { results?: Record<string, unknown>[] };
+    const items = (data.results ?? []).slice(0, 10).map((r) => ({
+      title: r.title ?? "",
+      year: String(r.release_date ?? "").slice(0, 4),
+      rating: r.vote_average ?? null,
+      poster: r.poster_path ? `https://image.tmdb.org/t/p/w342${r.poster_path}` : null,
+      overview: r.overview ?? "",
+    }));
+    return new Response(
+      JSON.stringify({ items }),
+      { status: 200, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=3600" } }
+    );
+  } catch {
+    return new Response(JSON.stringify({ error: "failed" }), {
+      status: 500,
+      headers: { "content-type": "application/json; charset=utf-8" },
+    });
+  }
 }
 
 /** CineAI 服务端代理转发：浏览器把 { device, messages } 发给本站，
@@ -1599,7 +1813,7 @@ async function handleLookup(request: Request, env: Env): Promise<Response> {
       const timer = setTimeout(() => controller.abort(), 4000);
       // 用中文同义词查 Moovie（Moovie 是中文站，英文名搜不到）
       const zhName = synonyms.find((s) => /[\u4e00-\u9fff]/.test(s)) ?? itemTitle;
-      const params = new URLSearchParams({ kw: zhName });
+      const params = new URLSearchParams({ q: zhName });
       if (itemYear) params.set("year", itemYear);
       const moovieRes = await fetch(`https://moovie.c2v2.com/api/htmx/search?${params}`, {
         headers: { "user-agent": MOOVIE_UA, "hx-request": "true", accept: "text/html,application/xhtml+xml" },
@@ -2693,7 +2907,17 @@ const worker = {
     }
 
     if (url.pathname === "/api/trending" && request.method === "GET") {
-      const response = await handleTrending(request, env);
+      const response = await handleTrending(request, env, ctx);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/nowplaying" && request.method === "GET") {
+      const response = await handleNowPlaying(request, env);
+      return addSecurityHeaders(response, url);
+    }
+
+    if (url.pathname === "/api/nowplaying-cn" && request.method === "GET") {
+      const response = await handleNowPlayingCN(request);
       return addSecurityHeaders(response, url);
     }
 

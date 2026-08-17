@@ -11,10 +11,11 @@ type TrendingMovie = {
   poster: string;
   tmdbId?: number;
   type?: "movie" | "tv";
+  tmdbPoster?: string;
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-124-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-126-universal.zip";
 
 export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
@@ -66,6 +67,7 @@ export default function HomeHero({ m, locale }: { m: Messages; locale: Locale })
         kind="movie"
         locale={locale}
       />
+      <NowPlayingRow locale={locale} />
       <TrendingRow
         title={m.trendingShows}
         items={shows}
@@ -73,6 +75,82 @@ export default function HomeHero({ m, locale }: { m: Messages; locale: Locale })
         locale={locale}
       />
     </>
+  );
+}
+
+/** 院线热门电影：优先豆瓣国内热映，抓不到回退 TMDB（稳定兜底）。 */
+function NowPlayingRow({ locale }: { locale: Locale }) {
+  const [items, setItems] = useState<{ title: string; year: string; rating: number | null; poster: string | null }[]>([]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function load() {
+      // 1) 豆瓣国内热映（更准，含国产片）
+      try {
+        const r = await fetch("/api/nowplaying-cn", { signal: AbortSignal.timeout(8000) });
+        if (r.ok) {
+          const body = (await r.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
+          if (body.items && body.items.length > 0) { setItems(body.items); return; }
+        }
+      } catch { /* 忽略 */ }
+      // 2) 回退 TMDB（稳定，但可能缺国产片）
+      try {
+        const r2 = await fetch("/api/nowplaying", { signal: AbortSignal.timeout(8000) });
+        if (r2.ok) {
+          const body2 = (await r2.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
+          setItems(body2.items ?? []);
+        }
+      } catch { /* 忽略 */ }
+    }
+    load();
+    return () => controller.abort();
+  }, []);
+
+  if (items.length === 0) return null;
+  return (
+    <section className="section ht-section">
+      <div className="ht-head">
+        <h2>院线热门电影</h2>
+      </div>
+      <div className="ht-track">
+        {items.map((it) => (
+          <NowPlayingCard key={it.title} item={it} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** 院线热门单卡：zip0 风格。点击进独立播放页 /watch。 */
+function NowPlayingCard({ item }: { item: { title: string; year: string; rating: number | null; poster: string | null } }) {
+  const [posterFailed, setPosterFailed] = useState(false);
+  // 豆瓣接口返回的 poster 已是 /api/cms/poster?url=… 代理路径（相对或绝对均可能），直接用；否则才包代理。
+  const proxiedPoster = item.poster
+    ? (item.poster.includes("/api/cms/poster?url=") ? item.poster : `/api/cms/poster?url=${encodeURIComponent(item.poster)}`)
+    : null;
+  return (
+    <Link
+      href={`/watch?title=${encodeURIComponent(item.title)}`}
+      className="ht-card"
+      aria-label={`播放 ${item.title}`}
+    >
+      {proxiedPoster && !posterFailed ? (
+        <img className="ht-poster" src={proxiedPoster} alt={item.title} loading="lazy" onError={() => setPosterFailed(true)} />
+      ) : (
+        <div className="ht-poster ht-poster-fallback" style={{ background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "30px", fontWeight: 700 }}>{item.title.slice(0, 2)}</div>
+      )}
+      <span className="ht-card-play" aria-hidden="true">▶</span>
+      <span className="ht-card-meta">
+        <strong>{item.title}</strong>
+        <span className="ht-card-sub">
+          {item.rating ? (
+            <small className="ht-card-rating">★ {item.rating.toFixed(1)}</small>
+          ) : (
+            <small className="ht-card-type">{item.year || "电影"}</small>
+          )}
+        </span>
+      </span>
+    </Link>
   );
 }
 
@@ -124,7 +202,7 @@ function TrendingRow({
         <p className="ht-empty">加载中…</p>
       ) : (
         <div className="ht-track" ref={trackRef}>
-          {items.map((item) => (
+          {items.slice(0, 10).map((item) => (
             <TrendingCard key={`${kind}-${item.doubanID}`} item={item} kind={kind} />
           ))}
         </div>
@@ -138,51 +216,41 @@ type TrendingCardItem = TrendingMovie;
 /** 本周热门单卡：优先用 Moovie 数据已补齐的 tmdbId 跳自家详情页；
  *  若没有 tmdbId 则用 lookup 解析；都失败降级跳 Moovie。绝不跳豆瓣。 */
 function TrendingCard({ item, kind }: { item: TrendingCardItem; kind: "movie" | "tv" }) {
-  const [link, setLink] = useState<string | null>(() =>
-    item.tmdbId ? `https://share.cinebar.cc/${item.type === "tv" ? "t" : "m"}/${item.tmdbId}?t=${encodeURIComponent(item.title)}` : null
-  );
-
-  useEffect(() => {
-    if (item.tmdbId) return; // 已有 tmdbId，无需 lookup
-    let alive = true;
-    fetch(`/api/lookup?title=${encodeURIComponent(item.title)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((body: { found?: boolean; type?: "movie" | "tv"; id?: number } | null) => {
-        if (!alive) return;
-        if (body && body.found && body.id != null) {
-          const slug = body.type === "tv" ? "t" : "m";
-          setLink(`https://share.cinebar.cc/${slug}/${body.id}?t=${encodeURIComponent(item.title)}`);
-        } else {
-          setLink(`https://moovie.c2v2.com/search?kw=${encodeURIComponent(item.title)}`);
-        }
-      })
-      .catch(() => {
-        if (alive) setLink(`https://moovie.c2v2.com/search?kw=${encodeURIComponent(item.title)}`);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [item.title, item.tmdbId]);
-
-  const href = link ?? "#";
+  // 统一跳独立播放页 /watch?title=，点进去自动搜索并播放（对标 zip0）。
+  const href = `/watch?title=${encodeURIComponent(item.title)}`;
+  // 优先用 TMDB 海报（稳定），Moovie 豆瓣图代理兜底。
+  const [posterFailed, setPosterFailed] = useState(false);
+  const posterSrc = item.tmdbPoster || item.poster;
+  // 海报统一走 cinebar.cc 代理（同源 + 加 CORS + 处理防盗链），避免 Moovie/豆瓣跨域失败。
+  const proxiedPoster = posterSrc ? `/api/cms/poster?url=${encodeURIComponent(posterSrc)}` : null;
+  const typeLabel = kind === "tv" ? "电视剧" : "电影";
   return (
     <a
       className="ht-card"
       href={href}
-      target="_blank"
-      rel="noreferrer"
+      aria-label={`播放 ${item.title}`}
     >
-      <img
-        className="ht-poster"
-        src={item.poster}
-        alt={item.title}
-        loading="lazy"
-      />
+      {proxiedPoster && !posterFailed ? (
+        <img
+          className="ht-poster"
+          src={proxiedPoster}
+          alt={item.title}
+          loading="lazy"
+          onError={() => setPosterFailed(true)}
+        />
+      ) : (
+        <div className="ht-poster ht-poster-fallback" style={{ background: "var(--background)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontSize: "30px", fontWeight: 700 }}>{item.title.slice(0, 2)}</div>
+      )}
+      <span className="ht-card-play" aria-hidden="true">▶</span>
       <span className="ht-card-meta">
         <strong>{item.title}</strong>
-        {item.rating > 0 && (
-          <small>★ {item.rating.toFixed(1)}</small>
-        )}
+        <span className="ht-card-sub">
+          {item.rating > 0 ? (
+            <small className="ht-card-rating">★ {item.rating.toFixed(1)}</small>
+          ) : (
+            <small className="ht-card-type">{typeLabel}</small>
+          )}
+        </span>
       </span>
     </a>
   );

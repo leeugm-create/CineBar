@@ -72,7 +72,8 @@ const isDerivativeTitle = (title) =>
 const moovieSearch = async (title, year) => {
   const query = normalize(title);
   if (!query) return [];
-  const params = new URLSearchParams({ kw: query });
+  // Moovie 搜索接口 2026-08 起要求参数名 q（kw 已废弃，返回 invalid_query）。
+  const params = new URLSearchParams({ q: query });
   if (year) params.set("year", year);
   const html = await moovieFetch(`/api/htmx/search?${params}`);
   if (!html) return [];
@@ -410,7 +411,21 @@ const sharePage = (url, route, metadata, downloadURL) => {
     .stream-source .src-flag{margin-left:auto;color:#fbbf24;font-size:13px}
     .player-shell{margin-top:16px;position:relative}
     .player-shell video{width:100%;max-height:480px;border-radius:14px;background:#000}
-    .episodes{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .episodes{display:block;margin-top:14px}
+    .ep-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+    .ep-blocks{display:flex;gap:6px;overflow-x:auto;flex:1;min-width:0;padding-bottom:2px;scrollbar-width:none}
+    .ep-blocks::-webkit-scrollbar{display:none}
+    .ep-block{flex:0 0 auto;padding:5px 11px;border-radius:999px;border:1px solid #ffffff2e;
+    background:#ffffff0a;color:#d8def0;font-size:12px;cursor:pointer}
+    .ep-block:hover{border-color:#f59e0b88;color:#fff}
+    .ep-block.active{border-color:#f59e0b;background:#f59e0b22;color:#fbbf24}
+    .ep-jump{display:flex;gap:6px;align-items:center}
+    .ep-jump-input{width:86px;padding:5px 9px;border-radius:8px;border:1px solid #ffffff2e;
+    background:#ffffff0a;color:#d8def0;font-size:12px}
+    .ep-jump-btn{padding:5px 10px;border-radius:8px;border:1px solid #f59e0b55;
+    background:#f59e0b22;color:#fbbf24;font-size:12px;cursor:pointer}
+    .ep-grid{display:flex;flex-wrap:wrap;gap:8px;max-height:260px;overflow-y:auto;
+    scrollbar-width:thin;scrollbar-color:#ffffff33 transparent}
     .ep{padding:7px 12px;border-radius:9px;border:1px solid #ffffff2e;background:#ffffff0a;
     color:#d8def0;font-size:13px;cursor:pointer}
     .ep:hover{border-color:#f59e0b88;color:#fff}
@@ -447,6 +462,29 @@ ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : "
   var candidates = [];
   var currentSource = null;
   var currentEpisodes = [];
+  // CINEAI 联动：URL 带 ep 参数时自动定位并播放该集
+  var urlEp = null;
+  try {
+    var qp = new URLSearchParams(window.location.search);
+    var rawEp = qp.get("ep");
+    if (rawEp) urlEp = parseInt(rawEp, 10);
+  } catch (e) { urlEp = null; }
+  var autoPlayed = false;
+
+  // 键盘左右键：快进/快退 15 秒（小窗口与全屏均生效）。
+  // 只在有活动播放器、且焦点不在输入框时生效，避免干扰集数跳转输入。
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key !== "ArrowRight" && ev.key !== "ArrowLeft") return;
+    var t = ev.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    var video = root.querySelector(".player-shell video");
+    if (!video) return;
+    ev.preventDefault();
+    if (video.duration && isFinite(video.duration)) {
+      var delta = ev.key === "ArrowRight" ? 15 : -15;
+      video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + delta));
+    }
+  });
 
   function esc(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -509,27 +547,127 @@ ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : "
       .catch(function () { setError("加载失败，请稍后重试。"); });
   }
 
+  // 每个块的集数
+  var BLOCK_SIZE = 50;
+  var currentBlock = 0;
+
+  function epNumber(ep) {
+    return parseInt((ep.title || "").match(/\d+/)?.[0] || "", 10) || 0;
+  }
+
   function renderEpisodes(anchor) {
     var old = root.querySelector(".episodes");
     if (old) old.remove();
     if (!currentEpisodes.length) return;
+    // 先按集数排序
+    currentEpisodes.sort(function (a, b) { return epNumber(a) - epNumber(b); });
+    var total = currentEpisodes.length;
+    var blocks = Math.ceil(total / BLOCK_SIZE);
+
     var wrap = document.createElement("div");
     wrap.className = "episodes";
-    currentEpisodes.forEach(function (ep, i) {
-      var b = document.createElement("button");
-      b.className = "ep" + (i === 0 ? " playing" : "");
-      b.type = "button";
-      b.textContent = ep.title;
-      b.addEventListener("click", function () {
-        root.querySelectorAll(".ep").forEach(function (x) { x.classList.remove("playing"); });
-        b.classList.add("playing");
-        var target = (ep.playPath || "").indexOf("/") === 0 ? ep.playPath
-          : (ep.playPath || "");
-        loadSource(target, true, b);
-      });
-      wrap.appendChild(b);
+
+    // 块选择器 + 集数跳转
+    var bar = document.createElement("div");
+    bar.className = "ep-bar";
+
+    var blockSel = document.createElement("div");
+    blockSel.className = "ep-blocks";
+    for (var b = 0; b < blocks; b++) {
+      var start = b * BLOCK_SIZE + 1;
+      var end = Math.min((b + 1) * BLOCK_SIZE, total);
+      var bb = document.createElement("button");
+      bb.type = "button";
+      bb.className = "ep-block";
+      bb.textContent = start + "-" + end;
+      bb.addEventListener("click", (function (bi) {
+        return function () {
+          currentBlock = bi;
+          renderCurrentBlock(wrap, blockSel);
+        };
+      })(b));
+      blockSel.appendChild(bb);
+    }
+    bar.appendChild(blockSel);
+
+    // 集数跳转输入框
+    var jumpForm = document.createElement("form");
+    jumpForm.className = "ep-jump";
+    var jumpInput = document.createElement("input");
+    jumpInput.type = "number";
+    jumpInput.min = "1";
+    jumpInput.max = String(total);
+    jumpInput.placeholder = "跳到第N集";
+    jumpInput.className = "ep-jump-input";
+    var jumpBtn = document.createElement("button");
+    jumpBtn.type = "submit";
+    jumpBtn.textContent = "跳";
+    jumpBtn.className = "ep-jump-btn";
+    jumpForm.appendChild(jumpInput);
+    jumpForm.appendChild(jumpBtn);
+    jumpForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var n = parseInt(jumpInput.value, 10);
+      if (!n || n < 1 || n > total) return;
+      var bi = Math.floor((n - 1) / BLOCK_SIZE);
+      currentBlock = bi;
+      renderCurrentBlock(wrap, blockSel, n);
     });
+    bar.appendChild(jumpForm);
+
+    wrap.appendChild(bar);
+
+    var epList = document.createElement("div");
+    epList.className = "ep-grid";
+    wrap.appendChild(epList);
+
     (anchor || root).insertAdjacentElement("afterend", wrap);
+
+    // 定位到目标集所在块并播放
+    var target = urlEp && urlEp >= 1 && urlEp <= total ? urlEp : 0;
+    if (target) {
+      currentBlock = Math.floor((target - 1) / BLOCK_SIZE);
+    }
+    renderCurrentBlock(wrap, blockSel, target);
+
+    function renderCurrentBlock(wrap, blockSel, playEp) {
+      var epList = wrap.querySelector(".ep-grid");
+      if (!epList) return;
+      epList.innerHTML = "";
+      // 高亮当前块
+      Array.prototype.forEach.call(blockSel.querySelectorAll(".ep-block"), function (el, idx) {
+        el.classList.toggle("active", idx === currentBlock);
+      });
+      var start = currentBlock * BLOCK_SIZE;
+      var end = Math.min(start + BLOCK_SIZE, currentEpisodes.length);
+      var found = null;
+      for (var i = start; i < end; i++) {
+        var ep = currentEpisodes[i];
+        var b = document.createElement("button");
+        b.type = "button";
+        b.className = "ep";
+        b.textContent = ep.title;
+        b.addEventListener("click", (function (e) {
+          return function () {
+            root.querySelectorAll(".ep").forEach(function (x) { x.classList.remove("playing"); });
+            e.classList.add("playing");
+            var t = (e.playPath || "").indexOf("/") === 0 ? e.playPath : (e.playPath || "");
+            loadSource(t, true, e);
+          };
+        })(b));
+        epList.appendChild(b);
+        if (playEp && epNumber(ep) === playEp) {
+          found = b;
+        }
+      }
+      // CINEAI 联动：自动播放指定集
+      if (playEp && found && !autoPlayed) {
+        autoPlayed = true;
+        found.classList.add("playing");
+        var ft = (found.playPath || "").indexOf("/") === 0 ? found.playPath : (found.playPath || "");
+        loadSource(ft, true, found);
+      }
+    }
   }
 
   function renderSources() {
@@ -571,6 +709,14 @@ ${rating ? `<span class="pill rating">★ ${escapeHTML(rating)} / 10</span>` : "
       .then(function (body) {
         candidates = body.sources || [];
         renderSources();
+        // CINEAI 联动：带 ep 参数时自动点第一个源，随后自动定位并播放指定集
+        if (urlEp && candidates.length > 0) {
+          var firstBtn = root.querySelector(".stream-source");
+          if (firstBtn) {
+            firstBtn.click();
+            setState("正在加载资源源，即将自动播放第 " + urlEp + " 集…");
+          }
+        }
       })
       .catch(function () { setError("在线资源加载失败，请稍后重试。"); });
   }

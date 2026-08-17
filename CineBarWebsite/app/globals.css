@@ -1675,6 +1675,106 @@ footer {
   padding: 18px 0;
 }
 
+/* ---------- 影视卡片（zip0 卡片结构 + CineBar 亮色品牌） ---------- */
+.ht-card {
+  position: relative;
+  width: 172px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 14px 35px rgba(31, 38, 71, 0.12);
+  overflow: hidden;
+  transition: transform 200ms ease, border-color 200ms ease;
+}
+.ht-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+}
+.ht-card .ht-poster {
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  transition: transform 350ms ease, opacity 250ms ease;
+}
+.ht-card:hover .ht-poster {
+  transform: scale(1.045);
+  opacity: 0.85;
+}
+.ht-poster-fallback {
+  aspect-ratio: 2 / 3;
+}
+.ht-card .ht-card-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 18px;
+  line-height: 1;
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
+  transition: all 200ms ease;
+}
+.ht-card:hover .ht-card-play {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.ht-card .ht-card-meta {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 12px 10px 14px;
+  background: var(--surface);
+}
+.ht-card .ht-card-meta strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.ht-card .ht-card-sub {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.ht-card .ht-card-rating {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 650;
+}
+.ht-card .ht-card-type {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- 影视库网格 ---------- */
+.videos-grid--zip0 {
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+}
+.videos-grid--zip0 .ht-card {
+  width: 100%;
+  display: block;
+  text-decoration: none;
+}
+
+/* ---------- 播放页（跟随主题） ---------- */
+.watch-zip0 {
+  min-height: 100vh;
+}
+
+
+
+
 .ai-search-btn {
   display: inline-flex;
   align-items: center;
@@ -2608,11 +2708,37 @@ footer {
   box-shadow: 0 0 20px color-mix(in srgb, var(--accent) 18%, transparent);
 }
 
+/* 暂不可播的台（Cloudflare 探测不可达）：整体灰显，但保留显示 */
+.tv-station-card.is-offline {
+  opacity: 0.55;
+  filter: saturate(0.5);
+}
+.tv-station-card.is-offline:hover {
+  opacity: 0.75;
+  transform: none;
+}
+
+.tv-station-offline-badge {
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  font-size: 0.55rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 3px 5px;
+  color: #fff;
+  background: rgba(120, 120, 120, 0.85);
+  border-radius: 0 0 9px 0;
+  backdrop-filter: blur(2px);
+  white-space: nowrap;
+}
+
 .tv-station-logo-wrap {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  position: relative;
   width: 40px;
   height: 40px;
   border-radius: 10px;

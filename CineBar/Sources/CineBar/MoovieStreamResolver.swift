@@ -49,7 +49,7 @@ enum MoovieStreamResolver {
             resolvingAgainstBaseURL: false
         )!
         components.queryItems = [
-            URLQueryItem(name: "kw", value: query)
+            URLQueryItem(name: "q", value: query)
         ]
         if let year, !year.isEmpty {
             components.queryItems?.append(URLQueryItem(name: "year", value: year))
