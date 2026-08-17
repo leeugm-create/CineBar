@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 127&lt;/li&gt;&lt;li&gt;【修复】电视直播浮窗无法返回（Build 126 反馈）&lt;/li&gt;&lt;li&gt;- 独立播放窗口的「关闭播放」按钮此前只在全屏模式显示，浮窗（直播/正片）模式下没有返回入口，点「浮窗」后主面板隐藏即被困在播放界面&lt;/li&gt;&lt;li&gt;- 修复：浮窗模式新增「全屏」与「关闭播放」按钮，任何模式均可显式返回主面板（Esc 与窗口红点关闭仍有效）&lt;/li&gt;&lt;li&gt;【网页】播放页 /watch 升级为 zip0 完整布局&lt;/li&gt;&lt;li&gt;- 双栏布局：左主栏（播放器 → NOW PLAYING 摘要 → 选集 → 影片详情 → 相关影视推荐），右侧 300px 线路面板&lt;/li&gt;&lt;li&gt;- 右侧「播放来源」线路列表：同片名多源聚合（量子/暴风/最大/急速/非凡），每条显示「线路 N + 质量标签 + 探测延迟 ms」，当前线路高亮，点击整页切换线路（zip0 同款）&lt;/li&gt;&lt;li&gt;- 播放器下方选集：全集按钮网格（电影 1 集也显示，与 zip0 一致），点集即播并同步 URL episode 参数&lt;/li&gt;&lt;li&gt;- 底部「相关影视推荐」：同分类热门卡片（海报 + 状态标签 + 标题），点击直达对应源播放页&lt;/li&gt;&lt;li&gt;- 影片详情区：海报 + 年份/类型/质量标签 + 简介（剥离源站 HTML 标签）&lt;/li&gt;&lt;li&gt;- URL 双兼容：/watch?source=&amp;amp;id=&amp;amp;episode=（精确直达）与 /watch?title=（搜索入口，首页卡片沿用）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-127-universal.zip"
+        sparkle:version="127"
+        sparkle:shortVersionString="0.9.0-test.1"
+        length="8741898"
+        type="application/octet-stream"
+        sparkle:edSignature="jNZ0osRmV/S4nRDtYiX9J+iCsoEWEXHpv0AWKtc7+oAcUOC6M9C2mi4Ev6E3BCpm6T/WIP9Qo1Yz9B1Dk3cdCQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
       <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 126&lt;/li&gt;&lt;li&gt;【修复】电视直播播放崩溃（Build 125 崩溃报告）&lt;/li&gt;&lt;li&gt;- 直播流（HLS live）改用纯 AVPlayerLayer 渲染，不再挂 AVPlayerView 控件，规避无时长直播流在 SwiftUI 绑定下的崩溃&lt;/li&gt;&lt;li&gt;- 频道 logo 图片改经 worker /api/iptv/logo 代理加载，修复部分频道台标加载失败&lt;/li&gt;&lt;li&gt;- /api/iptv 增加 ?app=1 模式：App 端保留国内最快直连源（网页模式仍优先 https 可播源）&lt;/li&gt;&lt;li&gt;【修复】Moovie 在线播放搜索失效&lt;/li&gt;&lt;li&gt;- Moovie 搜索接口 2026-08 起要求参数名 q（kw 已废弃，返回 invalid_query），App 端与分享页 worker 均已适配&lt;/li&gt;&lt;li&gt;【新增】分享页播放器增强（cinebar.cc/share 短链落地页）&lt;/li&gt;&lt;li&gt;- 集数区改为横向胶囊块 + 集数跳转输入框，长剧集不再纵向铺满&lt;/li&gt;&lt;li&gt;- 键盘 ←/→ 快退/快进 15 秒（全屏与内嵌均生效，输入框聚焦时不触发）&lt;/li&gt;&lt;li&gt;- URL 带 ?ep=N 时自动定位并播放指定集（CINEAI 联动直达）&lt;/li&gt;&lt;li&gt;【网页】影视库 zip0 化（本轮主体）&lt;/li&gt;&lt;li&gt;- 首页「今日热门 / 院线热门电影」与 /videos 影视库卡片改为 zip0 卡片结构（2/3 海报、圆角 16、悬停播放钮、年份/类型 meta），点击直接进入 /watch 独立播放页&lt;/li&gt;&lt;li&gt;- 新增 /watch 播放页：深色沉浸式播放 + 换源 + 选集播放（hls.js 原生播放）&lt;/li&gt;&lt;li&gt;- 片源限定为实测可播源（量子 + 最大，排除暴风 manifestLoadError），每源聚合 3 页共 300 条&lt;/li&gt;&lt;li&gt;- 播放页源（量子/急速/非凡）解析重试最多 5 次，提高 Cloudflare 抓取国内播放页的成功率&lt;/li&gt;&lt;li&gt;【修复】院线热门电影海报不显示&lt;/li&gt;&lt;li&gt;- /api/nowplaying-cn 返回的 poster 已是代理路径（绝对 URL 形态），前端旧判断只识别相对路径导致二次编码 → 502；改为包含式判断，两种形态均直接使用&lt;/li&gt;&lt;li&gt;- 真实浏览器验证：32/32 海报全部加载成功&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Mon, 17 Aug 2026 00:00:00 +0000</pubDate>
-      <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-126-universal.zip"
-        sparkle:version="126"
-        sparkle:shortVersionString="0.9.0-test.1"
-        length="8740024"
-        type="application/octet-stream"
-        sparkle:edSignature="B9HCaw9Nm9TdWrolP1lfJkByTwlGPE/QVcEboxMuHcImj62yn++Fiq+IFvlGCoOMwgS8XcZh+qPU/ckZpGzIBw=="/>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-126-universal.zip" sparkle:version="126" sparkle:shortVersionString="0.9.0-test.1" length="8740024" type="application/octet-stream" sparkle:edSignature="B9HCaw9Nm9TdWrolP1lfJkByTwlGPE/QVcEboxMuHcImj62yn++Fiq+IFvlGCoOMwgS8XcZh+qPU/ckZpGzIBw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0</title>
