@@ -1581,9 +1581,10 @@ function parseIPVPlaylist(text: string): IPTVChannel[] {
 
 /** 重新抓取源站并写缓存（handleIPTV 首次请求与 stale 回退共用）。返回抓取到的频道（可能为空）。 */
 async function refreshIPTV(env: Env, ctx: ExecutionContext, cacheKey: number, preferReachable: boolean): Promise<IPTVChannel[]> {
-  // 国内/港台源：内置列表（2026-08-18 已探测剔除不可用，含台标）。
-  // 保留可达性探测与缓存逻辑（网页端按可达排序、App 直连不受限）。
-  const domestic: IPTVChannel[] = parseIPVPlaylist(IPTV_BUILTIN_M3U);
+  // 国内/港台源：内置列表（2026-08-18 本地网络实测 151 台全可播，含台标）。
+  // 直接标记 reachable=true：可达性探测从 Cloudflare 网络发起，对国内裸流 IP（119.233.255.62:1234 等）
+  // 会误判不可达，而实际播放是浏览器/App 用户网络直连，探测结果无参考价值（2026-08-18 线上 bug 修复）。
+  const domestic: IPTVChannel[] = parseIPVPlaylist(IPTV_BUILTIN_M3U).map((ch) => ({ ...ch, reachable: true }));
   // 国际台：抓 iptv-org 全球列表，按国家白名单过滤知名台，分组名归一为中文国家名。
   // 只保留 http(s) 流（worker fetch 不支持 rtmp 等协议）。
   const intl: IPTVChannel[] = [];
@@ -1610,15 +1611,8 @@ async function refreshIPTV(env: Env, ctx: ExecutionContext, cacheKey: number, pr
   const allVariants = [...domestic, ...intlDeduped];
   if (allVariants.length > 0) {
     await writeIPTVCache(env, allVariants, cacheKey);
-    // 网页模式（preferReachable=true）：后台按主机探测国内台可达性并写回缓存，下次请求生效。
+    // 国内/港台为内置源且已标记可达，不再从 Cloudflare 探测（探测网络与用户网络不同，误判不可达）。
     // 国际台不探测（300+ 且部分地理封锁，30s 预算不够；保持"未探测=可点播"）。
-    if (preferReachable) {
-      ctx.waitUntil(
-        probeIPTVHosts(domestic.map((ch) => ch.url)).then((hostMap) =>
-          writeIPTVCache(env, [...markHostReachability(domestic, hostMap), ...intlDeduped], cacheKey)
-        )
-      );
-    }
   }
   // 响应按台名去重（网页模式：有可达标记时优先可达变体；首次请求探测未完成则 https/首个）。
   return dedupeIPTVChannels(allVariants, preferReachable);
