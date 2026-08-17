@@ -1246,8 +1246,8 @@ type IPTVChannel = {
   reachable?: boolean;
 };
 
-const IPTV_CACHE_KEY = 20; // 网页（2026-08-18 换内置源后升 key，避开 best-fan 旧缓存）；2~17、18 已弃用
-const IPTV_CACHE_KEY_APP = 21; // App（2026-08-18 换内置源后升 key）
+const IPTV_CACHE_KEY = 22; // 网页（2026-08-18 二次升 key：旧 key 20 缓存含 Cloudflare 误判的 reachable=false，且部署 token 无 D1 权限无法清理）；2~18、20 已弃用
+const IPTV_CACHE_KEY_APP = 23; // App（2026-08-18 二次升 key）
 // best-fan 源每日自动重建，12 小时抓取一次即可跟上换源节奏；
 // 抓取失败时回退旧缓存（见 handleIPTV），避免源站抖动导致列表清空。
 const IPTV_CACHE_TTL_SECONDS = 12 * 60 * 60;
