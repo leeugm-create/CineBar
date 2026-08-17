@@ -296,7 +296,7 @@ export default function WatchClient() {
   );
 
   if (loading) {
-    return <p className="watch-empty">正在解析播放地址…</p>;
+    return <p className="watch-empty">正在连接播放源，请稍候…</p>;
   }
   if (notFound || !current) {
     return <p className="watch-empty">未找到「{query}」的可播放资源</p>;

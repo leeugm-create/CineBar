@@ -386,7 +386,17 @@ type CMSTitle = {
   vodContent?: string;   // vod_content（简介，仅 detail 时带）
 };
 
+/**
+ * 判定是否为衍生内容（解说/预告/花絮/混剪等）：标题或分类命中即视为衍生。
+ * 与 App 端 Moovie 搜索同策略——用户要正片，解说版点击进去观感就是"放错片"。
+ */
+function cmsIsDerivative(title: string, category: string): boolean {
+  const t = `${title ?? ""} ${category ?? ""}`;
+  return /解说|预告|花絮|混剪|剪辑|片段|彩蛋|幕后|速看|抢先看|精华|合集|盘点/.test(t);
+}
+
 /** 并发搜索全部 CMS 源，返回合并结果（每个源取前 6 条，总量封顶 30 条）。 */
+
 async function cmsSearchAll(
   title: string,
   signal?: AbortSignal
@@ -406,7 +416,7 @@ async function cmsSearchAll(
         list?: Record<string, unknown>[];
       };
       if (data.code !== 1 || !Array.isArray(data.list)) return [] as CMSTitle[];
-      return data.list.slice(0, 6).map((v) => {
+      const rows: CMSTitle[] = data.list.map((v) => {
         const playURL = String(v.vod_play_url ?? "");
         return {
           source: src.id,
@@ -422,6 +432,8 @@ async function cmsSearchAll(
           playFrom: String(v.vod_play_from ?? ""),
         };
       });
+      // 先过滤衍生内容（解说/预告/花絮…），正片才占名额
+      return rows.filter((r) => !cmsIsDerivative(r.title, r.category)).slice(0, 6);
     })
   );
   const merged: CMSTitle[] = [];
@@ -554,17 +566,19 @@ async function cmsListPage(
       list?: Record<string, unknown>[];
     };
     if (data.code !== 1 || !Array.isArray(data.list)) return [];
-    return data.list.map((v) => {
-      const categoryRaw = String(v.type_name ?? "");
-      return {
-        id: String(v.vod_id ?? ""),
-        title: String(v.vod_name ?? ""),
-        poster: v.vod_pic ? String(v.vod_pic) : null,
-        remarks: String(v.vod_remarks ?? ""),
-        category: cmsClassifyCategory(categoryRaw),
-        categoryRaw,
-      };
-    });
+    return data.list
+      .map((v) => {
+        const categoryRaw = String(v.type_name ?? "");
+        return {
+          id: String(v.vod_id ?? ""),
+          title: String(v.vod_name ?? ""),
+          poster: v.vod_pic ? String(v.vod_pic) : null,
+          remarks: String(v.vod_remarks ?? ""),
+          category: cmsClassifyCategory(categoryRaw),
+          categoryRaw,
+        };
+      })
+      .filter((x) => !cmsIsDerivative(x.title, x.categoryRaw));
   } catch {
     return [];
   }
