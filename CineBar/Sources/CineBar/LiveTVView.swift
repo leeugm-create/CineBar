@@ -43,6 +43,14 @@ struct LiveTVView: View {
 
     private var headerRow: some View {
         HStack(spacing: 10) {
+            // 明确返回入口：直播界面顶栏固定「返回」按钮（520 宽主面板 6 个分区 tab 过挤，
+            // 用户可能找不到顶部 tab，导致"进了直播回不去"——Build 128 修复）。
+            Button {
+                store.setMainBrowseSection(.movies)
+            } label: {
+                Label("返回", systemImage: "chevron.left")
+            }
+            .help("返回电影 / 电视剧")
             Text("电视直播")
                 .font(.headline)
             if isLoading {
