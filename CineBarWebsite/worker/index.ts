@@ -554,25 +554,29 @@ async function cmsListPage(
   }
 }
 
-/** 聚合指定分类的列表：从各源拉指定页，去重、过滤空标题。 */
+/** 聚合指定分类的列表：从各源拉多页，去重、过滤空标题。 */
 async function cmsListByCategory(
   category: string,
   pg: number
 ): Promise<{ items: CMSTitle[]; total: number }> {
-  const signal = AbortSignal.timeout(15000);
-  const pages = await Promise.allSettled(
-    CMS_SOURCES.map((src) => cmsListPage(src, pg, signal))
+  const signal = AbortSignal.timeout(20000);
+  // 每源拉 3 页（起始 pg 起），扩充片源覆盖；页数过多会拖慢，3 页是平衡点。
+  const pageTasks = CMS_SOURCES.flatMap((src) =>
+    [pg, pg + 1, pg + 2].map((p) => cmsListPage(src, p, signal))
   );
+  const pages = await Promise.allSettled(pageTasks);
   const merged: {
     id: string; title: string; poster: string | null; remarks: string;
     category: string; categoryRaw: string; source: string; sourceName: string;
   }[] = [];
   CMS_SOURCES.forEach((src, i) => {
-    const r = pages[i];
-    if (r.status !== "fulfilled") return;
-    for (const item of r.value) {
-      if (!item.id || !item.title.trim()) continue;
-      merged.push({ ...item, source: src.id, sourceName: src.name });
+    for (let k = 0; k < 3; k++) {
+      const r = pages[i * 3 + k];
+      if (r.status !== "fulfilled") continue;
+      for (const item of r.value) {
+        if (!item.id || !item.title.trim()) continue;
+        merged.push({ ...item, source: src.id, sourceName: src.name });
+      }
     }
   });
   // 按 id 去重（保留首个出现）

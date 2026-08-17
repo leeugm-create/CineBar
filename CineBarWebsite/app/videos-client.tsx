@@ -62,7 +62,9 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
       hls.on(Hls.Events.ERROR, (_e, data) => {
         if (data.fatal) setFailed(true);
       });
-      video.play().catch(() => setFailed(true));
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        video.play().catch(() => setFailed(true));
+      });
     } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = currentStream;
       video.play().catch(() => setFailed(true));
@@ -120,15 +122,13 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
       </div>
 
       <div className="inline-player-stage">
-        {armed && !failed ? (
-          <video
-            ref={videoRef}
-            className="inline-player-video"
-            controls
-            playsInline
-            autoPlay
-          />
-        ) : (
+        <video
+          ref={videoRef}
+          className="inline-player-video"
+          controls
+          playsInline
+        />
+        {!armed || failed || resolving ? (
           <div
             className="inline-player-poster"
             style={detail.poster ? { backgroundImage: `url("${proxiedPoster(detail.poster)}")` } : undefined}
@@ -151,7 +151,7 @@ function CmsPlayer({ detail, onClose }: { detail: CMSDetail; onClose: () => void
               )}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {episodes.length > 1 ? (
