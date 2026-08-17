@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 128&lt;/li&gt;&lt;li&gt;【修复】电视直播界面无法返回（Build 127 反馈续）&lt;/li&gt;&lt;li&gt;- 直播界面顶栏新增「← 返回」按钮：主面板仅 520pt 宽，6 个分区 tab 拥挤，用户进入直播后容易找不到返回入口&lt;/li&gt;&lt;li&gt;- 点击「返回」直接切回电影/电视剧分区；浮窗/全屏的「关闭播放」按钮（Build 127 已加）保持不变&lt;/li&gt;&lt;li&gt;【网页】直播源替换（同步部署 cinebar.cc）&lt;/li&gt;&lt;li&gt;- 直播源由 best-fan 开源列表替换为内置 151 台（2026-08-18 实测可用）：央视 21 / 卫视 15 / 港台 82 / 地方 33&lt;/li&gt;&lt;li&gt;- 全部含台标（epg.112114.xyz，经 /api/iptv/logo 代理加载）；同名不同省台已区分（内蒙古经济生活/少儿频道）&lt;/li&gt;&lt;li&gt;- 不可用源已剔除（4gtv 10 台 504、Astro 4 台 404、宁夏 4 台 403 等 19 台）&lt;/li&gt;&lt;li&gt;- 修复可达性误判：内置源直接标记可达，不再从 Cloudflare 网络探测（国内裸流 IP 探测结果与用户网络不符，导致央视/卫视在网页端全部灰显）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 129&lt;/li&gt;&lt;li&gt;【新增】观影记录（App 端）&lt;/li&gt;&lt;li&gt;- 主面板顶栏新增「观影记录」按钮（搜索放大镜左侧，时钟图标）：点击进入记录面板&lt;/li&gt;&lt;li&gt;- 大海报网格展示本机播放过的影片/剧集：海报 + 底部进度条 + 播放角标 + 标题/类型/年份/播放源&lt;/li&gt;&lt;li&gt;- 点击卡片自动续播：按标题重新搜索正片源 → 解析直链 → 浮窗播放并自动 seek 到上次进度&lt;/li&gt;&lt;li&gt;- 记录规则：实际播放满 5 秒开始记录（每 5 秒节流落盘），距片尾不足 20 秒视为看完自动清除；仅保存在本机，不注册不上传&lt;/li&gt;&lt;li&gt;- 右键卡片可删除单条记录，面板提供「清除全部」；播放中记录实时刷新&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端同步更新中&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-128-universal.zip"
-        sparkle:version="128"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-129-universal.zip"
+        sparkle:version="129"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8743896"
+        length="8839213"
         type="application/octet-stream"
-        sparkle:edSignature="XkbZLnv9K9sP+8AnjHns3j2KhpgkgnkhVjiQV0Xd4jtZw0lQ5alc8hT0MuK89J0iNJx8SMVzfgJh9Ra1AZFpCw=="/>
+        sparkle:edSignature="vsOkfMVp+9UP/uuWWjk0Cr180S+7Y1dxeWqGuJTouXlGiBu2tfAr3hSh7f6JQwArQVxoPqsSrEBqpnlYSPctDg=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 128&lt;/li&gt;&lt;li&gt;【修复】电视直播界面无法返回（Build 127 反馈续）&lt;/li&gt;&lt;li&gt;- 直播界面顶栏新增「← 返回」按钮：主面板仅 520pt 宽，6 个分区 tab 拥挤，用户进入直播后容易找不到返回入口&lt;/li&gt;&lt;li&gt;- 点击「返回」直接切回电影/电视剧分区；浮窗/全屏的「关闭播放」按钮（Build 127 已加）保持不变&lt;/li&gt;&lt;li&gt;【网页】直播源替换（同步部署 cinebar.cc）&lt;/li&gt;&lt;li&gt;- 直播源由 best-fan 开源列表替换为内置 151 台（2026-08-18 实测可用）：央视 21 / 卫视 15 / 港台 82 / 地方 33&lt;/li&gt;&lt;li&gt;- 全部含台标（epg.112114.xyz，经 /api/iptv/logo 代理加载）；同名不同省台已区分（内蒙古经济生活/少儿频道）&lt;/li&gt;&lt;li&gt;- 不可用源已剔除（4gtv 10 台 504、Astro 4 台 404、宁夏 4 台 403 等 19 台）&lt;/li&gt;&lt;li&gt;- 修复可达性误判：内置源直接标记可达，不再从 Cloudflare 网络探测（国内裸流 IP 探测结果与用户网络不符，导致央视/卫视在网页端全部灰显）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-128-universal.zip" sparkle:version="128" sparkle:shortVersionString="0.9.0-test.1" length="8743896" type="application/octet-stream" sparkle:edSignature="XkbZLnv9K9sP+8AnjHns3j2KhpgkgnkhVjiQV0Xd4jtZw0lQ5alc8hT0MuK89J0iNJx8SMVzfgJh9Ra1AZFpCw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
