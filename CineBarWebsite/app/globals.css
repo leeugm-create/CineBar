@@ -3352,3 +3352,22 @@ footer {
     margin: 0 auto;
   }
 }
+
+/* 播放页骨架加载（2026-08-18：先渲染布局，数据异步填充） */
+.player-shell--loading {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--surface) 60%, transparent) 30%, color-mix(in srgb, var(--accent) 8%, transparent) 50%, color-mix(in srgb, var(--surface) 60%, transparent) 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-bar {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--foreground) 8%, transparent) 30%, color-mix(in srgb, var(--accent) 10%, transparent) 50%, color-mix(in srgb, var(--foreground) 8%, transparent) 70%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

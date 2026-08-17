@@ -79,7 +79,8 @@ function Player({
   onEpisodeChange: (n: number) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const [armed, setArmed] = useState(false);
+  // 进入即播（zip0 风格）：armed 初始 true，视频自动加载；失败再显示错误态（2026-08-18）。
+  const [armed, setArmed] = useState(true);
   const [failed, setFailed] = useState(false);
   const [failReason, setFailReason] = useState("");
   const [alt, setAlt] = useState<{ sourceName: string; url: string } | null>(null);
@@ -227,32 +228,32 @@ export default function WatchClient() {
             }
           }
         }
-        if (!item) { setNotFound(true); return; }
+        if (!item) { setNotFound(true); setLoading(false); return; }
+        // 主数据（播放核心）到达：立即渲染播放器并自动播放，不等线路/推荐（2026-08-18 优化）。
         setCurrent(item);
-        // 线路列表：同片名多源聚合（含当前项）
-        if (!(source && id)) {
-          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
-          if (r.ok) {
-            const body = (await r.json()) as { results?: CmsItem[] };
-            const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
-            if (rs.length > 0) setLines(rs.map((x) => ({ source: x.source, sourceName: x.sourceName, id: x.id, title: x.title, remarks: x.remarks, streamURL: x.streamURL ?? null, latency: null })));
-          }
-        } else {
-          // detail 模式：search 兜底线路列表（带年份防止同名拉错）
-          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
-          if (r.ok) {
-            const body = (await r.json()) as { results?: CmsItem[] };
-            const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
-            if (rs.length > 0) setLines(rs.map((x) => ({ source: x.source, sourceName: x.sourceName, id: x.id, title: x.title, remarks: x.remarks, streamURL: x.streamURL ?? null, latency: null })));
-          }
-        }
-        // 相关推荐：同分类热门
-        const cat = classifyCategory(item.category);
-        const rl = await fetch(`/api/cms/list?category=${cat === "other" ? "movie" : cat}`, { signal: ctrl.signal });
-        if (rl.ok) {
-          const body = (await rl.json()) as { items?: CmsItem[] };
-          setRelated((body.items ?? []).filter((x) => x.id !== item!.id || x.source !== item!.source).slice(0, 12));
-        }
+        setLoading(false);
+        // 线路列表：同片名多源聚合（含当前项），异步填充不阻塞播放
+        void (async () => {
+          try {
+            const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
+            if (r.ok) {
+              const body = (await r.json()) as { results?: CmsItem[] };
+              const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
+              if (rs.length > 0) setLines(rs.map((x) => ({ source: x.source, sourceName: x.sourceName, id: x.id, title: x.title, remarks: x.remarks, streamURL: x.streamURL ?? null, latency: null })));
+            }
+          } catch { /* 忽略 */ }
+        })();
+        // 相关推荐：同分类热门，异步填充（最慢的接口放最后，绝不阻塞播放器）
+        void (async () => {
+          try {
+            const cat = classifyCategory(item.category);
+            const rl = await fetch(`/api/cms/list?category=${cat === "other" ? "movie" : cat}`, { signal: ctrl.signal });
+            if (rl.ok) {
+              const body = (await rl.json()) as { items?: CmsItem[] };
+              setRelated((body.items ?? []).filter((x) => x.id !== item!.id || x.source !== item!.source).slice(0, 12));
+            }
+          } catch { /* 忽略 */ }
+        })();
       } catch { /* 忽略 */ } finally { setLoading(false); }
     }
     load();
@@ -299,7 +300,23 @@ export default function WatchClient() {
   );
 
   if (loading) {
-    return <p className="watch-empty">正在连接播放源，请稍候…</p>;
+    // 骨架先行：播放器区域与布局立即呈现，数据到达后填充（避免长时间白屏/单行文案）。
+    return (
+      <div className="container watch-layout">
+        <div className="watch-main">
+          <div className="player-shell player-shell--loading" />
+          <div className="now-playing">
+            <div className="skeleton-bar" style={{ width: "55%", height: 22 }} />
+          </div>
+        </div>
+        <aside className="watch-sidebar">
+          <div className="source-panel source-panel--watch">
+            <div className="source-panel__heading">播放来源</div>
+            <div className="source-panel__empty">正在加载线路…</div>
+          </div>
+        </aside>
+      </div>
+    );
   }
   if (notFound || !current) {
     return <p className="watch-empty">未找到「{query}」的可播放资源</p>;
