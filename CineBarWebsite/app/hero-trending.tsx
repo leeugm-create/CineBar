@@ -130,7 +130,7 @@ function NowPlayingCard({ item }: { item: { title: string; year: string; rating:
     : null;
   return (
     <Link
-      href={`/watch?title=${encodeURIComponent(item.title)}`}
+      href={`/watch?title=${encodeURIComponent(item.title)}${item.year ? `&year=${encodeURIComponent(item.year)}` : ""}`}
       className="ht-card"
       aria-label={`播放 ${item.title}`}
     >
@@ -217,7 +217,7 @@ type TrendingCardItem = TrendingMovie;
  *  若没有 tmdbId 则用 lookup 解析；都失败降级跳 Moovie。绝不跳豆瓣。 */
 function TrendingCard({ item, kind }: { item: TrendingCardItem; kind: "movie" | "tv" }) {
   // 统一跳独立播放页 /watch?title=，点进去自动搜索并播放（对标 zip0）。
-  const href = `/watch?title=${encodeURIComponent(item.title)}`;
+  const href = `/watch?title=${encodeURIComponent(item.title)}${item.year ? `&year=${encodeURIComponent(item.year)}` : ""}`;
   // 优先用 TMDB 海报（稳定），Moovie 豆瓣图代理兜底。
   const [posterFailed, setPosterFailed] = useState(false);
   const posterSrc = item.tmdbPoster || item.poster;

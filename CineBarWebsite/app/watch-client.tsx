@@ -188,6 +188,7 @@ export default function WatchClient() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [query, setQuery] = useState("");
+  const [year, setYear] = useState("");
   const [probed, setProbed] = useState(false);
 
   const activeLineNo = useMemo(() => {
@@ -201,9 +202,11 @@ export default function WatchClient() {
     const source = params.get("source");
     const id = params.get("id");
     const title = params.get("title") ?? params.get("q") ?? "";
+    const year = params.get("year") ?? "";
     const ep = Number(params.get("episode")) || 1;
     setEpisode(ep);
     setQuery(title);
+    setYear(year);
     const ctrl = new AbortController();
 
     async function load() {
@@ -214,7 +217,7 @@ export default function WatchClient() {
           if (r.ok) item = (await r.json()) as CmsItem;
           if (item) setQuery(item.title);
         } else if (title) {
-          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(title)}&episode=${ep}`, { signal: ctrl.signal });
+          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
           if (r.ok) {
             const body = (await r.json()) as { results?: CmsItem[] };
             const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
@@ -228,15 +231,15 @@ export default function WatchClient() {
         setCurrent(item);
         // 线路列表：同片名多源聚合（含当前项）
         if (!(source && id)) {
-          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}&episode=${ep}`, { signal: ctrl.signal });
+          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
           if (r.ok) {
             const body = (await r.json()) as { results?: CmsItem[] };
             const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
             if (rs.length > 0) setLines(rs.map((x) => ({ source: x.source, sourceName: x.sourceName, id: x.id, title: x.title, remarks: x.remarks, streamURL: x.streamURL ?? null, latency: null })));
           }
         } else {
-          // detail 模式：search 兜底线路列表
-          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}&episode=${ep}`, { signal: ctrl.signal });
+          // detail 模式：search 兜底线路列表（带年份防止同名拉错）
+          const r = await fetch(`/api/cms/search?q=${encodeURIComponent(item.title)}${year ? `&year=${encodeURIComponent(year)}` : ""}&episode=${ep}`, { signal: ctrl.signal });
           if (r.ok) {
             const body = (await r.json()) as { results?: CmsItem[] };
             const rs = (body.results ?? []).filter((x) => x.title && x.streamURL);
@@ -369,7 +372,7 @@ export default function WatchClient() {
                   </a>
                   <div className="video-card__body">
                     <a className="video-card__title" href={`/watch?source=${encodeURIComponent(x.source)}&id=${encodeURIComponent(x.id)}&episode=1`}>{x.title}</a>
-                    <div className="video-card__meta">{x.category || "电影"}</div>
+                    <div className="video-card__meta">{x.year ? `${x.year} · ` : ""}{x.category || "电影"}</div>
                   </div>
                 </article>
               ))}

@@ -465,7 +465,7 @@ export default function VideosClient() {
               <a
                 key={`${item.source}-${item.id}`}
                 className="ht-card"
-                href={`/watch?title=${encodeURIComponent(item.title)}`}
+                href={`/watch?title=${encodeURIComponent(item.title)}${item.year ? `&year=${encodeURIComponent(item.year)}` : ""}`}
                 aria-label={`播放 ${item.title}`}
               >
                 {item.poster ? (
@@ -494,7 +494,7 @@ export default function VideosClient() {
               <a
                 key={`${item.source}-${item.id}`}
                 className="ht-card"
-                href={`/watch?title=${encodeURIComponent(item.title)}`}
+                href={`/watch?title=${encodeURIComponent(item.title)}${item.year ? `&year=${encodeURIComponent(item.year)}` : ""}`}
                 aria-label={`播放 ${item.title}`}
               >
                 {item.poster ? (
