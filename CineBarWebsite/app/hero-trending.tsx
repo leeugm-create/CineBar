@@ -15,7 +15,7 @@ type TrendingMovie = {
 };
 
 const releaseURL =
-  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-129-universal.zip";
+  "https://cinebar.cc/downloads/CineBar-0.9.0-test-build-130-universal.zip";
 
 export default function HomeHero({ m, locale }: { m: Messages; locale: Locale }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);

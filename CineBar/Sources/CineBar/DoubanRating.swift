@@ -470,6 +470,79 @@ struct DoubanComingItem: Hashable {
     let wantCount: Int
 }
 
+/// 豆瓣院线热门条目（来自 movie.douban.com/cinema/nowplaying 列表，与网页端同源）。
+struct DoubanNowPlayingItem: Hashable {
+    let title: String
+    let year: String
+    let rating: Double
+    let subjectID: Int
+    /// 豆瓣海报地址（原图较小，直接可用）。
+    let poster: String?
+}
+
+/// 豆瓣院线热门客户端：抓取 movie.douban.com/cinema/nowplaying/beijing/
+/// （<li data-subject> 列表：片名/评分/上映年份/海报）。公开页、非登录，失败静默降级。
+struct DoubanNowPlayingClient {
+    var session: URLSession = .shared
+
+    private static let userAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+        + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+    func nowPlaying() async throws -> [DoubanNowPlayingItem] {
+        guard let url = URL(
+            string: "https://movie.douban.com/cinema/nowplaying/beijing/"
+        ) else { return [] }
+        return try await DoubanSearchGate.shared.throttled {
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 12
+            request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+            request.setValue(
+                "https://movie.douban.com/",
+                forHTTPHeaderField: "Referer"
+            )
+            let (data, response) = try await self.session.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  http.statusCode == 200 else { return [] }
+            return Self.parse(String(data: data, encoding: .utf8) ?? "")
+        }
+    }
+
+    /// 解析 nowplaying 列表（与网页端 worker parseDoubanNowPlaying 同规则）。
+    static func parse(_ html: String) -> [DoubanNowPlayingItem] {
+        var items: [DoubanNowPlayingItem] = []
+        let pattern =
+            #"<li\\b[^>]*data-subject="(\\d+)"[^>]*data-title="([^"]*)"[^>]*data-score="([^"]*)"[^>]*data-release="([^"]*)"[^>]*>.*?<img[^>]*src="([^"]*\\.(?:jpg|png))""#
+        guard let regex = try? NSRegularExpression(
+            pattern: pattern,
+            options: [.dotMatchesLineSeparators]
+        ) else { return [] }
+        let ns = html as NSString
+        for match in regex.matches(
+            in: html,
+            range: NSRange(location: 0, length: ns.length)
+        ) {
+            let grab = { (i: Int) -> String in
+                ns.substring(with: match.range(at: i))
+            }
+            let title = grab(2).trimmingCharacters(in: .whitespaces)
+            guard !title.isEmpty else { continue }
+            let year = grab(4).count >= 4 ? String(grab(4).prefix(4)) : ""
+            items.append(
+                DoubanNowPlayingItem(
+                    title: title,
+                    year: year,
+                    rating: Double(grab(3)) ?? 0,
+                    subjectID: Int(grab(1)) ?? 0,
+                    poster: grab(5)
+                )
+            )
+            if items.count >= 12 { break }
+        }
+        return items
+    }
+}
+
 /// 豆瓣即将上映客户端：抓取 movie.douban.com/coming 表格（HTML 表格：
 /// 上映日期 / 片名 / 类型 / 制片国家地区 / 想看数）。用于给 TMDB 即将上映
 /// 列表校正中国大陆上映日期（如机器人总动员 CN 区首映 4 月 16 日、重映 8 月 19 日）。

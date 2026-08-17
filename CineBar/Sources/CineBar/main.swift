@@ -436,7 +436,7 @@ enum MovieBrowseSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .upcoming: return "即将上映"
+        case .upcoming: return "院线热门"
         case .recommendations: return "每日电影推荐"
         case .trending: return "本周热门"
         }
@@ -4119,9 +4119,9 @@ final class MovieStore: ObservableObject {
             loadMoovieTrending()
             return
         }
-        // 中文界面即将上映：片单直接用豆瓣 coming（中国大陆上映日期以豆瓣为准）。
+        // 中文界面院线热门：拉取豆瓣正在热映（与网页端「院线热门电影」同源）。
         if section == .upcoming, appLanguage.isChinese {
-            loadUpcomingFromDouban()
+            loadNowPlayingFromDouban()
             return
         }
         Task {
@@ -4291,41 +4291,35 @@ final class MovieStore: ObservableObject {
 
     /// 即将上映（中文界面）：直接用豆瓣 coming 作为片单主体，
     /// 中国大陆上映日期以豆瓣为准（TMDB 地区时序不可靠）。
-    func loadUpcomingFromDouban() {
+    func loadNowPlayingFromDouban() {
         canLoadMoreMovieBrowse = false
         movieBrowseNextPage = 1
         isLoading = true
-        message = "正在获取豆瓣即将上映…"
+        message = "正在获取院线热门…"
         Task {
-            let items = (try? await DoubanComingClient().coming()) ?? []
+            let items = (try? await DoubanNowPlayingClient().nowPlaying()) ?? []
             await MainActor.run {
                 isLoading = false
                 guard !items.isEmpty else {
-                    message = "豆瓣即将上映源暂不可用"
+                    message = "豆瓣院线热门源暂不可用"
                     return
                 }
-                movies = items.compactMap { item in
-                    guard let fullDate = DoubanComingDate.fullDate(
-                        item.displayDate
-                    ) else { return nil }
-                    return Movie(
+                movies = items.map { item in
+                    Movie(
                         id: item.subjectID,
                         title: item.title,
                         originalTitle: nil,
                         overview: "",
-                        posterPath: nil,
+                        posterPath: item.poster,
                         releaseDate: nil,
-                        localizedReleaseDate: fullDate,
-                        voteAverage: 0,
+                        localizedReleaseDate: item.year,
+                        voteAverage: item.rating,
                         voteCount: 0
                     )
                 }
-                message = "豆瓣即将上映 · \(movies.count) 部，正在匹配海报…"
+                message = "院线热门 · \(movies.count) 部"
             }
-            await enrichUpcomingWithTMDB(using: TMDBClient(
-                token: token,
-                language: appLanguage.apiCode
-            ))
+            // 豆瓣海报直接可用，无需 TMDB 匹配；评分/年份来自豆瓣。
         }
     }
 

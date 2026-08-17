@@ -73,8 +73,7 @@ struct MoovieVideoView: NSViewRepresentable {
     final class VideoNSView: NSView {
         let playerView = AVPlayerView()
         let player = AVPlayer()
-        /// 直播流用 AVPlayerLayer（无 AVKit SwiftUI 控件，规避直播崩溃）。
-        private var playerLayer: AVPlayerLayer?
+
         private var loadedURL: URL?
         private var observer: Any?
         private var itemStatusObserver: NSKeyValueObservation?
@@ -94,31 +93,24 @@ struct MoovieVideoView: NSViewRepresentable {
             super.init(frame: frameRect)
             self.resumeFrom = resumeFrom
             self.onDuration = onDuration
-            if isLive {
-                // 直播：纯 AVPlayerLayer 渲染，不挂 AVPlayerView 控件。
-                wantsLayer = true
-                let liveLayer = AVPlayerLayer(player: player)
-                liveLayer.videoGravity = .resizeAspect
-                liveLayer.backgroundColor = NSColor.black.cgColor
-                liveLayer.frame = bounds
-                liveLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
-                layer?.addSublayer(liveLayer)
-                playerLayer = liveLayer
-            } else {
-                playerView.translatesAutoresizingMaskIntoConstraints = false
-                playerView.player = player
-                playerView.controlsStyle = .inline
-                playerView.videoGravity = .resizeAspect
-                playerView.showsFullScreenToggleButton = true
-                playerView.allowsPictureInPicturePlayback = true
-                addSubview(playerView)
-                NSLayoutConstraint.activate([
-                    playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
-                    playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-                    playerView.topAnchor.constraint(equalTo: topAnchor),
-                    playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
-                ])
-            }
+            // 统一用 AVPlayerView（自带控制条/全屏按钮/正常渲染）。Build 125 曾因
+            // "无时长直播流 + SwiftUI 绑定"崩溃改为纯 AVPlayerLayer，导致直播无控制条、
+            // 无法全屏，且 h265 央视流黑屏有声（2026-08-18 反馈）。
+            // 崩溃真正源头是 onTick 每 0.2s 把直播时间写进 SwiftUI binding——isLive 时
+            // 跳过 onTick 更新即可规避，AVPlayerView 渲染与交互恢复。
+            playerView.translatesAutoresizingMaskIntoConstraints = false
+            playerView.player = player
+            playerView.controlsStyle = .inline
+            playerView.videoGravity = .resizeAspect
+            playerView.showsFullScreenToggleButton = true
+            playerView.allowsPictureInPicturePlayback = true
+            addSubview(playerView)
+            NSLayoutConstraint.activate([
+                playerView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                playerView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                playerView.topAnchor.constraint(equalTo: topAnchor),
+                playerView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
             let interval = CMTime(seconds: 0.2, preferredTimescale: 600)
             observer = player.addPeriodicTimeObserver(
                 forInterval: interval,
@@ -126,6 +118,9 @@ struct MoovieVideoView: NSViewRepresentable {
             ) { [weak self] time in
                 let seconds = time.seconds
                 guard seconds.isFinite, seconds >= 0 else { return }
+                // isLive 直播流无 duration，频繁写 binding 曾触发 AVPlayerView 崩溃（Build 125）；
+                // 直播也不展示进度，直接跳过。
+                if isLive { return }
                 if abs(seconds - (self?.lastTick ?? -1)) > 0.15 {
                     self?.lastTick = seconds
                     self?.onTick?(seconds)
@@ -532,6 +527,9 @@ final class MooviePlaybackController: NSObject, NSWindowDelegate {
                 backing: .buffered,
                 defer: false
             )
+            // 先清残留再保存：防止重复进入全屏时 previous 被污染，
+            // 导致退出全屏后 Dock/菜单栏不恢复（2026-08-18 反馈的 Dock 隐藏 bug）。
+            restorePresentationOptions()
             previousPresentationOptions = NSApplication.shared.presentationOptions
             NSApplication.shared.presentationOptions = [
                 .autoHideDock,

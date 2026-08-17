@@ -1685,6 +1685,13 @@ async function handleIPTV(request: Request, env: Env, ctx: ExecutionContext): Pr
       WEB_UNPLAYABLE_HOSTS.some((h) => ch.url.includes(h)) ? { ...ch, webUnplayable: true } : ch
     );
   }
+  // 国际台过滤：探测过且 Cloudflare 网络不可达的直接剔除（App/网页通用）。
+  // 2026-08-18 反馈「国外直播源基本都是无法响应、空有那么多源」——iptv-org 大量源已死，
+  // 与其保留灰显不如不展示；未探测（undefined）的保留等待后台补探。
+  const intlGroupNames = new Set(Object.values(INTL_COUNTRY_NAMES));
+  if (channels.some((ch) => intlGroupNames.has(ch.group))) {
+    channels = channels.filter((ch) => !(intlGroupNames.has(ch.group) && ch.reachable === false));
+  }
   // 分组名归一：源里同一分组叫法不统一（央视台/央视频道、其他/其他频道），统一展示；
   // 台名含 CCTV/央视 的一律归入央视频道（源里 CCTV-5+ 等可能被标到其他分组）。
   const normalizeGroup = (raw: string, name: string): string => {
