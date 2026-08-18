@@ -60,11 +60,12 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
   const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
 
-  const loadTrending = useCallback(() => {
+  const loadTrending = useCallback((bypass: boolean) => {
     const controller = new AbortController();
     setRefreshing(true);
-    // _= 时间戳绕 CDN 缓存，手动刷新拿到最新
-    fetch(`/api/trending?type=all&_=${Date.now()}`, { signal: controller.signal })
+    // 初始加载吃缓存；手动/自动刷新带 _= 绕缓存拿最新
+    const suffix = bypass ? `&_=${Date.now()}` : "";
+    fetch(`/api/trending?type=all${suffix}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((body: { movies?: TrendingMovie[]; shows?: TrendingMovie[] }) => {
         setMovies(body.movies ?? []);
@@ -79,7 +80,7 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch(`/api/trending?type=all&_=${Date.now()}`, { signal: controller.signal })
+    fetch(`/api/trending?type=all`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((body: { movies?: TrendingMovie[]; shows?: TrendingMovie[] }) => {
         setMovies(body.movies ?? []);
@@ -91,7 +92,7 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
     return () => controller.abort();
   }, [tick]);
 
-  const refreshTrending = useAutoRefresh(loadTrending);
+  const refreshTrending = useAutoRefresh(() => loadTrending(true));
 
   return (
     <>
@@ -146,11 +147,13 @@ function NowPlayingRow({ locale }: { locale: Locale }) {
   const [refreshing, setRefreshing] = useState(false);
   const [tick, setTick] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (bypass: boolean) => {
     setRefreshing(true);
-    // 1) 豆瓣国内热映（更准，含国产片）；_= 时间戳绕 CDN 缓存
+    // 初始加载不带时间戳（吃 CDN 缓存，稳）；手动/自动刷新带 _= 绕缓存拿最新。
+    const suffix = bypass ? `?_=${Date.now()}` : "";
+    // 1) 豆瓣国内热映（更准，含国产片）
     try {
-      const r = await fetch(`/api/nowplaying-cn?_=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+      const r = await fetch(`/api/nowplaying-cn${suffix}`, { signal: AbortSignal.timeout(8000) });
       if (r.ok) {
         const body = (await r.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
         if (body.items && body.items.length > 0) { setItems(body.items); setRefreshing(false); return; }
@@ -158,7 +161,7 @@ function NowPlayingRow({ locale }: { locale: Locale }) {
     } catch { /* 忽略 */ }
     // 2) 回退 TMDB（稳定，但可能缺国产片）
     try {
-      const r2 = await fetch(`/api/nowplaying?_=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+      const r2 = await fetch(`/api/nowplaying${suffix}`, { signal: AbortSignal.timeout(8000) });
       if (r2.ok) {
         const body2 = (await r2.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
         setItems(body2.items ?? []);
@@ -169,11 +172,11 @@ function NowPlayingRow({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    void load();
+    void load(false);
     return () => controller.abort();
   }, [tick]);
 
-  const refresh = useAutoRefresh(load);
+  const refresh = useAutoRefresh(() => load(true));
 
   if (items.length === 0) return null;
   return (
