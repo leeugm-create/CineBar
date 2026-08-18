@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 140&lt;/li&gt;&lt;li&gt;【修复】直播返回后仍出声（Build 139 反馈续，双保险）&lt;/li&gt;&lt;li&gt;- 播放器视图销毁时显式暂停并清空播放项（不再依赖 AVPlayer 释放时序）&lt;/li&gt;&lt;li&gt;- 分区切换路径统一关闭直播播放器（onDisappear 不可靠时由切换逻辑兜底）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 141&lt;/li&gt;&lt;li&gt;【调整】移除「本地片库」功能（按用户要求）&lt;/li&gt;&lt;li&gt;- 分区栏移除「本地片库」选项及相关切换逻辑与入口&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-140-universal.zip"
-        sparkle:version="140"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-141-universal.zip"
+        sparkle:version="141"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8893524"
+        length="8891701"
         type="application/octet-stream"
-        sparkle:edSignature="f4uOH61fCs+2UUQrTWOSGCCAiXp/rbpWFTDVUHocp4inZQnRnIj7754/Dxzhi/r2PrETTPfzFbcxhfW8NmayDQ=="/>
+        sparkle:edSignature="zz80uvih2nPhWnP0Wzut05wI5h4kudP18fqVr/iiCRuuCDY80y1R0MeK/JBhyBIUucg/kWev2ILr6BPpDqVWAw=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 140&lt;/li&gt;&lt;li&gt;【修复】直播返回后仍出声（Build 139 反馈续，双保险）&lt;/li&gt;&lt;li&gt;- 播放器视图销毁时显式暂停并清空播放项（不再依赖 AVPlayer 释放时序）&lt;/li&gt;&lt;li&gt;- 分区切换路径统一关闭直播播放器（onDisappear 不可靠时由切换逻辑兜底）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-140-universal.zip" sparkle:version="140" sparkle:shortVersionString="0.9.0-test.1" length="8893524" type="application/octet-stream" sparkle:edSignature="f4uOH61fCs+2UUQrTWOSGCCAiXp/rbpWFTDVUHocp4inZQnRnIj7754/Dxzhi/r2PrETTPfzFbcxhfW8NmayDQ=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
