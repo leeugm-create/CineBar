@@ -39,8 +39,10 @@ struct LiveTVView: View {
         }
         .onDisappear {
             // 离开直播界面（切栏目/返回）停止直播播放，避免"返回后还有杂音"（2026-08-18 反馈）。
+            // 138 只停了内嵌播放器，浮窗窗口的直播仍会出声——这里同时关闭浮窗。
             playingChannel = nil
             playbackStatus = .loading
+            MooviePlaybackController.shared.close()
         }
     }
 
