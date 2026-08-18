@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 132&lt;/li&gt;&lt;li&gt;【修复】观影记录面板背景错乱（Build 131 反馈）&lt;/li&gt;&lt;li&gt;- 记录面板改为纯色背景，不再透出主界面「本周热门」海报背景墙&lt;/li&gt;&lt;li&gt;【优化】在线播放加载提速&lt;/li&gt;&lt;li&gt;- 播放页解析结果增加内存缓存：重复播放同一部片免去再次抓取播放页（秒开）&lt;/li&gt;&lt;li&gt;- 播放页抓取与分片探测超时收紧（15s→10s / 12s→8s），源站卡顿时更快进入失败提示或下一候选&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 133&lt;/li&gt;&lt;li&gt;【修复】内嵌在线播放返回后仍在后台出声（Build 132 反馈）&lt;/li&gt;&lt;li&gt;- 根因：离开详情页（切栏目/返回）只取消了搜索解析任务，未停止已开始的视频，导致&amp;quot;看不到播放界面但声音还在&amp;quot;&lt;/li&gt;&lt;li&gt;- 修复：详情页 onDisappear 时停止内嵌播放器（暂停 + 清空播放源 + 重置状态）；电影/剧集/动漫详情共用同一组件，一处修复全部生效&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-132-universal.zip"
-        sparkle:version="132"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-133-universal.zip"
+        sparkle:version="133"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8880645"
+        length="8882230"
         type="application/octet-stream"
-        sparkle:edSignature="Cr+0CbUt5FUOM0yu3VtSBJF5uyej8NuNHCgAupWUDNjWFgg3SqN3Twv/KGUXCoSpeutpRj8bc6ilnBolTqWNAA=="/>
+        sparkle:edSignature="YA9AWW0Twtb+xuKVh4w/DYNw3UpEdvRxWZl7vMsI7LGrnFsRB37tsQmrvyZEQjL4gyh7kS1gV2rwU6y1xKNtAA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 132&lt;/li&gt;&lt;li&gt;【修复】观影记录面板背景错乱（Build 131 反馈）&lt;/li&gt;&lt;li&gt;- 记录面板改为纯色背景，不再透出主界面「本周热门」海报背景墙&lt;/li&gt;&lt;li&gt;【优化】在线播放加载提速&lt;/li&gt;&lt;li&gt;- 播放页解析结果增加内存缓存：重复播放同一部片免去再次抓取播放页（秒开）&lt;/li&gt;&lt;li&gt;- 播放页抓取与分片探测超时收紧（15s→10s / 12s→8s），源站卡顿时更快进入失败提示或下一候选&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-132-universal.zip" sparkle:version="132" sparkle:shortVersionString="0.9.0-test.1" length="8880645" type="application/octet-stream" sparkle:edSignature="Cr+0CbUt5FUOM0yu3VtSBJF5uyej8NuNHCgAupWUDNjWFgg3SqN3Twv/KGUXCoSpeutpRj8bc6ilnBolTqWNAA=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
