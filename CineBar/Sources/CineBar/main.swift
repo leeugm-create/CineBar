@@ -6923,6 +6923,13 @@ struct WatchHistoryView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
+                // 返回按钮（与其他面板一致，左上角）：退出观影记录回主界面。
+                Button {
+                    store.toggleWatchHistory()
+                } label: {
+                    Label("返回", systemImage: "chevron.left")
+                }
+                .help("返回")
                 Text("观影记录")
                     .font(.headline)
                 Text("\(entries.count) 条 · 进度仅保存在本机")
