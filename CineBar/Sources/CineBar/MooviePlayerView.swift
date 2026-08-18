@@ -85,6 +85,8 @@ struct MoovieVideoView: NSViewRepresentable {
         private var didSeekResume = false
         private var onDuration: ((Double) -> Void)?
         private var didReportDuration = false
+        private var videoCheckWork: DispatchWorkItem?
+        private var didReportLiveStart = false
         private var lastTick: Double = -1
         /// 直播流等待起播超过该时长视为信号失败（针对 HLS live 卡死但 item 状态仍是 ready 的情况）。
         private static let stallTimeout: TimeInterval = 12
@@ -119,8 +121,18 @@ struct MoovieVideoView: NSViewRepresentable {
                 let seconds = time.seconds
                 guard seconds.isFinite, seconds >= 0 else { return }
                 // isLive 直播流无 duration，频繁写 binding 曾触发 AVPlayerView 崩溃（Build 125）；
-                // 直播也不展示进度，直接跳过。
-                if isLive { return }
+                // 直播也不展示进度，直接跳过。但时间走起来必须报告 readyToPlay：
+                // 否则 h265 直播的 timeControlStatus 可能停在 waiting，LiveTV 的加载遮罩
+                // 一直盖着画面 = 用户看到"黑屏有声"（2026-08-18 实测 presentationSize 正常）。
+                if isLive {
+                    if seconds > 0.5 {
+                        if let self, !self.didReportLiveStart {
+                            self.didReportLiveStart = true
+                            self.reportStatus(.readyToPlay)
+                        }
+                    }
+                    return
+                }
                 if abs(seconds - (self?.lastTick ?? -1)) > 0.15 {
                     self?.lastTick = seconds
                     self?.onTick?(seconds)
@@ -144,6 +156,28 @@ struct MoovieVideoView: NSViewRepresentable {
             onStatus?(status)
         }
 
+        /// 黑屏检测（2026-08-18 央视 h265 黑屏有声反馈）：播放 8 秒后
+        /// 有音频轨但无视频画面（presentationSize 为 0）→ 明确提示换台，
+        /// 不再无声黑屏干等。换台/重播会重新检测。
+        private func armVideoCheck() {
+            videoCheckWork?.cancel()
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                let size = self.player.currentItem?.presentationSize ?? .zero
+                let hasAudio = (self.player.currentItem?.tracks.contains {
+                    $0.assetTrack?.mediaType == .audio
+                }) ?? false
+                if hasAudio && (size.width == 0 || size.height == 0) {
+                    self.reportStatus(.failed("视频流解码失败（H.265 源在部分设备黑屏），请换台"))
+                }
+            }
+            videoCheckWork = work
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + 8,
+                execute: work
+            )
+        }
+
         private func armStallTimer() {
             stallWorkItem?.cancel()
             let work = DispatchWorkItem { [weak self] in
@@ -162,6 +196,7 @@ struct MoovieVideoView: NSViewRepresentable {
                 player.pause()
                 itemStatusObserver?.invalidate()
                 timeControlObserver?.invalidate()
+                didReportLiveStart = false
                 // 注意：不要对 HLS 直播流设置 videoComposition（AVMutableVideoComposition），
                 // 实测 Build 135 会闪退（2026-08-18 用户反馈点击电视台即崩）。
                 // 黑屏有声问题改走换源方向，不再尝试色彩转换 workaround。
@@ -170,6 +205,7 @@ struct MoovieVideoView: NSViewRepresentable {
 
                 reportStatus(.loading)
                 armStallTimer()
+                armVideoCheck()
 
                 itemStatusObserver = item.observe(\.status, options: [.new]) {
                     [weak self] item, _ in
