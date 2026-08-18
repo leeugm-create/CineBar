@@ -480,66 +480,52 @@ struct DoubanNowPlayingItem: Hashable {
     let poster: String?
 }
 
-/// 豆瓣院线热门客户端：抓取 movie.douban.com/cinema/nowplaying/beijing/
-/// （<li data-subject> 列表：片名/评分/上映年份/海报）。公开页、非登录，失败静默降级。
+/// 豆瓣院线热门客户端：直接调官网 worker /api/nowplaying-cn（与网页端「院线热门电影」同源）。
+/// 豆瓣对大陆网络会返回前端模板页（2026-08-18 实测 {{= url}} doT 模板），直抓 HTML 拿不到数据；
+/// worker 从 Cloudflare 网络抓取豆瓣并用代理海报，返回结构化 JSON，可靠且免风控。
 struct DoubanNowPlayingClient {
     var session: URLSession = .shared
 
-    private static let userAgent =
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-        + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
     func nowPlaying() async throws -> [DoubanNowPlayingItem] {
         guard let url = URL(
-            string: "https://movie.douban.com/cinema/nowplaying/beijing/"
+            string: "https://cinebar.cc/api/nowplaying-cn"
         ) else { return [] }
-        return try await DoubanSearchGate.shared.throttled {
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 12
-            request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
-            request.setValue(
-                "https://movie.douban.com/",
-                forHTTPHeaderField: "Referer"
-            )
-            let (data, response) = try await self.session.data(for: request)
-            guard let http = response as? HTTPURLResponse,
-                  http.statusCode == 200 else { return [] }
-            return Self.parse(String(data: data, encoding: .utf8) ?? "")
-        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        request.setValue(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            forHTTPHeaderField: "User-Agent"
+        )
+        let (data, response) = try await self.session.data(for: request)
+        guard let http = response as? HTTPURLResponse,
+              http.statusCode == 200 else { return [] }
+        return Self.parse(data)
     }
 
-    /// 解析 nowplaying 列表（与网页端 worker parseDoubanNowPlaying 同规则）。
-    static func parse(_ html: String) -> [DoubanNowPlayingItem] {
-        var items: [DoubanNowPlayingItem] = []
-        let pattern =
-            #"<li\\b[^>]*data-subject="(\\d+)"[^>]*data-title="([^"]*)"[^>]*data-score="([^"]*)"[^>]*data-release="([^"]*)"[^>]*>.*?<img[^>]*src="([^"]*\\.(?:jpg|png))""#
-        guard let regex = try? NSRegularExpression(
-            pattern: pattern,
-            options: [.dotMatchesLineSeparators]
-        ) else { return [] }
-        let ns = html as NSString
-        for match in regex.matches(
-            in: html,
-            range: NSRange(location: 0, length: ns.length)
-        ) {
-            let grab = { (i: Int) -> String in
-                ns.substring(with: match.range(at: i))
+    /// 解析 worker JSON：{ items: [{ title, year, rating, poster }] }。
+    static func parse(_ data: Data) -> [DoubanNowPlayingItem] {
+        struct Payload: Decodable {
+            struct Item: Decodable {
+                let title: String
+                let year: String
+                let rating: Double?
+                let poster: String?
             }
-            let title = grab(2).trimmingCharacters(in: .whitespaces)
-            guard !title.isEmpty else { continue }
-            let year = grab(4).count >= 4 ? String(grab(4).prefix(4)) : ""
-            items.append(
-                DoubanNowPlayingItem(
-                    title: title,
-                    year: year,
-                    rating: Double(grab(3)) ?? 0,
-                    subjectID: Int(grab(1)) ?? 0,
-                    poster: grab(5)
-                )
-            )
-            if items.count >= 12 { break }
+            let items: [Item]
         }
-        return items
+        guard let payload = try? JSONDecoder().decode(Payload.self, from: data) else {
+            return []
+        }
+        return payload.items.prefix(12).map { item in
+            DoubanNowPlayingItem(
+                title: item.title,
+                year: item.year,
+                rating: item.rating ?? 0,
+                // 接口无 subjectID：用标题稳定哈希作为列表 key。
+                subjectID: abs(item.title.hashValue) % 2_000_000_000,
+                poster: item.poster
+            )
+        }
     }
 }
 

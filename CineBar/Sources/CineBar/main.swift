@@ -262,9 +262,14 @@ struct Movie: Codable, Identifiable, Hashable {
     }
 
     var posterURL: URL? {
+        // 院线热门等直接传入完整海报 URL（豆瓣代理图），不走 TMDB 拼接。
+        if let directPosterURL { return directPosterURL }
         guard let posterPath else { return nil }
         return URL(string: "https://image.tmdb.org/t/p/w342\(posterPath)")
     }
+
+    /// 直接海报地址（非 TMDB posterPath 时使用，如豆瓣经 worker 代理的图）。
+    var directPosterURL: URL? = nil
 
     var tmdbURL: URL? {
         guard id > 0 else { return nil }
@@ -4305,17 +4310,21 @@ final class MovieStore: ObservableObject {
                     return
                 }
                 movies = items.map { item in
-                    Movie(
+                    var movie = Movie(
                         id: item.subjectID,
                         title: item.title,
                         originalTitle: nil,
                         overview: "",
-                        posterPath: item.poster,
+                        posterPath: nil,
                         releaseDate: nil,
                         localizedReleaseDate: item.year,
                         voteAverage: item.rating,
                         voteCount: 0
                     )
+                    if let poster = item.poster {
+                        movie.directPosterURL = URL(string: poster)
+                    }
+                    return movie
                 }
                 message = "院线热门 · \(movies.count) 部"
             }
@@ -12568,7 +12577,8 @@ struct ContentView: View {
                         set: { store.setMainBrowseSection($0) }
                     )
                 ) {
-                    ForEach(MainBrowseSection.allCases) { section in
+                    // 观影记录不走 segmented tab（用户要求：只保留顶栏时钟按钮入口，2026-08-18）。
+                    ForEach(MainBrowseSection.allCases.filter { $0 != .history }) { section in
                         Text(section.title(language: store.appLanguage))
                             .tag(section)
                     }
