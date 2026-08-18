@@ -1,6 +1,42 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** 自动刷新：页面可见且距上次加载超过 intervalMs 时自动重新加载；返回手动刷新函数。 */
+function useAutoRefresh(load: () => void, intervalMs = 30 * 60 * 1000) {
+  const lastLoad = useRef(Date.now());
+  const loadRef = useRef(load);
+  loadRef.current = load;
+  useEffect(() => {
+    function onVis() {
+      if (document.visibilityState === "visible" && Date.now() - lastLoad.current > intervalMs) {
+        lastLoad.current = Date.now();
+        loadRef.current();
+      }
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [intervalMs]);
+  return useCallback(() => {
+    lastLoad.current = Date.now();
+    loadRef.current();
+  }, []);
+}
+
+/** 通用刷新按钮（区块标题右侧，与滚动按钮同风格）。 */
+function RefreshButton({ onClick, refreshing }: { onClick: () => void; refreshing: boolean }) {
+  return (
+    <button
+      type="button"
+      className={`ht-nav-btn ht-refresh${refreshing ? " is-spinning" : ""}`}
+      onClick={onClick}
+      aria-label="刷新"
+      title="刷新"
+    >
+      ⟳
+    </button>
+  );
+}
 import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import type { ReactNode } from "react";
@@ -21,10 +57,29 @@ const releaseURL =
 export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale: Locale; heroExtra?: ReactNode }) {
   const [movies, setMovies] = useState<TrendingMovie[]>([]);
   const [shows, setShows] = useState<TrendingMovie[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const loadTrending = useCallback(() => {
+    const controller = new AbortController();
+    setRefreshing(true);
+    // _= 时间戳绕 CDN 缓存，手动刷新拿到最新
+    fetch(`/api/trending?type=all&_=${Date.now()}`, { signal: controller.signal })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((body: { movies?: TrendingMovie[]; shows?: TrendingMovie[] }) => {
+        setMovies(body.movies ?? []);
+        setShows(body.shows ?? []);
+      })
+      .catch(() => {
+        /* 网络失败时保持旧列表 */
+      })
+      .finally(() => setRefreshing(false));
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/api/trending?type=all", { signal: controller.signal })
+    fetch(`/api/trending?type=all&_=${Date.now()}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((body: { movies?: TrendingMovie[]; shows?: TrendingMovie[] }) => {
         setMovies(body.movies ?? []);
@@ -34,7 +89,9 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
         /* 网络失败时保持空列表 */
       });
     return () => controller.abort();
-  }, []);
+  }, [tick]);
+
+  const refreshTrending = useAutoRefresh(loadTrending);
 
   return (
     <>
@@ -70,6 +127,7 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
         items={movies}
         kind="movie"
         locale={locale}
+        refresh={<RefreshButton onClick={refreshTrending} refreshing={refreshing} />}
       />
       <NowPlayingRow locale={locale} />
       <TrendingRow
@@ -85,36 +143,46 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
 /** 院线热门电影：优先豆瓣国内热映，抓不到回退 TMDB（稳定兜底）。 */
 function NowPlayingRow({ locale }: { locale: Locale }) {
   const [items, setItems] = useState<{ title: string; year: string; rating: number | null; poster: string | null }[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  const load = useCallback(async () => {
+    setRefreshing(true);
+    // 1) 豆瓣国内热映（更准，含国产片）；_= 时间戳绕 CDN 缓存
+    try {
+      const r = await fetch(`/api/nowplaying-cn?_=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+      if (r.ok) {
+        const body = (await r.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
+        if (body.items && body.items.length > 0) { setItems(body.items); setRefreshing(false); return; }
+      }
+    } catch { /* 忽略 */ }
+    // 2) 回退 TMDB（稳定，但可能缺国产片）
+    try {
+      const r2 = await fetch(`/api/nowplaying?_=${Date.now()}`, { signal: AbortSignal.timeout(8000) });
+      if (r2.ok) {
+        const body2 = (await r2.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
+        setItems(body2.items ?? []);
+      }
+    } catch { /* 忽略 */ }
+    setRefreshing(false);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    async function load() {
-      // 1) 豆瓣国内热映（更准，含国产片）
-      try {
-        const r = await fetch("/api/nowplaying-cn", { signal: AbortSignal.timeout(8000) });
-        if (r.ok) {
-          const body = (await r.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
-          if (body.items && body.items.length > 0) { setItems(body.items); return; }
-        }
-      } catch { /* 忽略 */ }
-      // 2) 回退 TMDB（稳定，但可能缺国产片）
-      try {
-        const r2 = await fetch("/api/nowplaying", { signal: AbortSignal.timeout(8000) });
-        if (r2.ok) {
-          const body2 = (await r2.json()) as { items?: { title: string; year: string; rating: number | null; poster: string | null }[] };
-          setItems(body2.items ?? []);
-        }
-      } catch { /* 忽略 */ }
-    }
-    load();
+    void load();
     return () => controller.abort();
-  }, []);
+  }, [tick]);
+
+  const refresh = useAutoRefresh(load);
 
   if (items.length === 0) return null;
   return (
     <section className="section ht-section">
       <div className="ht-head">
         <h2>院线热门电影</h2>
+        <div className="ht-nav">
+          <RefreshButton onClick={refresh} refreshing={refreshing} />
+        </div>
       </div>
       <div className="ht-track">
         {items.map((it) => (
@@ -163,11 +231,13 @@ function TrendingRow({
   items,
   kind,
   locale,
+  refresh,
 }: {
   title: string;
   items: TrendingMovie[];
   kind: "movie" | "tv";
   locale: Locale;
+  refresh?: ReactNode;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
 
@@ -184,6 +254,7 @@ function TrendingRow({
       <div className="ht-head">
         <h2>{title}</h2>
         <div className="ht-nav">
+          {refresh}
           <button
             type="button"
             className="ht-nav-btn"

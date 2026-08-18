@@ -3381,3 +3381,17 @@ footer {
   text-align: center;
   width: 100%;
 }
+
+/* 刷新按钮（热门/院线区块标题旁） */
+.ht-refresh {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ht-refresh.is-spinning {
+  animation: ht-spin 0.8s linear infinite;
+}
+
+@keyframes ht-spin {
+  to { transform: rotate(360deg); }
+}
