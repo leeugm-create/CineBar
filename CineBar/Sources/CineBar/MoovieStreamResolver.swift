@@ -14,7 +14,9 @@ struct DanmakuItem: Decodable, Equatable {
 /// 用法：search(title:year:) 拿候选源 → resolveStreamURL(playPath:) 提取 m3u8。
 enum MoovieStreamResolver {
     static let siteBase = URL(string: "https://moovie.c2v2.com")!
-    private static let timeout: TimeInterval = 15
+    private static let timeout: TimeInterval = 10
+    /// 解析结果内存缓存（按 playPath）：重复播放同一部片免去再次抓取播放页（2026-08-18 优化加载时长）。
+    private static let resolveCache = NSCache<NSString, NSURL>()
     private static let userAgent =
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
         + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -141,6 +143,9 @@ enum MoovieStreamResolver {
     /// 打开播放页并提取 HLS 直链。播放页内嵌
     /// initPlayer('artplayer-app', 'https:\/\/host\/...\/index.m3u8', {...})
     static func resolveStreamURL(playPath: String) async -> URL? {
+        if let cached = resolveCache.object(forKey: playPath as NSString) {
+            return cached as URL
+        }
         guard let url = URL(string: playPath, relativeTo: siteBase) else { return nil }
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
@@ -150,7 +155,11 @@ enum MoovieStreamResolver {
               let html = String(data: data, encoding: .utf8) else {
             return nil
         }
-        return extractStreamURL(from: html)
+        let resolved = extractStreamURL(from: html)
+        if let resolved {
+            resolveCache.setObject(resolved as NSURL, forKey: playPath as NSString)
+        }
+        return resolved
     }
 
     /// 探测一个 m3u8 直链的分片能否被拉到（客户端同环境，较准确）。
@@ -158,7 +167,7 @@ enum MoovieStreamResolver {
     /// 用于给"能播放的线路"优先排序。
     static func probePlayable(streamURL: URL) async -> Bool {
         var request = URLRequest(url: streamURL)
-        request.timeoutInterval = 12
+        request.timeoutInterval = 8
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               (response as? HTTPURLResponse)?.statusCode == 200,

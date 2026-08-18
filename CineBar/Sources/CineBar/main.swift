@@ -12416,7 +12416,9 @@ struct ContentView: View {
             } else if store.isShowingLiveTV {
                 LiveTVView(store: store)
             } else if store.isShowingWatchHistory {
+                // 纯色背景：观影记录面板不再透出主界面「本周热门」海报背景（2026-08-18 反馈"花的"）。
                 WatchHistoryView(store: store)
+                    .background(Color(nsColor: .windowBackgroundColor))
             }
         }
         .frame(width: 520)
