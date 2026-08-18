@@ -37,6 +37,11 @@ struct LiveTVView: View {
                 Task { await load() }
             }
         }
+        .onDisappear {
+            // 离开直播界面（切栏目/返回）停止直播播放，避免"返回后还有杂音"（2026-08-18 反馈）。
+            playingChannel = nil
+            playbackStatus = .loading
+        }
     }
 
     // MARK: - 顶栏
