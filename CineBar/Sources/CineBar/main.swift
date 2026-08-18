@@ -469,7 +469,6 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
     case television
     case anime
     case watchlist
-    case localLibrary
     case liveTV
     case history
 
@@ -497,11 +496,6 @@ enum MainBrowseSection: String, CaseIterable, Identifiable {
         case (.watchlist, .enUS): return "Watchlist"
         case (.watchlist, .jaJP): return "マイリスト"
         case (.watchlist, .koKR): return "내 목록"
-        case (.localLibrary, .zhCN): return "本地片库"
-        case (.localLibrary, .zhHK), (.localLibrary, .zhTW): return "本機片庫"
-        case (.localLibrary, .enUS): return "Local Library"
-        case (.localLibrary, .jaJP): return "ローカルライブラリ"
-        case (.localLibrary, .koKR): return "로컬 라이브러리"
         case (.liveTV, .zhCN): return "电视台"
         case (.liveTV, .zhHK), (.liveTV, .zhTW): return "電視台"
         case (.liveTV, .enUS): return "Live TV"
@@ -4648,7 +4642,6 @@ final class MovieStore: ObservableObject {
 
     var mainBrowseSection: MainBrowseSection {
         if isShowingWatchHistory { return .history }
-        if isShowingLocalLibrary { return .localLibrary }
         if isShowingLiveTV { return .liveTV }
         if isShowingWatchlist { return .watchlist }
         switch mediaSection {
@@ -4698,11 +4691,6 @@ final class MovieStore: ObservableObject {
             if !isShowingWatchlist {
                 toggleWatchlist()
             }
-        case .localLibrary:
-            leaveLiveTVIfNeeded()
-            isShowingWatchHistory = false
-            isShowingLiveTV = false
-            showLocalLibrary()
         case .liveTV:
             isShowingWatchHistory = false
             showLiveTV()
@@ -4742,23 +4730,6 @@ final class MovieStore: ObservableObject {
         } else if !isShowingWatchlist {
             loadTrending()
         }
-    }
-
-    private func showLocalLibrary() {
-        guard !isShowingLocalLibrary else { return }
-        TrailerPlaybackController.shared.close()
-        isShowingLocalLibrary = true
-        isShowingWatchlist = false
-        selectedMovie = nil
-        selectedTVShow = nil
-        selectedPerson = nil
-        showMovieStills = false
-        showCatalog = false
-        showTVCatalog = false
-        peopleSearchResults = []
-        searchText = ""
-        trailers = []
-        tvTrailers = []
     }
 
     private func showLiveTV() {
@@ -12428,14 +12399,6 @@ struct ContentView: View {
                     store: store,
                     show: show,
                     onPlayLocalFile: localPlayback(for: show.id)
-                )
-            } else if store.isShowingLocalLibrary {
-                LocalLibraryView(
-                    store: localLibraryStore,
-                    movieStore: store,
-                    searchText: $localLibrarySearchText,
-                    categoryFilter: $localLibraryCategoryFilter,
-                    statusFilter: $localLibraryStatusFilter
                 )
             } else if store.isShowingLiveTV {
                 LiveTVView(store: store)
