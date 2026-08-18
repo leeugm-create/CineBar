@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 137&lt;/li&gt;&lt;li&gt;【修复】直播央视黑屏有声（根因修复）&lt;/li&gt;&lt;li&gt;- 实测定位：解码正常（presentationSize 1280x720 有画面输出），黑屏是直播加载遮罩未消失——h265 直播的 timeControlStatus 停在 waiting，遮罩一直盖着画面&lt;/li&gt;&lt;li&gt;- 修复：直播流时间一走起来即强制报告&amp;quot;已起播&amp;quot;，遮罩立即消失显示画面&lt;/li&gt;&lt;li&gt;- 兜底：播放 8 秒后有音频但无画面尺寸时明确提示&amp;quot;视频流解码失败，请换台&amp;quot;（不再无声黑屏干等）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 138&lt;/li&gt;&lt;li&gt;【修复】直播返回后继续播放（Build 137 反馈）&lt;/li&gt;&lt;li&gt;- 离开直播界面（切栏目/返回主界面）立即停止直播播放，不再&amp;quot;返回后还有杂音&amp;quot;&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-137-universal.zip"
-        sparkle:version="137"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-138-universal.zip"
+        sparkle:version="138"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8888727"
+        length="8890906"
         type="application/octet-stream"
-        sparkle:edSignature="16+yedx/DttW87KSCTw6cK+u9PPGOIKa0rdkHHA6q43OSzCV1LgjdIRK1uoxpNKXvwlVqksYuk3sV2V0Jo0ZBg=="/>
+        sparkle:edSignature="QAm4wXYtYXWOXLT9J9PPuZY+9fsQG0udo5v5UVO5TeP69jLIY7xsV2u2tXvEUF70dqsnh2+WB9Jb429DolwDCQ=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 137&lt;/li&gt;&lt;li&gt;【修复】直播央视黑屏有声（根因修复）&lt;/li&gt;&lt;li&gt;- 实测定位：解码正常（presentationSize 1280x720 有画面输出），黑屏是直播加载遮罩未消失——h265 直播的 timeControlStatus 停在 waiting，遮罩一直盖着画面&lt;/li&gt;&lt;li&gt;- 修复：直播流时间一走起来即强制报告&amp;quot;已起播&amp;quot;，遮罩立即消失显示画面&lt;/li&gt;&lt;li&gt;- 兜底：播放 8 秒后有音频但无画面尺寸时明确提示&amp;quot;视频流解码失败，请换台&amp;quot;（不再无声黑屏干等）&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-137-universal.zip" sparkle:version="137" sparkle:shortVersionString="0.9.0-test.1" length="8888727" type="application/octet-stream" sparkle:edSignature="16+yedx/DttW87KSCTw6cK+u9PPGOIKa0rdkHHA6q43OSzCV1LgjdIRK1uoxpNKXvwlVqksYuk3sV2V0Jo0ZBg=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
