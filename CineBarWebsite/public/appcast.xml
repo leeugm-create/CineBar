@@ -6,15 +6,21 @@
     <description>CineBar signed application updates</description>
     <item>
       <title>CineBar 0.9.0-test.1</title>
-      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 130&lt;/li&gt;&lt;li&gt;【修复】电视直播播放器（Build 129 反馈三连）&lt;/li&gt;&lt;li&gt;- 直播流恢复 AVPlayerView 渲染（Build 125 曾因「无时长直播流 + SwiftUI 绑定」崩溃改为纯 AVPlayerLayer，导致直播无控制条、无法全屏、央视 h265 黑屏有声）；真正崩溃源是 onTick 每 0.2 秒把直播时间写进 SwiftUI 绑定——直播流（isLive）跳过该更新即可规避，画面渲染与控制条恢复正常&lt;/li&gt;&lt;li&gt;- 内嵌直播播放器现在自带控制条与全屏按钮，无需先浮窗再最大化&lt;/li&gt;&lt;li&gt;- 全屏进出增加 Dock/菜单栏恢复保险：重复进入全屏不再污染保存值，退出后 Dock 一定恢复&lt;/li&gt;&lt;li&gt;【优化】电影「即将上映」→「院线热门」&lt;/li&gt;&lt;li&gt;- 栏目改名并改用豆瓣正在热映列表（与网页端「院线热门电影」同源）：评分/年份/海报直接来自豆瓣，共 12 部&lt;/li&gt;&lt;li&gt;- 去掉原「即将上映」的 TMDB 日期匹配流程，加载更快&lt;/li&gt;&lt;li&gt;【网页】国际台清理（同步部署 cinebar.cc）&lt;/li&gt;&lt;li&gt;- /api/iptv 国际台（iptv-org）探测不可达的直接剔除，不再展示大量无法响应的频道&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 131&lt;/li&gt;&lt;li&gt;【修复】院线热门无法刷新片单（Build 130 反馈）&lt;/li&gt;&lt;li&gt;- 根因：豆瓣对大陆网络返回前端模板页（doT 模板，无实际数据），App 直抓 HTML 解析不到片单&lt;/li&gt;&lt;li&gt;- 修复：App 端院线热门改调官网 worker /api/nowplaying-cn（与网页端「院线热门电影」同源，Cloudflare 网络抓取 + 结构化 JSON + 海报已代理），返回 12 部正在热映 + 评分/年份/海报&lt;/li&gt;&lt;li&gt;- Movie 模型支持直接海报 URL（directPosterURL），豆瓣代理图不再被 TMDB 前缀拼接破坏&lt;/li&gt;&lt;li&gt;【调整】移除主面板分区栏中的「观影记录」选项&lt;/li&gt;&lt;li&gt;- 观影记录入口仅保留顶栏时钟按钮（搜索放大镜左侧）；分区栏恢复 电影/电视剧/动漫/片单/本地片库/电视台&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
       <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
       <enclosure
-        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-130-universal.zip"
-        sparkle:version="130"
+        url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-131-universal.zip"
+        sparkle:version="131"
         sparkle:shortVersionString="0.9.0-test.1"
-        length="8840300"
+        length="8879080"
         type="application/octet-stream"
-        sparkle:edSignature="4bWDWqhwBl/MSHIrh03JQghm2kuHYvjuCSzfS7kVJgTIyD7f1S5gKJpxjNZtS7XNGbPRSes8fGz7pEzIa2VuDw=="/>
+        sparkle:edSignature="atS/aFC9YiOOnqFtNk7gGlsWgJg3wb8/PMS4uGNkJUqwpr/tppqx02/b+eBkox+W8l84Z78JuJkLwlTxz4uoAA=="/>
+    </item>
+<item>
+      <title>CineBar 0.9.0-test.1</title>
+      <description>&lt;ul&gt;&lt;li&gt;CineBar 0.9.0-test.1 · Build 130&lt;/li&gt;&lt;li&gt;【修复】电视直播播放器（Build 129 反馈三连）&lt;/li&gt;&lt;li&gt;- 直播流恢复 AVPlayerView 渲染（Build 125 曾因「无时长直播流 + SwiftUI 绑定」崩溃改为纯 AVPlayerLayer，导致直播无控制条、无法全屏、央视 h265 黑屏有声）；真正崩溃源是 onTick 每 0.2 秒把直播时间写进 SwiftUI 绑定——直播流（isLive）跳过该更新即可规避，画面渲染与控制条恢复正常&lt;/li&gt;&lt;li&gt;- 内嵌直播播放器现在自带控制条与全屏按钮，无需先浮窗再最大化&lt;/li&gt;&lt;li&gt;- 全屏进出增加 Dock/菜单栏恢复保险：重复进入全屏不再污染保存值，退出后 Dock 一定恢复&lt;/li&gt;&lt;li&gt;【优化】电影「即将上映」→「院线热门」&lt;/li&gt;&lt;li&gt;- 栏目改名并改用豆瓣正在热映列表（与网页端「院线热门电影」同源）：评分/年份/海报直接来自豆瓣，共 12 部&lt;/li&gt;&lt;li&gt;- 去掉原「即将上映」的 TMDB 日期匹配流程，加载更快&lt;/li&gt;&lt;li&gt;【网页】国际台清理（同步部署 cinebar.cc）&lt;/li&gt;&lt;li&gt;- /api/iptv 国际台（iptv-org）探测不可达的直接剔除，不再展示大量无法响应的频道&lt;/li&gt;&lt;li&gt;【说明】本轮为 0.9 测试版，未公证、未上架 Mac App Store；网页端改动已同步部署 cinebar.cc&lt;/li&gt;&lt;/ul&gt;</description>
+      <pubDate>Tue, 18 Aug 2026 00:00:00 +0000</pubDate>
+      <enclosure url="https://cinebar.cc/downloads/CineBar-0.9.0-test-build-130-universal.zip" sparkle:version="130" sparkle:shortVersionString="0.9.0-test.1" length="8840300" type="application/octet-stream" sparkle:edSignature="4bWDWqhwBl/MSHIrh03JQghm2kuHYvjuCSzfS7kVJgTIyD7f1S5gKJpxjNZtS7XNGbPRSes8fGz7pEzIa2VuDw=="/>
     </item>
 <item>
       <title>CineBar 0.9.0-test.1</title>
