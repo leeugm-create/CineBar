@@ -4661,6 +4661,7 @@ final class MovieStore: ObservableObject {
     func setMainBrowseSection(_ section: MainBrowseSection) {
         switch section {
         case .movies:
+            leaveLiveTVIfNeeded()
             isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
@@ -4670,6 +4671,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .television:
+            leaveLiveTVIfNeeded()
             isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
@@ -4679,6 +4681,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .anime:
+            leaveLiveTVIfNeeded()
             isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
@@ -4688,6 +4691,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .watchlist:
+            leaveLiveTVIfNeeded()
             isShowingWatchHistory = false
             isShowingLocalLibrary = false
             isShowingLiveTV = false
@@ -4695,6 +4699,7 @@ final class MovieStore: ObservableObject {
                 toggleWatchlist()
             }
         case .localLibrary:
+            leaveLiveTVIfNeeded()
             isShowingWatchHistory = false
             isShowingLiveTV = false
             showLocalLibrary()
@@ -4702,6 +4707,7 @@ final class MovieStore: ObservableObject {
             isShowingWatchHistory = false
             showLiveTV()
         case .history:
+            leaveLiveTVIfNeeded()
             isShowingLocalLibrary = false
             isShowingLiveTV = false
             isShowingWatchlist = false
@@ -4709,6 +4715,12 @@ final class MovieStore: ObservableObject {
                 toggleWatchHistory()
             }
         }
+    }
+
+    /// 离开直播分区时停止直播播放（双保险：LiveTVView.onDisappear 不可靠时由切换路径兜底）。
+    private func leaveLiveTVIfNeeded() {
+        guard isShowingLiveTV else { return }
+        MooviePlaybackController.shared.close()
     }
 
     func toggleWatchHistory() {

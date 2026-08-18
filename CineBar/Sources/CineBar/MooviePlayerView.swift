@@ -86,6 +86,7 @@ struct MoovieVideoView: NSViewRepresentable {
         private var onDuration: ((Double) -> Void)?
         private var didReportDuration = false
         private var videoCheckWork: DispatchWorkItem?
+        private var playerLayer: CALayer?
         private var didReportLiveStart = false
         private var lastTick: Double = -1
         /// 直播流等待起播超过该时长视为信号失败（针对 HLS live 卡死但 item 状态仍是 ready 的情况）。
@@ -142,6 +143,14 @@ struct MoovieVideoView: NSViewRepresentable {
 
         required init?(coder: NSCoder) {
             nil
+        }
+
+        deinit {
+            // 视图销毁时显式停止播放（2026-08-18 反馈"返回后直播仍出声"：
+            // 不能依赖 AVPlayer 随释放自动停止的时序，显式暂停并清空播放项）。
+            player.pause()
+            player.replaceCurrentItem(with: nil)
+            playerLayer?.removeFromSuperlayer()
         }
 
         func setOnTick(_ closure: @escaping (Double) -> Void) {
