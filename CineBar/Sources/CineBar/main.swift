@@ -7248,6 +7248,11 @@ struct MooviePlaySection: View {
         .onDisappear {
             playTask?.cancel()
             playTask = nil
+            // 离开详情页（切栏目/返回）停止内嵌播放：此前只取消了搜索任务，
+            // 视频仍继续在后台出声，用户看不到界面（2026-08-18 反馈，电影/剧集/动漫详情共用此组件）。
+            inlinePaused = true
+            streamURL = nil
+            status = .idle
             Task { @MainActor in
                 MooviePlaybackController.shared.clearInlinePlayer()
             }
