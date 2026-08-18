@@ -162,7 +162,16 @@ struct MoovieVideoView: NSViewRepresentable {
                 player.pause()
                 itemStatusObserver?.invalidate()
                 timeControlObserver?.invalidate()
-                let item = AVPlayerItem(url: url)
+                // 黑屏有声 workaround（2026-08-18 央视 h265/HLG 直播流反馈）：
+                // 强制色彩空间转换到 BT.709，规避部分 Mac 上 HLG/HDR 直播流
+                // 渲染失败只有声音无画面的问题；对普通 SDR 内容无副作用。
+                let asset = AVURLAsset(url: url)
+                let item = AVPlayerItem(asset: asset)
+                let comp = AVMutableVideoComposition()
+                comp.colorPrimaries = AVVideoColorPrimaries_ITU_R_709_2
+                comp.colorTransferFunction = AVVideoTransferFunction_ITU_R_709_2
+                comp.colorYCbCrMatrix = AVVideoYCbCrMatrix_ITU_R_709_2
+                item.videoComposition = comp
                 player.replaceCurrentItem(with: item)
 
                 reportStatus(.loading)
