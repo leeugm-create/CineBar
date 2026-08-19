@@ -3568,8 +3568,17 @@ footer {
   height: auto;
   z-index: 1;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
-  mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
+  /* 线性渐变 mask：顶部 0-12% 完全透明（与导航栏交界无粒子→无硬边），
+     底部 22% 淡出、左右 8% 淡出（2026-08-19 修复顶部硬边） */
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  /* 交集合成：两个渐变都黑才显示粒子——顶部/左右边缘彻底透明（2026-08-19 修复叠加导致的顶部硬边） */
+  mask-composite: intersect;
 }
 
 .hero-copy {
@@ -3609,8 +3618,17 @@ footer {
   height: auto;
   z-index: 1;
   pointer-events: none;
-  -webkit-mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
-  mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
+  /* 线性渐变 mask：顶部 0-12% 完全透明（与导航栏交界无粒子→无硬边），
+     底部 22% 淡出、左右 8% 淡出（2026-08-19 修复顶部硬边） */
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  /* 交集合成：两个渐变都黑才显示粒子——顶部/左右边缘彻底透明（2026-08-19 修复叠加导致的顶部硬边） */
+  mask-composite: intersect;
 }
 
 .hero-copy {

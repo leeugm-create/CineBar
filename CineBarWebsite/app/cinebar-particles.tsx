@@ -28,7 +28,7 @@ export default function CinebarParticles() {
 
     function targetCount(): number {
       const area = w * h;
-      return Math.max(52, Math.min(280, Math.round(area / 6900))); // 2026-08-19 用户要求+30%
+      return Math.max(70, Math.min(320, Math.round(area / 4500))); // 2026-08-19 用户要求更密
     }
 
     function build() {
@@ -40,7 +40,7 @@ export default function CinebarParticles() {
           y: Math.random() * h,
           vx: (Math.random() - 0.5) * 0.55,
           vy: (Math.random() - 0.5) * 0.55,
-          r: Math.random() * 1.6 + 1.2,
+          r: Math.random() * 1.0 + 0.8, // 2026-08-19 用户要求更小
         });
       }
     }
