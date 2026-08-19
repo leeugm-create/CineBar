@@ -304,8 +304,10 @@ export default function WatchClient() {
         // 相关推荐：同分类热门，异步填充（最慢的接口放最后，绝不阻塞播放器）
         void (async () => {
           try {
+            // 相关推荐：优先按源站具体类型 id（同类型片，如爱情片→爱情片），无则退大类
             const cat = classifyCategory(item.category);
-            const rl = await fetch(`/api/cms/list?category=${cat === "other" ? "movie" : cat}`, { signal: ctrl.signal });
+            const typeParam = item.typeID ? `&t=${encodeURIComponent(item.typeID)}` : "";
+            const rl = await fetch(`/api/cms/list?category=${cat === "other" ? "movie" : cat}${typeParam}`, { signal: ctrl.signal });
             if (rl.ok) {
               const body = (await rl.json()) as { items?: CmsItem[] };
               setRelated((body.items ?? []).filter((x) => x.id !== item!.id || x.source !== item!.source).slice(0, 12));

@@ -383,6 +383,7 @@ type CMSTitle = {
   episodeCount: number;
   remarks: string;       // vod_remarks（"TC国语v2"/"正片"等质量标签）
   playFrom: string;      // vod_play_from（线路组名，如 ffzy-m3u8）
+  typeID: string;        // type_id（源站具体分类 id，相关推荐按同类型拉取）
   vodContent?: string;   // vod_content（简介，仅 detail 时带）
 };
 
@@ -466,6 +467,7 @@ async function cmsSearchAll(
           episodeCount: playURL ? playURL.split("#").length : 0,
           remarks: String(v.vod_remarks ?? ""),
           playFrom: String(v.vod_play_from ?? ""),
+          typeID: String(v.type_id ?? ""),
         };
       });
       // ①过滤衍生内容（解说/预告/花絮…）；②只保留"匹配"条目（精确或剥离匹配，rank≥4；
@@ -570,6 +572,7 @@ async function handleCMSPlay(request: Request, env: Env): Promise<Response> {
     episodeCount: t.episodeCount,
     remarks: t.remarks,
     playFrom: t.playFrom,
+    typeID: t.typeID,
     playURL: t.playURL,
     streamURL: cmsResolveStreamURL(t.playURL, episode),
   }));
@@ -596,9 +599,12 @@ function cmsClassifyCategory(raw: string): string {
 async function cmsListPage(
   src: CMSSource,
   pg: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  typeID?: string
 ): Promise<{ id: string; title: string; year: string; poster: string | null; remarks: string; category: string; categoryRaw: string }[]> {
   const params = new URLSearchParams({ ac: "list", pg: String(pg) });
+  // 按源站具体类型 id 过滤（相关推荐用：同类型片，非大类混排）
+  if (typeID) params.set("t", typeID);
   try {
     const resp = await fetch(`${src.base}/api.php/provide/vod/?${params}`, {
       headers: { "user-agent": "Mozilla/5.0", accept: "application/json", referer: src.base },
@@ -634,14 +640,15 @@ async function cmsListPage(
  *  故影视库只用「量子 + 最大」，排除暴风（播放走浏览器直连 m3u8）。 */
 async function cmsListByCategory(
   category: string,
-  pg: number
+  pg: number,
+  typeID?: string
 ): Promise<{ items: CMSTitle[]; total: number }> {
   // 可播源：量子(lzi) + 最大(zuid)
   const stable = CMS_SOURCES.filter((s) => s.id === "lzi" || s.id === "zuid");
   if (stable.length === 0) return { items: [], total: 0 };
   const signal = AbortSignal.timeout(20000);
   const pageTasks = stable.flatMap((src) =>
-    [pg, pg + 1, pg + 2].map((p) => cmsListPage(src, p, signal))
+    [pg, pg + 1, pg + 2].map((p) => cmsListPage(src, p, signal, typeID))
   );
   const pages = await Promise.allSettled(pageTasks);
   const merged: {
@@ -666,7 +673,9 @@ async function cmsListByCategory(
   }
   const uniq = Array.from(seen.values());
   // 按分类过滤
-  const filtered = category === "all" ? uniq : uniq.filter((x) => x.category === category);
+  const filtered = typeID
+    ? uniq
+    : (category === "all" ? uniq : uniq.filter((x) => x.category === category));
   let items: CMSTitle[] = filtered.map((x) => ({
     source: x.source,
     sourceName: x.sourceName,
@@ -679,6 +688,7 @@ async function cmsListByCategory(
     episodeCount: 0,
     remarks: x.remarks,
     playFrom: "",
+    typeID: x.typeID ?? "",
   }));
   // 补海报：ac=list 不带海报，前 12 部用 ac=detail 补（首页展示量，并行控速）。
   const posterMissing = items.slice(0, 12).filter((i) => !i.poster);
@@ -756,6 +766,7 @@ async function handleCMSDetail(request: Request): Promise<Response> {
           episodeCount: playURL ? playURL.split("#").length : 0,
           remarks: String(v.vod_remarks ?? ""),
           playFrom: String(v.vod_play_from ?? ""),
+          typeID: String(v.type_id ?? ""),
           vodContent: String(v.vod_content ?? "").slice(0, 400),
           streamURL,
         };
@@ -808,13 +819,14 @@ async function handleCMSList(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const category = normalizeText(url.searchParams.get("category")) || "all";
   const pg = Math.max(1, Number(url.searchParams.get("pg")) || 1);
+  const typeID = normalizeText(url.searchParams.get("t")) || undefined;
   if (!/^(all|movie|tv|drama|anime)$/.test(category)) {
     return new Response(JSON.stringify({ error: "invalid category" }), {
       status: 400,
       headers: { "content-type": "application/json; charset=utf-8" },
     });
   }
-  const { items, total } = await cmsListByCategory(category, pg);
+  const { items, total } = await cmsListByCategory(category, pg, typeID);
   return new Response(
     JSON.stringify({ category, pg, total, items }),
     {
