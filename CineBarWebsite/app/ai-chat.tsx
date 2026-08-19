@@ -224,12 +224,21 @@ export default function AIChat() {
 
   useEffect(() => {
     if (!busy) { setOrbIdx(0); return; }
-    // 700ms/态：AI 接口常 1-3 秒返回，间隔太长则用户只见第一态；
-    // 700ms 让短请求也呈现 2-3 个阶段推进，长请求完整轮换（2026-08-19）。
-    const timer = window.setInterval(() => {
-      setOrbIdx((i) => (i + 1) % ORB_STATES.length);
-    }, 700);
-    return () => window.clearInterval(timer);
+    // 按时长自适应（2026-08-19 用户反馈：短请求切形态是看不清的闪烁）：
+    // 前 3 秒固定 Searching（稳定清晰），仅当请求超过 3 秒才开始按 1.2s/态推进，
+    // 长请求才有"分阶段处理"的过程感。
+    const timers: number[] = [];
+    const hold = window.setTimeout(() => {
+      timers.push(
+        window.setInterval(() => {
+          setOrbIdx((i) => (i + 1) % ORB_STATES.length);
+        }, 1200)
+      );
+    }, 3000);
+    return () => {
+      window.clearTimeout(hold);
+      timers.forEach((t) => window.clearInterval(t));
+    };
   }, [busy]);
 
   function clearChat() {
