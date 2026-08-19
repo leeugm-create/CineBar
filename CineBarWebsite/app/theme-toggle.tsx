@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 
 const THEME_KEY = "cinebar.theme";
 
-function getStoredTheme(): "light" | "dark" | null {
+/** 三态主题：light / dark / system（跟随系统，2026-08-18 新增）。 */
+type ThemeChoice = "light" | "dark" | "system";
+
+function getStoredTheme(): ThemeChoice | null {
   try {
     const stored = window.localStorage.getItem(THEME_KEY);
-    return stored === "light" || stored === "dark" ? stored : null;
+    return stored === "light" || stored === "dark" || stored === "system" ? stored : null;
   } catch {
     return null;
   }
@@ -17,36 +20,51 @@ function systemTheme(): "light" | "dark" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
+function resolveChoice(choice: ThemeChoice): "light" | "dark" {
+  return choice === "system" ? systemTheme() : choice;
+}
+
+function applyTheme(theme: "light" | "dark") {
+  document.documentElement.dataset.theme = theme;
+}
+
+const NEXT: Record<ThemeChoice, ThemeChoice> = {
+  light: "dark",
+  dark: "system",
+  system: "light",
+};
+
 export default function ThemeToggle({ label }: { label: string }) {
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
+  const [choice, setChoice] = useState<ThemeChoice | null>(null);
 
   useEffect(() => {
-    const resolved = getStoredTheme() ?? systemTheme();
-    applyTheme(resolved);
-    const raf = requestAnimationFrame(() => setTheme(resolved));
+    const stored = getStoredTheme() ?? "system";
+    applyTheme(resolveChoice(stored));
+    const raf = requestAnimationFrame(() => setChoice(stored));
     return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
-    if (theme) applyTheme(theme);
-  }, [theme]);
+    if (choice) applyTheme(resolveChoice(choice));
+  }, [choice]);
 
+  // 跟随系统：系统外观变化时实时切换（仅 system 模式生效）。
   useEffect(() => {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     function onSystemChange() {
-      if (!getStoredTheme()) {
-        const next = systemTheme();
-        applyTheme(next);
-        setTheme(next);
+      const current = getStoredTheme() ?? "system";
+      if (current === "system") {
+        applyTheme(systemTheme());
       }
     }
     mq.addEventListener("change", onSystemChange);
     return () => mq.removeEventListener("change", onSystemChange);
   }, []);
 
-  function toggle() {
-    const next: "light" | "dark" = theme !== "dark" ? "dark" : "light";
-    setTheme(next);
+  function cycle() {
+    const current = choice ?? getStoredTheme() ?? "system";
+    const next = NEXT[current];
+    setChoice(next);
     try {
       window.localStorage.setItem(THEME_KEY, next);
     } catch {
@@ -58,11 +76,16 @@ export default function ThemeToggle({ label }: { label: string }) {
     <button
       type="button"
       className="theme-toggle"
-      onClick={toggle}
+      onClick={cycle}
       aria-label={label}
       title={label}
     >
-      {theme === "dark" ? (
+      {choice === "system" ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+          <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" />
+        </svg>
+      ) : choice === "dark" ? (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <circle cx="12" cy="12" r="4.5" stroke="currentColor" strokeWidth="2" />
           <line x1="12" y1="2.5" x2="12" y2="5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -86,8 +109,4 @@ export default function ThemeToggle({ label }: { label: string }) {
       )}
     </button>
   );
-}
-
-function applyTheme(theme: "light" | "dark") {
-  document.documentElement.dataset.theme = theme;
 }
