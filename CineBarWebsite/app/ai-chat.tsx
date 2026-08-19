@@ -216,6 +216,19 @@ export default function AIChat() {
     }
   }, [messages]);
 
+  // ThinkingOrb 状态轮换（对标 orbs.jakubantalik.com 的思考球体交互，2026-08-19）：
+  // 请求进行中依次展示 Searching → Solving → Composing → Listening。
+  const ORB_STATES = ["Searching", "Solving", "Composing", "Listening"];
+  const [orbIdx, setOrbIdx] = useState(0);
+
+  useEffect(() => {
+    if (!busy) { setOrbIdx(0); return; }
+    const timer = window.setInterval(() => {
+      setOrbIdx((i) => (i + 1) % ORB_STATES.length);
+    }, 1800);
+    return () => window.clearInterval(timer);
+  }, [busy]);
+
   function clearChat() {
     setMessages([]);
     setInput("");
@@ -343,8 +356,17 @@ export default function AIChat() {
         )}
         {busy && typingIndex < 0 && (
           <div className="ai-bubble assistant">
-            <div className="ai-bubble-content ai-typing">
-              <span /> <span /> <span />
+            <div className="ai-bubble-content ai-orb-wrap">
+              {/* 思考球体（对标 orbs ThinkingOrb）：三条 3D 轨道粒子旋转 + 中心核脉动 */}
+              <div className="thinking-orb" aria-hidden="true">
+                <span className="orb-track orb-track-1" />
+                <span className="orb-track orb-track-2" />
+                <span className="orb-track orb-track-3" />
+                <span className="orb-core" />
+              </div>
+              <span key={orbIdx} className="orb-state">
+                {ORB_STATES[orbIdx]}…
+              </span>
             </div>
           </div>
         )}

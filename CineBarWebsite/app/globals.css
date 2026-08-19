@@ -3395,3 +3395,97 @@ footer {
 @keyframes ht-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ===== 思考球体（对标 orbs.jakubantalik.com ThinkingOrb，2026-08-19）===== */
+.ai-orb-wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.thinking-orb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: radial-gradient(circle at 32% 28%, #2c3140, #14161d 72%);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 0 14px rgba(255, 255, 255, 0.05);
+  animation: orb-breathe 2.6s ease-in-out infinite;
+}
+
+.orb-core {
+  position: absolute;
+  inset: 34%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--accent), color-mix(in srgb, var(--accent) 20%, transparent) 75%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: orb-core-pulse 2.2s ease-in-out infinite;
+}
+
+.orb-track {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+}
+
+.orb-track::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.orb-track-1 {
+  transform: rotateX(68deg) rotateZ(0deg);
+  animation: orb-spin-1 4s linear infinite;
+}
+
+.orb-track-2 {
+  transform: rotateY(68deg) rotateZ(0deg);
+  animation: orb-spin-2 3s linear infinite;
+}
+
+.orb-track-3 {
+  transform: rotate(45deg) rotateX(62deg);
+  animation: orb-spin-3 5.5s linear infinite;
+}
+
+@keyframes orb-spin-1 {
+  to { transform: rotateX(68deg) rotateZ(360deg); }
+}
+@keyframes orb-spin-2 {
+  to { transform: rotateY(68deg) rotateZ(360deg); }
+}
+@keyframes orb-spin-3 {
+  to { transform: rotate(45deg) rotateX(62deg) rotateZ(360deg); }
+}
+
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes orb-core-pulse {
+  0%, 100% { opacity: 0.75; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+.orb-state {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  animation: orb-state-in 0.4s ease;
+}
+
+@keyframes orb-state-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
