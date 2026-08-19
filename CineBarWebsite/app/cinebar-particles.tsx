@@ -43,7 +43,7 @@ export default function CinebarTitleParticles({
       octx.textBaseline = "middle";
       octx.fillStyle = "#fff";
       const padX = w * 0.02;
-      const lineH = fontSize * 1.12;
+      const lineH = fontSize * 1.04;
       const startY = h / 2 - ((lines.length - 1) * lineH) / 2;
       lines.forEach((line, i) => {
         octx.fillText(line, padX, startY + i * lineH);
