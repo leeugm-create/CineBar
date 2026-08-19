@@ -3489,3 +3489,44 @@ footer {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ===== 思考球体分阶段形态（2026-08-19）===== */
+/* 默认 Searching：三轨道粒子点阵（现状，无需覆盖） */
+
+/* Solving：轨道加速 + 核心增强（强光晕快速脉动） */
+.thinking-orb.orb-solve .orb-track-1 { animation-duration: 2.2s; }
+.thinking-orb.orb-solve .orb-track-2 { animation-duration: 1.6s; }
+.thinking-orb.orb-solve .orb-track-3 { animation-duration: 3s; }
+.thinking-orb.orb-solve .orb-core {
+  inset: 28%;
+  background: radial-gradient(circle at 35% 30%, #fff, var(--accent) 45%, color-mix(in srgb, var(--accent) 15%, transparent) 78%);
+  box-shadow: 0 0 24px 4px color-mix(in srgb, var(--accent) 80%, transparent);
+  animation-duration: 1.1s;
+}
+
+/* Composing：粒子隐藏，轨道变为渐变圆环交错（编织感）+ 柔和小核 */
+.thinking-orb.orb-compose .orb-track::before { display: none; }
+.thinking-orb.orb-compose .orb-track {
+  border: 1.5px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.thinking-orb.orb-compose .orb-core {
+  inset: 42%;
+  background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent) 70%, white), var(--accent) 55%, transparent 80%);
+  box-shadow: none;
+  animation-duration: 3s;
+}
+
+/* Listening：轨道隐去，核心大范围纯呼吸（光晕扩散收拢） */
+.thinking-orb.orb-listen .orb-track { opacity: 0; }
+.thinking-orb.orb-listen .orb-core {
+  inset: 20%;
+  background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--accent) 85%, white), var(--accent) 50%, color-mix(in srgb, var(--accent) 12%, transparent) 85%);
+  box-shadow: 0 0 28px 6px color-mix(in srgb, var(--accent) 45%, transparent);
+  animation: orb-listen-pulse 3s ease-in-out infinite;
+}
+
+@keyframes orb-listen-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(0.96); box-shadow: 0 0 18px 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+  50% { opacity: 1; transform: scale(1.06); box-shadow: 0 0 34px 8px color-mix(in srgb, var(--accent) 55%, transparent); }
+}
