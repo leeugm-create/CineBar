@@ -41,6 +41,7 @@ import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import type { ReactNode } from "react";
 import CinebarParticles from "./cinebar-particles";
+import PaintText from "./paint-text";
 
 type TrendingMovie = {
   title: string;
@@ -105,10 +106,9 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
         <div className="hero-copy">
           <p className="hero-version">{m.heroVersion}</p>
           <div className="hero-title">
+            {/* 画笔揭示标题（Brush Reveal）：鼠标扫过"涂"出实色，移开淡回幽灵色 */}
             <h1>
-              <span className="title-line">{m.heroTitle1}</span>
-              <br />
-              <span className="title-line">{m.heroTitle2}</span>
+              <PaintText text={`${m.heroTitle1}\n${m.heroTitle2}`} />
             </h1>
           </div>
           <p className="hero-lede">{m.heroLede}</p>
