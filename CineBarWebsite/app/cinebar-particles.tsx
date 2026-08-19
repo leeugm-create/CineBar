@@ -46,9 +46,12 @@ export default function CinebarParticles() {
     }
 
     function resize() {
-      // 画布固定全视口：粒子无容器边界限制（2026-08-19 用户要求"不要给粒子加范围限制"）
-      w = Math.max(200, window.innerWidth);
-      h = Math.max(120, window.innerHeight);
+      // 画布限定在 hero 区域（只首页显示），四周由 CSS mask 渐变淡出（无硬框）
+      const parent = canvas.parentElement;
+      if (!parent) return;
+      const rect = parent.getBoundingClientRect();
+      w = Math.max(200, rect.width);
+      h = Math.max(120, rect.height);
       canvas.width = w * DPR;
       canvas.height = h * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);

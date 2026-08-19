@@ -3560,13 +3560,16 @@ footer {
 }
 
 .cinebar-particles {
-  /* 固定全视口：粒子遍布整个屏幕，无容器边界（2026-08-19 用户要求不受范围限制） */
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
+  /* 限定 hero 区域（只首页显示，2026-08-19）；
+     四周 mask 渐变淡出 → 粒子在边缘柔和消散，无硬框感 */
+  position: absolute;
+  inset: -40px -60px -100px -60px;
+  width: auto;
+  height: auto;
+  z-index: 1;
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
+  mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
 }
 
 .hero-copy {
@@ -3598,13 +3601,16 @@ footer {
 }
 
 .cinebar-particles {
-  /* 固定全视口：粒子遍布整个屏幕，无容器边界（2026-08-19 用户要求不受范围限制） */
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
+  /* 限定 hero 区域（只首页显示，2026-08-19）；
+     四周 mask 渐变淡出 → 粒子在边缘柔和消散，无硬框感 */
+  position: absolute;
+  inset: -40px -60px -100px -60px;
+  width: auto;
+  height: auto;
+  z-index: 1;
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
+  mask-image: radial-gradient(ellipse 95% 88% at 42% 34%, black 52%, transparent 84%);
 }
 
 .hero-copy {
