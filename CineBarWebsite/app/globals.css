@@ -3560,24 +3560,22 @@ footer {
 }
 
 .cinebar-particles {
-  /* 限定 hero 区域（只首页显示，2026-08-19）；
-     四周 mask 渐变淡出 → 粒子在边缘柔和消散，无硬框感 */
+  /* 粒子只显示在 hero 左侧主内容区域（2026-08-19 用户要求"只在这个区域"）：
+     left 0 → 74% 宽、top 6% → 66% 高（标题+按钮区域附近），四周 mask 淡出无硬框 */
   position: absolute;
-  inset: -40px -60px -100px -60px;
-  width: auto;
-  height: auto;
+  left: 0;
+  top: 6%;
+  width: 74%;
+  height: 66%;
   z-index: 1;
   pointer-events: none;
-  /* 线性渐变 mask：顶部 0-12% 完全透明（与导航栏交界无粒子→无硬边），
-     底部 22% 淡出、左右 8% 淡出（2026-08-19 修复顶部硬边） */
   -webkit-mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
-    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
-    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-  /* 交集合成：两个渐变都黑才显示粒子——顶部/左右边缘彻底透明（2026-08-19 修复叠加导致的顶部硬边） */
+    linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   mask-composite: intersect;
 }
 
@@ -3610,24 +3608,22 @@ footer {
 }
 
 .cinebar-particles {
-  /* 限定 hero 区域（只首页显示，2026-08-19）；
-     四周 mask 渐变淡出 → 粒子在边缘柔和消散，无硬框感 */
+  /* 粒子只显示在 hero 左侧主内容区域（2026-08-19 用户要求"只在这个区域"）：
+     left 0 → 74% 宽、top 6% → 66% 高（标题+按钮区域附近），四周 mask 淡出无硬框 */
   position: absolute;
-  inset: -40px -60px -100px -60px;
-  width: auto;
-  height: auto;
+  left: 0;
+  top: 6%;
+  width: 74%;
+  height: 66%;
   z-index: 1;
   pointer-events: none;
-  /* 线性渐变 mask：顶部 0-12% 完全透明（与导航栏交界无粒子→无硬边），
-     底部 22% 淡出、左右 8% 淡出（2026-08-19 修复顶部硬边） */
   -webkit-mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
-    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+    linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12%, black 78%, transparent 100%),
-    linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-  /* 交集合成：两个渐变都黑才显示粒子——顶部/左右边缘彻底透明（2026-08-19 修复叠加导致的顶部硬边） */
+    linear-gradient(to bottom, transparent 0%, black 10%, black 82%, transparent 100%),
+    linear-gradient(to right, transparent 0%, black 6%, black 94%, transparent 100%);
   mask-composite: intersect;
 }
 

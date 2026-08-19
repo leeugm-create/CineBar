@@ -40,18 +40,16 @@ export default function CinebarParticles() {
           y: Math.random() * h,
           vx: (Math.random() - 0.5) * 0.55,
           vy: (Math.random() - 0.5) * 0.55,
-          r: Math.random() * 1.0 + 0.8, // 2026-08-19 用户要求更小
+          r: Math.random() * 1.0 + 1.2, // 2026-08-19 参考 particles.js：约 1.2-2.2px
         });
       }
     }
 
     function resize() {
-      // 画布限定在 hero 区域（只首页显示），四周由 CSS mask 渐变淡出（无硬框）
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      const rect = parent.getBoundingClientRect();
-      w = Math.max(200, rect.width);
-      h = Math.max(120, rect.height);
+      // 画布 CSS 尺寸与像素尺寸一致（避免拉伸导致鼠标坐标错位，2026-08-19 修复动效失效）
+      const rect = canvas.getBoundingClientRect();
+      w = Math.max(100, rect.width);
+      h = Math.max(80, rect.height);
       canvas.width = w * DPR;
       canvas.height = h * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -121,9 +119,10 @@ export default function CinebarParticles() {
     }
 
     function onMove(e: MouseEvent) {
+      // 画布尺寸=像素尺寸，直接换算（鼠标排斥动效）
       const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
+      mouse.x = (e.clientX - rect.left) * (canvas.width / rect.width);
+      mouse.y = (e.clientY - rect.top) * (canvas.height / rect.height);
     }
     function onLeave() {
       mouse.x = -9999;
