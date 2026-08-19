@@ -3556,3 +3556,17 @@ footer {
   position: relative;
   z-index: 1;
 }
+
+/* ===== 主标题粒子文字（2026-08-19）===== */
+.hero-title h1 {
+  position: relative;
+  min-height: 1.1em;
+}
+
+.cinebar-title-particles {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
