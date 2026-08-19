@@ -3409,9 +3409,9 @@ footer {
   height: 56px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: radial-gradient(circle at 32% 28%, #2c3140, #14161d 72%);
-  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 22%, transparent),
-    inset 0 0 14px rgba(255, 255, 255, 0.05);
+  /* 透明背景（2026-08-19 用户要求）：只保留粒子轨道与中心核的交互动作 */
+  background: transparent;
+  box-shadow: none;
   animation: orb-breathe 2.6s ease-in-out infinite;
 }
 
