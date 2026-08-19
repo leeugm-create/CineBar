@@ -1547,38 +1547,15 @@ footer {
   gap: 10px;
 }
 
-/* 移动端：仅保留品牌 + 搜索（视频卡片、板块、footer 隐藏） */
+/* 移动端：恢复完整内容(hero/板块/footer 与网页版一致)。
+   2026-08-19 修复：旧逻辑在 ≤640px 用 display:none 隐藏 hero/板块/footer，
+   但替代它的 .mobile-search-stack 从未在 JSX 渲染，导致手机端只剩顶栏、内容全空。
+   移动端页头由「移动端体验改造」区块负责，此处置为正常显示。 */
 @media (max-width: 640px) {
   .site-home .hero,
   .site-home .section,
   .site-home footer {
-    display: none;
-  }
-  .site-home .site-header .mobile-search-stack {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    flex: 1;
-  }
-  .site-home .mobile-search-lede {
     display: block;
-    color: var(--muted);
-    font-size: 0.9rem;
-  }
-  .site-home .search-toggle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--accent) 16%, transparent);
-  }
-  .site-home .site-header {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-    padding-block: 28px;
   }
 }
 
