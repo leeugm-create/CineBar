@@ -3548,11 +3548,12 @@ footer {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变（对标 showcase 卡片装饰，2026-08-19 恢复） */
+  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变。
+     光晕圆完全收进容器内（圆心%+半径% ≤ 100%），透明终点在容器内自然消散，无硬边（2026-08-19 修复） */
   background:
-    radial-gradient(circle at 78% 28%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 40%),
-    radial-gradient(circle at 94% 72%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 38%),
-    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 5%, transparent), transparent 62%);
+    radial-gradient(circle at 72% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 28%),
+    radial-gradient(circle at 84% 58%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 16%),
+    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 4%, transparent), transparent 55%);
 }
 
 .cinebar-particles {
@@ -3581,11 +3582,12 @@ footer {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变（对标 showcase 卡片装饰，2026-08-19 恢复） */
+  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变。
+     光晕圆完全收进容器内（圆心%+半径% ≤ 100%），透明终点在容器内自然消散，无硬边（2026-08-19 修复） */
   background:
-    radial-gradient(circle at 78% 28%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 40%),
-    radial-gradient(circle at 94% 72%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 38%),
-    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 5%, transparent), transparent 62%);
+    radial-gradient(circle at 72% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 28%),
+    radial-gradient(circle at 84% 58%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 16%),
+    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 4%, transparent), transparent 55%);
 }
 
 .cinebar-particles {
