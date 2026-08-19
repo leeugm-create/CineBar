@@ -36,15 +36,17 @@ export default function CinebarTitleParticles({
       off.height = h;
       const octx = off.getContext("2d");
       if (!octx) return;
-      const fontSize = Math.min(h / 2.3, (w / Math.max(...lines.map((l) => l.length))) * 1.35);
+      // 大字号 + 左对齐（2026-08-19 用户要求主标放左侧红框位置，不居中偏右）
+      const fontSize = Math.min(h * 0.42, (w / Math.max(...lines.map((l) => l.length))) * 1.6);
       octx.font = `900 ${fontSize}px Inter, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif`;
-      octx.textAlign = "center";
+      octx.textAlign = "left";
       octx.textBaseline = "middle";
       octx.fillStyle = "#fff";
-      const lineH = fontSize * 1.25;
+      const padX = w * 0.02;
+      const lineH = fontSize * 1.3;
       const startY = h / 2 - ((lines.length - 1) * lineH) / 2;
       lines.forEach((line, i) => {
-        octx.fillText(line, w / 2, startY + i * lineH);
+        octx.fillText(line, padX, startY + i * lineH);
       });
       const img = octx.getImageData(0, 0, w, h);
       particles = [];
