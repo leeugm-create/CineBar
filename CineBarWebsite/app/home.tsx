@@ -49,6 +49,15 @@ export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
             <a href="#support">{m.navSupport}</a>
           </nav>
           <LangSelect locale={locale} />
+          <a
+            className="play-games-btn"
+            href="https://bruno-simon.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="玩玩游戏（Bruno Simon 3D 作品集）"
+          >
+            玩玩游戏
+          </a>
           <ThemeToggle label={m.appearance} />
         </div>
       </header>

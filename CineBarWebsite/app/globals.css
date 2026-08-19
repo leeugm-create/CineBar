@@ -189,6 +189,29 @@ footer {
 }
 .theme-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
+.play-games-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.84rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+}
+.play-games-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background-color: rgba(111, 182, 238, 0.12);
+}
+
 .search-input {
   width: clamp(120px, 22vw, 260px);
   padding: 7px 14px;
