@@ -46,11 +46,9 @@ export default function CinebarParticles() {
     }
 
     function resize() {
-      const parent = canvas.parentElement;
-      if (!parent) return;
-      const rect = parent.getBoundingClientRect();
-      w = Math.max(200, rect.width);
-      h = Math.max(120, rect.height);
+      // 画布固定全视口：粒子无容器边界限制（2026-08-19 用户要求"不要给粒子加范围限制"）
+      w = Math.max(200, window.innerWidth);
+      h = Math.max(120, window.innerHeight);
       canvas.width = w * DPR;
       canvas.height = h * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);

@@ -3540,12 +3540,15 @@ footer {
 /* ===== CineBar 粒子文字背景（2026-08-19）===== */
 .hero {
   position: relative;
-  overflow: hidden;
+  /* 2026-08-19：去掉 overflow:hidden——此前粒子/光晕被 hero 边界硬切，
+     用户要求粒子不受范围限制，可自然延伸出 hero 区域 */
+  overflow: visible;
 }
 
 .hero-glow {
   position: absolute;
-  inset: 0;
+  /* 扩展覆盖全视口宽（原 1180 容器右侧留白处光晕被硬切，2026-08-19） */
+  inset: -120px -220px -200px -220px;
   z-index: 0;
   pointer-events: none;
   /* 渐变图案：accent 光晕 ×2 + 斜向微渐变。
@@ -3557,11 +3560,12 @@ footer {
 }
 
 .cinebar-particles {
-  position: absolute;
+  /* 固定全视口：粒子遍布整个屏幕，无容器边界（2026-08-19 用户要求不受范围限制） */
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -3574,12 +3578,15 @@ footer {
 /* ===== hero 粒子网背景（particles.js 风格，2026-08-19）===== */
 .hero {
   position: relative;
-  overflow: hidden;
+  /* 2026-08-19：去掉 overflow:hidden——此前粒子/光晕被 hero 边界硬切，
+     用户要求粒子不受范围限制，可自然延伸出 hero 区域 */
+  overflow: visible;
 }
 
 .hero-glow {
   position: absolute;
-  inset: 0;
+  /* 扩展覆盖全视口宽（原 1180 容器右侧留白处光晕被硬切，2026-08-19） */
+  inset: -120px -220px -200px -220px;
   z-index: 0;
   pointer-events: none;
   /* 渐变图案：accent 光晕 ×2 + 斜向微渐变。
@@ -3591,11 +3598,12 @@ footer {
 }
 
 .cinebar-particles {
-  position: absolute;
+  /* 固定全视口：粒子遍布整个屏幕，无容器边界（2026-08-19 用户要求不受范围限制） */
+  position: fixed;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 1;
+  z-index: 0;
   pointer-events: none;
 }
 
