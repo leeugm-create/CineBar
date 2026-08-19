@@ -98,6 +98,10 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
   return (
     <>
       <section className="hero" id="top">
+        {/* 右侧产品预览图（App 菜单栏界面） */}
+        <div className="hero-art" aria-hidden="true">
+          <img src="/cinebar-home-backdrop.jpg" alt="" loading="lazy" />
+        </div>
         <div className="hero-copy">
           <p className="hero-version">{m.heroVersion}</p>
           <div className="hero-title">

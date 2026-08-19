@@ -38,7 +38,7 @@ export default function CinebarTitleParticles({
       if (!octx) return;
       // 大字号 + 左对齐（2026-08-19 用户要求主标放左侧红框位置，不居中偏右）
       const fontSize = Math.min(h * 0.46, (w / Math.max(...lines.map((l) => l.length))) * 1.8);
-      octx.font = `900 ${fontSize}px Inter, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif`;
+      octx.font = `900 ${fontSize}px "Hiragino Sans GB", "PingFang SC", "Microsoft YaHei", sans-serif`;
       octx.textAlign = "left";
       octx.textBaseline = "middle";
       octx.fillStyle = "#fff";

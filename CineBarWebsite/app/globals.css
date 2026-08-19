@@ -3571,3 +3571,40 @@ footer {
   height: 100%;
   display: block;
 }
+
+/* hero 右侧产品预览图（2026-08-19） */
+.hero-art {
+  position: absolute;
+  top: 50%;
+  right: clamp(0px, 4vw, 48px);
+  transform: translateY(-50%);
+  width: min(46vw, 540px);
+  max-width: 540px;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.hero-art img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+  border: 1px solid var(--border);
+}
+
+/* 产品图左侧淡出过渡，融入背景 */
+.hero-art::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  background: linear-gradient(to right, var(--background), transparent 24%);
+  pointer-events: none;
+}
+
+@media (max-width: 960px) {
+  .hero-art {
+    display: none;
+  }
+}
