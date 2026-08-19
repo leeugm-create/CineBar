@@ -273,8 +273,9 @@ struct CineAIView: View {
     }
 
     /// 发送中气泡：提示模型正在回答，避免"点了没反应"。
-    private var thinkingBubble: some View {        HStack {
-            ProgressView().controlSize(.small)
+    private var thinkingBubble: some View {
+        HStack(spacing: 8) {
+            CineBarThinkingOrb(size: 20, accent: .orange)
             Text("正在思考…")
                 .font(.caption)
                 .foregroundStyle(.secondary)

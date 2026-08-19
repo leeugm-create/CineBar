@@ -7189,8 +7189,7 @@ struct MooviePlaySection: View {
             }
 
             if status == .searching {
-                ProgressView()
-                    .controlSize(.small)
+                CineBarThinkingOrb(size: 18, accent: .orange)
             }
 
             if status == .ready, let streamURL {

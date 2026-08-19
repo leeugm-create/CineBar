@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Hls from "hls.js";
 import { recordProgress, removeProgress, MIN_SECONDS } from "./watch-progress";
+import ThinkingOrb from "./thinking-orb";
 
 type CmsItem = {
   source: string;
@@ -219,7 +220,9 @@ function Player({
                   {failReason ? <div className="player-error__reason">{failReason}</div> : null}
                   <div className="player-error__actions">
                     <button type="button" className="player-error__btn player-error__btn--primary" onClick={loadAlternate} disabled={searchingAlt}>
-                      {searchingAlt ? "查找中…" : "换线路"}
+                      {searchingAlt ? (
+                        <span className="orb-btn-inline"><ThinkingOrb size={16} /> 查找中…</span>
+                      ) : "换线路"}
                     </button>
                     {alt ? (
                       <button type="button" className="player-error__btn" onClick={() => setAlt(null)}>回到当前线路</button>
@@ -372,7 +375,7 @@ export default function WatchClient() {
         <aside className="watch-sidebar">
           <div className="source-panel source-panel--watch">
             <div className="source-panel__heading">播放来源</div>
-            <div className="source-panel__empty">正在加载线路…</div>
+            <div className="source-panel__empty"><span className="orb-empty"><ThinkingOrb size={22} /> 正在加载线路…</span></div>
           </div>
         </aside>
       </div>

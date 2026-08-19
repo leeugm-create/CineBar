@@ -3530,3 +3530,9 @@ footer {
   0%, 100% { opacity: 0.7; transform: scale(0.96); box-shadow: 0 0 18px 3px color-mix(in srgb, var(--accent) 35%, transparent); }
   50% { opacity: 1; transform: scale(1.06); box-shadow: 0 0 34px 8px color-mix(in srgb, var(--accent) 55%, transparent); }
 }
+
+/* 思考球体小尺寸适配（其他加载场景，2026-08-19） */
+.thinking-orb { display: inline-block; }
+.orb-track::before { top: 3%; }
+.orb-btn-inline { display: inline-flex; align-items: center; gap: 6px; }
+.orb-empty { display: inline-flex; align-items: center; gap: 8px; }

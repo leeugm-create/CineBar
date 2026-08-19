@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ThinkingOrb from "./thinking-orb";
 import Hls from "hls.js";
 
 type CMSItem = {
@@ -439,7 +440,7 @@ export default function VideosClient() {
 
         {loading ? (
           <div className="tv-loading">
-            <span className="live-spinner" aria-hidden="true" />
+            <ThinkingOrb size={34} />
             <span>正在载入影视列表…</span>
           </div>
         ) : error ? (
@@ -456,7 +457,7 @@ export default function VideosClient() {
           </div>
         ) : searching ? (
           <div className="tv-loading">
-            <span className="live-spinner" aria-hidden="true" />
+            <ThinkingOrb size={34} />
             <span>正在搜索…</span>
           </div>
         ) : query.trim() ? (
