@@ -3560,8 +3560,8 @@ footer {
 /* ===== 主标题粒子文字（2026-08-19）===== */
 .hero-title h1 {
   position: relative;
-  /* 大字号标题：两行粒子文字的高度（2026-08-19） */
-  min-height: 2.1em;
+  /* 大字号标题：两行粒子文字的高度（2026-08-19 用户要求字体做大） */
+  min-height: 2.5em;
 }
 
 .cinebar-title-particles {
