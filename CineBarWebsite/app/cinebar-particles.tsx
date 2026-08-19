@@ -3,17 +3,13 @@
 import { useEffect, useRef } from "react";
 
 /**
- * 主标题粒子文字（2026-08-19）：
- * 标题逐字采样成密集粒子（"找到 / 下一部好片"），粒子缓慢回弹归位，
- * 鼠标移过时局部推开；密集采样保证标题清晰可读。
+ * CineBar 粒子网背景（对标 particles.js，2026-08-19）：
+ * 随机粒子缓慢漂移 + 邻近粒子连线（网）+ 鼠标排斥；
+ * 透明背景、主题色（accent）自适应、减动效/不可见时暂停。
  */
-type P = { tx: number; ty: number; x: number; y: number; vx: number; vy: number };
+type Particle = { x: number; y: number; vx: number; vy: number; r: number };
 
-export default function CinebarTitleParticles({
-  lines,
-}: {
-  lines: string[];
-}) {
+export default function CinebarParticles() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -22,7 +18,7 @@ export default function CinebarTitleParticles({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     let raf = 0;
-    let particles: P[] = [];
+    let particles: Particle[] = [];
     let w = 0;
     let h = 0;
     const mouse = { x: -9999, y: -9999 };
@@ -30,41 +26,22 @@ export default function CinebarTitleParticles({
     let running = true;
     const isReduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    function targetCount(): number {
+      const area = w * h;
+      return Math.max(40, Math.min(220, Math.round(area / 9000)));
+    }
+
     function build() {
-      const off = document.createElement("canvas");
-      off.width = w;
-      off.height = h;
-      const octx = off.getContext("2d");
-      if (!octx) return;
-      // 大字号 + 左对齐（2026-08-19 用户要求主标放左侧红框位置，不居中偏右）
-      const fontSize = Math.min(h * 0.46, (w / Math.max(...lines.map((l) => l.length))) * 1.8);
-      octx.font = `900 ${fontSize}px "Hiragino Sans GB", "PingFang SC", "Microsoft YaHei", sans-serif`;
-      octx.textAlign = "left";
-      octx.textBaseline = "middle";
-      octx.fillStyle = "#fff";
-      const padX = w * 0.02;
-      const lineH = fontSize * 1.04;
-      const startY = h / 2 - ((lines.length - 1) * lineH) / 2;
-      lines.forEach((line, i) => {
-        octx.fillText(line, padX, startY + i * lineH);
-      });
-      const img = octx.getImageData(0, 0, w, h);
       particles = [];
-      // 密集采样：步长更细（w/360 → 1180px 宽时 step≈3），笔画密实连成实心字（2026-08-19 加密））
-      const step = Math.max(2, Math.floor(w / 360));
-      for (let y = 0; y < h; y += step) {
-        for (let x = 0; x < w; x += step) {
-          if (img.data[(y * w + x) * 4 + 3] > 128) {
-            particles.push({
-              tx: x,
-              ty: y,
-              x: x + (Math.random() - 0.5) * 36,
-              y: y + (Math.random() - 0.5) * 36,
-              vx: 0,
-              vy: 0,
-            });
-          }
-        }
+      const count = targetCount();
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.55,
+          vy: (Math.random() - 0.5) * 0.55,
+          r: Math.random() * 1.6 + 1.2,
+        });
       }
     }
 
@@ -73,48 +50,72 @@ export default function CinebarTitleParticles({
       if (!parent) return;
       const rect = parent.getBoundingClientRect();
       w = Math.max(200, rect.width);
-      h = Math.max(80, rect.height);
+      h = Math.max(120, rect.height);
       canvas.width = w * DPR;
       canvas.height = h * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
       build();
     }
 
-    function color(): string {
+    function themeColors(): { particle: string; link: string } {
       const style = getComputedStyle(document.documentElement);
-      return (style.getPropertyValue("--foreground") || "#111827").trim();
+      const accent = (style.getPropertyValue("--accent") || "#f97316").trim();
+      const isDark = document.documentElement.dataset.theme === "dark";
+      return { particle: accent, link: isDark ? "255,255,255" : "120,120,130" };
     }
 
+    const LINK_DIST = 110;
+    const REPULSE = 130;
+
     function drawStatic() {
+      const { particle } = themeColors();
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = color();
-      for (const p of particles) ctx.fillRect(p.x, p.y, 2.2, 2.2);
+      ctx.fillStyle = particle;
+      for (const p of particles) ctx.fillRect(p.x, p.y, p.r, p.r);
     }
 
     function tick() {
       if (!running) return;
+      const { particle, link } = themeColors();
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = color();
-      const dot = Math.max(2, Math.min(2.8, w / 300));
+      const n = particles.length;
       for (const p of particles) {
-        // 弹簧回弹归位
-        p.vx += (p.tx - p.x) * 0.06;
-        p.vy += (p.ty - p.y) * 0.06;
-        // 鼠标局部排斥（半径小，保持标题整体可读）
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > w) p.vx *= -1;
+        if (p.y < 0 || p.y > h) p.vy *= -1;
         const dx = p.x - mouse.x;
         const dy = p.y - mouse.y;
         const d = Math.hypot(dx, dy);
-        if (d < 34 && d > 0.01) {
-          const f = (34 - d) / 34;
-          p.vx += (dx / d) * f * 1.6;
-          p.vy += (dy / d) * f * 1.6;
+        if (d < REPULSE && d > 0.01) {
+          const f = (REPULSE - d) / REPULSE;
+          p.x += (dx / d) * f * 2.2;
+          p.y += (dy / d) * f * 2.2;
         }
-        p.vx *= 0.82;
-        p.vy *= 0.82;
-        p.x += p.vx;
-        p.y += p.vy;
-        ctx.fillRect(p.x, p.y, dot, dot);
       }
+      ctx.lineWidth = 1;
+      const l2 = LINK_DIST * LINK_DIST;
+      for (let i = 0; i < n; i++) {
+        const a = particles[i];
+        for (let j = i + 1; j < n; j++) {
+          const b = particles[j];
+          const dx = a.x - b.x;
+          const dy = a.y - b.y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < l2) {
+            const alpha = 0.4 * (1 - d2 / l2);
+            ctx.strokeStyle = `rgba(${link},${alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.fillStyle = particle;
+      ctx.globalAlpha = 0.85;
+      for (const p of particles) ctx.fillRect(p.x, p.y, p.r, p.r);
+      ctx.globalAlpha = 1;
       raf = requestAnimationFrame(tick);
     }
 
@@ -150,7 +151,7 @@ export default function CinebarTitleParticles({
       canvas.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [lines.join("|")]);
+  }, []);
 
-  return <canvas ref={canvasRef} className="cinebar-title-particles" aria-hidden="true" />;
+  return <canvas ref={canvasRef} className="cinebar-particles" aria-hidden="true" />;
 }

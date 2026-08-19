@@ -40,7 +40,7 @@ function RefreshButton({ onClick, refreshing }: { onClick: () => void; refreshin
 import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
 import type { ReactNode } from "react";
-import CinebarTitleParticles from "./cinebar-particles";
+import CinebarParticles from "./cinebar-particles";
 
 type TrendingMovie = {
   title: string;
@@ -98,16 +98,15 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
   return (
     <>
       <section className="hero" id="top">
-        {/* 右侧产品预览图（App 菜单栏界面） */}
-        <div className="hero-art" aria-hidden="true">
-          <img src="/cinebar-home-backdrop.jpg" alt="" loading="lazy" />
-        </div>
+        {/* 粒子网背景（particles.js 风格：漂移+连线+鼠标排斥） */}
+        <CinebarParticles />
         <div className="hero-copy">
           <p className="hero-version">{m.heroVersion}</p>
           <div className="hero-title">
-            {/* 主标题粒子文字（密集采样保证可读；aria-label 保留完整标题） */}
-            <h1 aria-label={`${m.heroTitle1} ${m.heroTitle2}`}>
-              <CinebarTitleParticles lines={[m.heroTitle1, m.heroTitle2]} />
+            <h1>
+              <span className="title-line">{m.heroTitle1}</span>
+              <br />
+              <span className="title-line">{m.heroTitle2}</span>
             </h1>
           </div>
           <p className="hero-lede">{m.heroLede}</p>
