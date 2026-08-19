@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import WatchClient from "../watch-client";
+import SiteHeader from "../site-header";
+import { defaultLocale, messages } from "../i18n";
 
 export const metadata: Metadata = {
   title: "在线播放 · CineBar",
@@ -10,16 +11,15 @@ export const metadata: Metadata = {
 export default function WatchPage() {
   return (
     <main className="site-home tv-page-root watch-zip0">
-      <header className="site-header">
-        <Link className="brand" href="/">
-          <img className="brand-mark" src="/cinebar-icon.png" alt="" width="42" height="42" />
-          <span>CineBar</span>
-        </Link>
-        <nav aria-label="Watch">
-          <Link href="/">返回官网</Link>
-          <Link href="/videos">影视库</Link>
-        </nav>
-      </header>
+      <SiteHeader
+        locale={defaultLocale}
+        appearanceLabel={messages[defaultLocale].appearance}
+        homeHref="/"
+        navItems={[
+          { href: "/", label: "返回官网" },
+          { href: "/videos", label: "影视库" },
+        ]}
+      />
       <WatchClient />
     </main>
   );

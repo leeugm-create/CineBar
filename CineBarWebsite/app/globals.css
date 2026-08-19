@@ -3634,3 +3634,154 @@ footer {
   position: relative;
   z-index: 2;
 }
+
+
+/* ============================================================
+   移动端体验改造(2026-08-19)
+   - 页头:导航收进汉堡抽屉,常驻顶栏保留「语言→玩玩游戏→颜色」控件条
+   - 手机端控件条自动折行、不溢出
+   - Hero 行动按钮通栏、触控区 ≥44px
+   - 兼容刘海 / Home Indicator 安全区
+   ============================================================ */
+
+/* ---- 汉堡按钮:桌面隐藏,≤840px 显示 ---- */
+.menu-toggle {
+  display: none;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+.menu-toggle:hover { border-color: var(--accent); background-color: rgba(111, 182, 238, 0.12); }
+.menu-toggle-icon,
+.menu-toggle-icon::before,
+.menu-toggle-icon::after {
+  display: block;
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--foreground);
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+.menu-toggle-icon { position: relative; }
+.menu-toggle-icon::before,
+.menu-toggle-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+.menu-toggle-icon::before { top: -5px; }
+.menu-toggle-icon::after { top: 5px; }
+
+/* 内联导航:≤840px 隐藏(移入抽屉) */
+.site-nav { display: flex; align-items: center; gap: 18px; }
+
+/* 抽屉:桌面不渲染影响,≤840px 从右侧滑出 */
+.drawer,
+.drawer-overlay { display: none; }
+
+@media (max-width: 840px) {
+  .site-header { flex-wrap: wrap; }
+  .header-right { flex-wrap: wrap; row-gap: 10px; }
+  .site-nav { display: none; }
+  .menu-toggle { display: inline-flex; }
+
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+  }
+  .drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 70;
+    width: min(78vw, 300px);
+    padding: calc(env(safe-area-inset-top, 0px) + 20px) 22px
+      calc(env(safe-area-inset-bottom, 0px) + 24px);
+    background: color-mix(in srgb, var(--background) 96%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-left: 1px solid var(--border);
+    box-shadow: -18px 0 40px rgba(0, 0, 0, 0.18);
+    transform: translateX(105%);
+    transition: transform 220ms ease;
+    overflow-y: auto;
+  }
+  .drawer.is-open { transform: translateX(0); }
+
+  .drawer-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 22px;
+  }
+  .drawer-nav a {
+    display: block;
+    padding: 14px 8px;
+    font-size: 1.02rem;
+    font-weight: 650;
+    color: var(--foreground);
+    text-decoration: none;
+    border-radius: 12px;
+    transition: background-color 160ms ease, color 160ms ease;
+  }
+  .drawer-nav a:hover { background-color: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+  .drawer-game {
+    align-self: flex-start;
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  .drawer-close {
+    margin-top: auto;
+    padding: 13px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--foreground);
+    font: inherit;
+    cursor: pointer;
+  }
+}
+
+/* ---- 玩玩游戏按钮通用(桌面已在 header,这里补齐移动端折行样式) ---- */
+.play-games-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* ---- 小屏(Hero 行动按钮通栏,触控区 ≥44px) ---- */
+@media (max-width: 560px) {
+  .hero-actions { display: flex; flex-direction: column; align-items: stretch; gap: 12px; }
+  .hero-actions .button {
+    width: 100%;
+    min-height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .menu-toggle { width: 42px; height: 42px; }
+  .theme-toggle,
+  .search-toggle { width: 42px; height: 42px; }
+  .header-right .lang-select select { padding: 9px 30px 9px 14px; }
+  main, .page-width { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .site-header { padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+}
+
+@media (max-width: 840px) {
+  .support-grid { grid-template-columns: 1fr; }
+}

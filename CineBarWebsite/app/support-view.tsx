@@ -1,7 +1,5 @@
-import Link from "next/link";
 import type { Locale, Messages } from "./i18n";
-import LangSelect from "./lang-select";
-import ThemeToggle from "./theme-toggle";
+import SiteHeader from "./site-header";
 
 const paypalURL =
   "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=VVVZUSU9QUJBW&currency_code=USD";
@@ -10,23 +8,12 @@ export default function SupportView({ m, locale }: { m: Messages; locale: Locale
   const homePath = locale === "zh-Hans" ? "/" : `/${locale}`;
   return (
     <main>
-      <header className="site-header">
-        <a className="brand" href={homePath}>
-          <img
-            className="brand-mark"
-            src="/cinebar-icon.png"
-            alt=""
-            width="42"
-            height="42"
-          />
-          <span>CineBar</span>
-        </a>
-        <LangSelect locale={locale} />
-        <ThemeToggle label={m.appearance} />
-        <nav aria-label="Support">
-          <Link href={homePath}>{m.backHome}</Link>
-        </nav>
-      </header>
+      <SiteHeader
+        locale={locale}
+        appearanceLabel={m.appearance}
+        homeHref={homePath}
+        navItems={[{ href: homePath, label: m.backHome }]}
+      />
 
       <section className="section support-page">
         <h2>{m.supportPageTitle}</h2>

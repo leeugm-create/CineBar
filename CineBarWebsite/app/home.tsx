@@ -1,6 +1,5 @@
 import type { Locale, Messages } from "./i18n";
-import LangSelect from "./lang-select";
-import ThemeToggle from "./theme-toggle";
+import SiteHeader from "./site-header";
 import HomeHero from "./hero-trending";
 import ContinueWatching from "./continue-watching";
 
@@ -31,36 +30,16 @@ function SupportCta({ m, locale }: { m: Messages; locale: Locale }) {
 export default function Home({ m, locale }: { m: Messages; locale: Locale }) {
   return (
     <main className="site-home">
-      <header className="site-header">
-        <a className="brand" href={locale === "zh-Hans" ? "/" : `/${locale}`}>
-          <img
-            className="brand-mark"
-            src="/cinebar-icon.png"
-            alt=""
-            width="42"
-            height="42"
-          />
-          <span>CineBar</span>
-        </a>
-        <div className="header-right">
-          <nav aria-label="Main">
-            <a href="#showcase">{m.navShowcase}</a>
-            <a href="#install">{m.navInstall}</a>
-            <a href="#support">{m.navSupport}</a>
-          </nav>
-          <LangSelect locale={locale} />
-          <a
-            className="play-games-btn"
-            href="https://bruno-simon.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="玩玩游戏（Bruno Simon 3D 作品集）"
-          >
-            玩玩游戏
-          </a>
-          <ThemeToggle label={m.appearance} />
-        </div>
-      </header>
+      <SiteHeader
+        locale={locale}
+        appearanceLabel={m.appearance}
+        homeHref={locale === "zh-Hans" ? "/" : `/${locale}`}
+        navItems={[
+          { href: "#showcase", label: m.navShowcase },
+          { href: "#install", label: m.navInstall },
+          { href: "#support", label: m.navSupport },
+        ]}
+      />
 
       <HomeHero m={m} locale={locale} heroExtra={<ContinueWatching m={m} />} />
 
