@@ -100,6 +100,8 @@ export default function HomeHero({ m, locale, heroExtra }: { m: Messages; locale
       <section className="hero" id="top">
         {/* 粒子网背景（particles.js 风格：漂移+连线+鼠标排斥） */}
         <CinebarParticles />
+        {/* 渐变图案装饰（恢复以前的 accent 光晕 + 斜向渐变效果） */}
+        <div className="hero-glow" aria-hidden="true" />
         <div className="hero-copy">
           <p className="hero-version">{m.heroVersion}</p>
           <div className="hero-title">

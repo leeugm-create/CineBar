@@ -3543,18 +3543,30 @@ footer {
   overflow: hidden;
 }
 
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变（对标 showcase 卡片装饰，2026-08-19 恢复） */
+  background:
+    radial-gradient(circle at 78% 28%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 40%),
+    radial-gradient(circle at 94% 72%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 38%),
+    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 5%, transparent), transparent 62%);
+}
+
 .cinebar-particles {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
 }
 
 .hero-copy {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 
@@ -3564,16 +3576,28 @@ footer {
   overflow: hidden;
 }
 
+.hero-glow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* 渐变图案：accent 光晕 ×2 + 斜向微渐变（对标 showcase 卡片装饰，2026-08-19 恢复） */
+  background:
+    radial-gradient(circle at 78% 28%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 40%),
+    radial-gradient(circle at 94% 72%, color-mix(in srgb, var(--accent) 15%, transparent), transparent 38%),
+    linear-gradient(140deg, color-mix(in srgb, var(--foreground) 5%, transparent), transparent 62%);
+}
+
 .cinebar-particles {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
 }
 
 .hero-copy {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
