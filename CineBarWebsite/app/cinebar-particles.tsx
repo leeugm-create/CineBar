@@ -43,15 +43,15 @@ export default function CinebarTitleParticles({
       octx.textBaseline = "middle";
       octx.fillStyle = "#fff";
       const padX = w * 0.02;
-      const lineH = fontSize * 1.3;
+      const lineH = fontSize * 1.12;
       const startY = h / 2 - ((lines.length - 1) * lineH) / 2;
       lines.forEach((line, i) => {
         octx.fillText(line, padX, startY + i * lineH);
       });
       const img = octx.getImageData(0, 0, w, h);
       particles = [];
-      // 密集采样：步长随容器自适应（w/260 左右 → 标题可见且粒子密）
-      const step = Math.max(3, Math.round(w / 260));
+      // 密集采样：步长更细（w/360 → 1180px 宽时 step≈3），笔画密实连成实心字（2026-08-19 加密））
+      const step = Math.max(2, Math.floor(w / 360));
       for (let y = 0; y < h; y += step) {
         for (let x = 0; x < w; x += step) {
           if (img.data[(y * w + x) * 4 + 3] > 128) {
@@ -95,7 +95,7 @@ export default function CinebarTitleParticles({
       if (!running) return;
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = color();
-      const dot = Math.max(1.8, Math.min(2.6, w / 320));
+      const dot = Math.max(2, Math.min(2.8, w / 300));
       for (const p of particles) {
         // 弹簧回弹归位
         p.vx += (p.tx - p.x) * 0.06;
